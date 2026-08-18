@@ -3,7 +3,7 @@ import type { Prisma, PrismaClient, Usuario } from "@prisma/client";
 
 type Db = Pick<PrismaClient, "usuario">;
 
-function normalizeEmail(email: string): string {
+export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
@@ -14,5 +14,17 @@ export const usuarioRepository = {
 
   async findByEmail(email: string, db: Db = prisma): Promise<Usuario | null> {
     return db.usuario.findUnique({ where: { email: normalizeEmail(email) } });
+  },
+
+  async findById(id: string, db: Db = prisma): Promise<Usuario | null> {
+    return db.usuario.findUnique({ where: { id } });
+  },
+
+  async update(id: string, data: Prisma.UsuarioUpdateInput, db: Db = prisma): Promise<Usuario> {
+    return db.usuario.update({ where: { id }, data });
+  },
+
+  async updateSenhaHash(id: string, senhaHash: string, db: Db = prisma): Promise<Usuario> {
+    return db.usuario.update({ where: { id }, data: { senhaHash } });
   },
 };
