@@ -17,10 +17,17 @@ const config: Config = {
     "src/repositories/**/*.{ts,tsx}",
     "src/app/api/**/*.{ts,tsx}",
     "src/lib/external/**/*.{ts,tsx}",
+    "src/lib/auth/**/*.{ts,tsx}",
     "src/components/**/*.{ts,tsx}",
     "src/hooks/**/*.{ts,tsx}",
     "!**/*.d.ts",
     "!**/*.test.{ts,tsx}",
+    // Re-export puro dos handlers do NextAuth.js — sem lógica própria, coberta pelo
+    // spec E2E de login/cadastro.
+    "!src/app/api/auth/**",
+    // Wiring declarativo do NextAuth (providers/callbacks) — a lógica de negócio foi
+    // extraída para authorize.ts/tenant-context.ts, que são testados isoladamente.
+    "!src/lib/auth/config.ts",
   ],
   coverageThreshold: {
     global: {},
@@ -35,6 +42,12 @@ const config: Config = {
       functions: 70,
       lines: 70,
       statements: 70,
+    },
+    "src/lib/auth/**/*.{ts,tsx}": {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
     },
     "src/app/api/**/*.{ts,tsx}": {
       branches: 70,
