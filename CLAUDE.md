@@ -78,6 +78,10 @@ Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-ne
 - **Estrutura de código e UI**: convenções de pastas/nomes por camada em [docs/app/estrutura-codigo.md](docs/app/estrutura-codigo.md); Tailwind + shadcn/ui sempre via tokens de tema (nunca `bg-blue-500` literal) em [docs/app/design-system.md](docs/app/design-system.md); regras de reuso de componentes/hooks em [docs/app/modularizacao.md](docs/app/modularizacao.md).
 - **Qualidade e deploy**: análise estática via SonarCloud (Quality Gate obrigatório em todo PR) em [docs/qualidade/analise-estatica.md](docs/qualidade/analise-estatica.md); monitoramento via New Relic em [docs/qualidade/observabilidade.md](docs/qualidade/observabilidade.md); pipeline de deploy (AWS Amplify + RDS, migrations, rollback) em [docs/deploy/deploy.md](docs/deploy/deploy.md).
 
+## Uso de subagentes
+
+Ao elaborar planos ou executar tarefas propostas pelo usuário, priorize o uso de subagentes (Agent tool) para paralelizar o trabalho, acelerar a execução e preservar o contexto da conversa principal. Delegue investigações, buscas amplas no código e etapas independentes a subagentes ao invés de executá-las diretamente sempre que fizer sentido.
+
 ## Autor / contexto
 
 Projeto de portfólio (PAC Extensionista VII, Católica SC) de Lucas Affonso Klemke, evoluído a partir da necessidade real do escritório do Dr. Lucas Quintino para suportar múltiplos escritórios. RFC original e assets (mockups, diagramas C4, DER) versionados em `github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia`.
