@@ -20,21 +20,21 @@ export default function CadastroPage() {
 
     const formData = new FormData(event.currentTarget);
     const payload = {
-      nomeEscritorio: formData.get("nomeEscritorio"),
-      nomeTitular: formData.get("nomeTitular"),
+      nome: formData.get("nome"),
       email: formData.get("email"),
       senha: formData.get("senha"),
     };
 
     try {
-      const response = await fetch("/api/escritorios", {
+      const response = await fetch("/api/cadastro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
         setErro(data?.error ?? "Não foi possível concluir o cadastro.");
         return;
       }
@@ -50,7 +50,7 @@ export default function CadastroPage() {
         return;
       }
 
-      router.push("/");
+      router.push(data?.temEscritorio ? "/" : "/onboarding");
     } finally {
       setCarregando(false);
     }
@@ -59,20 +59,16 @@ export default function CadastroPage() {
   return (
     <Card className="w-full ring-foreground/5 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Cadastre seu escritório</CardTitle>
+        <CardTitle className="text-xl">Crie sua conta</CardTitle>
         <CardDescription>
-          Crie sua conta para começar a usar o CRM. Você será o usuário titular.
+          Cadastre-se com seu nome, e-mail e senha para começar a usar o CRM.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="nomeEscritorio">Nome do escritório</Label>
-            <Input id="nomeEscritorio" name="nomeEscritorio" required />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nomeTitular">Seu nome</Label>
-            <Input id="nomeTitular" name="nomeTitular" required />
+            <Label htmlFor="nome">Seu nome</Label>
+            <Input id="nome" name="nome" required />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">E-mail</Label>
