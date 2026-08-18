@@ -81,3 +81,13 @@ Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-ne
 ## Autor / contexto
 
 Projeto de portfólio (PAC Extensionista VII, Católica SC) de Lucas Affonso Klemke, evoluído a partir da necessidade real do escritório do Dr. Lucas Quintino para suportar múltiplos escritórios. RFC original e assets (mockups, diagramas C4, DER) versionados em `github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

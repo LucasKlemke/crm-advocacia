@@ -9,3 +9,41 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum RoleUsuario {
+  titular
+  colaborador
+}
+
+model Escritorio {
+  id               String   @id @default(uuid())
+  nome             String   @db.VarChar(140)
+  oabResponsavel   String?  @map("oab_responsavel") @db.VarChar(20)
+  telefoneWhatsapp String?  @map("telefone_whatsapp") @db.VarChar(20)
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  usuarios Usuario[]
+
+  @@map("escritorio")
+}
+
+model Usuario {
+  id           String      @id @default(uuid())
+  escritorioId String      @map("escritorio_id")
+  nome         String      @db.VarChar(140)
+  email        String      @unique @db.VarChar(255)
+  senhaHash    String      @map("senha_hash") @db.VarChar(255)
+  oab          String?     @db.VarChar(20)
+  telefone     String?     @db.VarChar(20)
+  role         RoleUsuario @default(titular)
+  ativo        Boolean     @default(true)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id])
+
+  @@index([escritorioId])
+  @@map("usuario")
+}
