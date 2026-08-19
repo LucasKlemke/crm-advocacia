@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import {
   getTenantContext,
   NaoAutenticadoError,
@@ -11,12 +10,7 @@ import {
   EscritorioNaoEncontradoError,
   PermissaoNegadaError,
 } from "@/services/escritorio.service";
-
-const atualizarEscritorioSchema = z.object({
-  nome: z.string().min(1).optional(),
-  oabResponsavel: z.string().optional(),
-  telefoneWhatsapp: z.string().optional(),
-});
+import { atualizarEscritorioSchema } from "../schemas";
 
 function tratarErroDeContexto(error: unknown) {
   if (error instanceof NaoAutenticadoError) {
