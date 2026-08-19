@@ -28,6 +28,7 @@ enum EntidadeLog {
   comentario
   caso
   status
+  membro
 }
 
 enum AcaoLog {
