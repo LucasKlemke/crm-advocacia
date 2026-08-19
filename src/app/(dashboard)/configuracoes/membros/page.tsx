@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getTenantContext, NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/tenant-context";
+import { getTenantContextOuRedirect } from "../../_lib/tenant-context-pagina";
 import { membroService } from "@/services/membro.service";
 import { conviteService } from "@/services/convite.service";
 import { MembrosTable } from "@/components/configuracoes/membros-table";
@@ -8,14 +7,7 @@ import { NovoMembroDrawer } from "@/components/configuracoes/novo-membro-drawer"
 import { Separator } from "@/components/ui/separator";
 
 export default async function ConfiguracoesMembrosPage() {
-  let ctx;
-  try {
-    ctx = await getTenantContext();
-  } catch (error) {
-    if (error instanceof NaoAutenticadoError) redirect("/login");
-    if (error instanceof SemEscritorioAtivoError) redirect("/onboarding");
-    throw error;
-  }
+  const ctx = await getTenantContextOuRedirect();
 
   const membros = await membroService.listarMembros(ctx);
   const podeGerenciarMembros = ctx.role !== "padrao";

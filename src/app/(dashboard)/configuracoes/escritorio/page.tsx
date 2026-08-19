@@ -1,18 +1,10 @@
-import { redirect } from "next/navigation";
-import { getTenantContext, NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/tenant-context";
+import { getTenantContextOuRedirect } from "../../_lib/tenant-context-pagina";
 import { escritorioService } from "@/services/escritorio.service";
 import { EscritorioForm } from "@/components/configuracoes/escritorio-form";
 import { PageContainer } from "@/components/shared/page-container";
 
 export default async function ConfiguracoesEscritorioPage() {
-  let ctx;
-  try {
-    ctx = await getTenantContext();
-  } catch (error) {
-    if (error instanceof NaoAutenticadoError) redirect("/login");
-    if (error instanceof SemEscritorioAtivoError) redirect("/onboarding");
-    throw error;
-  }
+  const ctx = await getTenantContextOuRedirect();
 
   const escritorio = await escritorioService.obterEscritorioAtivo(ctx);
 

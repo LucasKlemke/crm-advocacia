@@ -1,21 +1,9 @@
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
-import {
-  getTenantContext,
-  NaoAutenticadoError,
-  SemEscritorioAtivoError,
-} from "@/lib/auth/tenant-context";
+import { getTenantContextOuRedirect } from "../_lib/tenant-context-pagina";
 import { ClientesTable } from "@/components/clientes/clientes-table";
 
 export default async function ClientesPage() {
-  let ctx;
-  try {
-    ctx = await getTenantContext();
-  } catch (error) {
-    if (error instanceof NaoAutenticadoError) redirect("/login");
-    if (error instanceof SemEscritorioAtivoError) redirect("/onboarding");
-    throw error;
-  }
+  const ctx = await getTenantContextOuRedirect();
 
   // O nome do autor do comentário em rascunho sai da sessão: o TenantContext carrega
   // só ids e papel.
