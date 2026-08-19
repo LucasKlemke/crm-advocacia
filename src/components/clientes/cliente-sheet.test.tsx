@@ -26,6 +26,7 @@ function renderSheet(props: Partial<ComponentProps<typeof ClienteSheet>> = {}) {
       aberto
       onOpenChange={jest.fn()}
       atorUsuarioId="user-1"
+      atorNome="Ana Titular"
       atorRole="owner"
       {...props}
     />

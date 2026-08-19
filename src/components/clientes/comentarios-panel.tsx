@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { MoreHorizontal } from "lucide-react";
+import { ArrowUp, MoreHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarDataHora } from "@/lib/utils/data";
 import { podeEditarComentario, podeModerarComentario } from "@/lib/auth/permissoes";
@@ -28,10 +28,16 @@ import type { ComentarioDTO } from "@/types/cliente";
 export interface ComentariosPanelProps {
   clienteId: string;
   atorUsuarioId: string;
+  atorNome: string;
   atorRole: RoleMembro;
 }
 
-export function ComentariosPanel({ clienteId, atorUsuarioId, atorRole }: ComentariosPanelProps) {
+export function ComentariosPanel({
+  clienteId,
+  atorUsuarioId,
+  atorNome,
+  atorRole,
+}: ComentariosPanelProps) {
   const { data, isLoading, isError } = useComentarios("cliente", clienteId);
   const criar = useCriarComentario("cliente", clienteId);
   const atualizar = useAtualizarComentario("cliente", clienteId);
@@ -76,26 +82,12 @@ export function ComentariosPanel({ clienteId, atorUsuarioId, atorRole }: Comenta
     }
   }
 
-  const comentarios = data?.comentarios ?? [];
+  // A API devolve do mais recente para o mais antigo; aqui a leitura é de cima para
+  // baixo, terminando no campo de escrever — como numa conversa.
+  const comentarios = [...(data?.comentarios ?? [])].reverse();
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={comentar} className="flex flex-col gap-2">
-        <Textarea
-          aria-label="Novo comentário"
-          placeholder="Escreva um comentário..."
-          value={rascunho}
-          onChange={(evento) => setRascunho(evento.target.value)}
-          disabled={criar.isPending}
-          rows={3}
-        />
-        <div className="flex justify-end">
-          <Button type="submit" size="sm" disabled={criar.isPending || !rascunho.trim()}>
-            {criar.isPending ? "Enviando..." : "Comentar"}
-          </Button>
-        </div>
-      </form>
-
       {isLoading ? (
         <div className="flex flex-col gap-3" aria-hidden>
           <Skeleton className="h-16 w-full" />
@@ -111,19 +103,19 @@ export function ComentariosPanel({ clienteId, atorUsuarioId, atorRole }: Comenta
 
       {!isLoading && !isError && comentarios.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nenhum comentário ainda. Registre aqui o histórico de contato com este cliente.
+          Nenhum comentário ainda. Registre aqui o histórico de contato.
         </p>
       ) : null}
 
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-3">
         {comentarios.map((comentario: ComentarioDTO) => {
           const ehAutor = comentario.autorUsuarioId === atorUsuarioId;
           const podeAlgumaAcao =
             podeEditarComentario(ehAutor) || podeModerarComentario(atorRole, ehAutor);
 
           return (
-            <li key={comentario.id} className="flex gap-3">
-              <AvatarIniciais nome={comentario.autor.nome} />
+            <li key={comentario.id} className="flex gap-2">
+              <AvatarIniciais nome={comentario.autor.nome} className="size-6" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-foreground">
@@ -204,6 +196,30 @@ export function ComentariosPanel({ clienteId, atorUsuarioId, atorRole }: Comenta
           );
         })}
       </ul>
+
+      {/* Composer minimalista no rodapé, como numa conversa: uma linha que cresce com o
+          texto (field-sizing-content) e um botão redondo de enviar. */}
+      <form onSubmit={comentar} className="flex items-end gap-2">
+        <AvatarIniciais nome={atorNome} className="size-6" />
+        <Textarea
+          aria-label="Novo comentário"
+          placeholder="Adicionar um comentário..."
+          className="min-h-7 flex-1 resize-none border-0 px-0 py-0.5 text-sm shadow-none focus-visible:border-0 focus-visible:ring-0"
+          value={rascunho}
+          onChange={(evento) => setRascunho(evento.target.value)}
+          disabled={criar.isPending}
+          rows={1}
+        />
+        <Button
+          type="submit"
+          size="icon-sm"
+          className="rounded-full"
+          aria-label="Comentar"
+          disabled={criar.isPending || !rascunho.trim()}
+        >
+          <ArrowUp />
+        </Button>
+      </form>
     </div>
   );
 }

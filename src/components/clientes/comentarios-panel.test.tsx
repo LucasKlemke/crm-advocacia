@@ -26,6 +26,7 @@ function renderPanel(props: { atorUsuarioId?: string; atorRole?: "owner" | "padr
     <ComentariosPanel
       clienteId="cli-1"
       atorUsuarioId={props.atorUsuarioId ?? "user-1"}
+      atorNome="Ana Titular"
       atorRole={props.atorRole ?? "padrao"}
     />
   );
@@ -83,10 +84,15 @@ describe("ComentariosPanel", () => {
   });
 
   it("mantém o botão Comentar desabilitado enquanto o campo está vazio", async () => {
+    const usuario = userEvent.setup();
     renderPanel();
     await screen.findByText("Primeiro contato feito.");
 
     expect(screen.getByRole("button", { name: "Comentar" })).toBeDisabled();
+
+    await usuario.type(screen.getByRole("textbox", { name: "Novo comentário" }), "Oi");
+
+    expect(screen.getByRole("button", { name: "Comentar" })).toBeEnabled();
   });
 
   it("oferece o menu de ações ao autor do comentário", async () => {

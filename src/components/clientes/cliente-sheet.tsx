@@ -3,6 +3,7 @@
 import { toast } from "sonner";
 import { MessageSquare, RotateCcw, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
+import { formatarDataHora } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
 import { ClienteDados } from "@/components/clientes/cliente-dados";
 import { ClienteForm } from "@/components/clientes/cliente-form";
@@ -28,6 +29,7 @@ export interface ClienteSheetProps {
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
   atorUsuarioId: string;
+  atorNome: string;
   atorRole: RoleMembro;
 }
 
@@ -40,6 +42,7 @@ export function ClienteSheet({
   aberto,
   onOpenChange,
   atorUsuarioId,
+  atorNome,
   atorRole,
 }: ClienteSheetProps) {
   const acaoEmLote = useAcaoEmLoteClientes();
@@ -70,7 +73,9 @@ export function ClienteSheet({
               <SheetDescription>
                 {modo === "criar"
                   ? "Cadastre um cliente do escritório."
-                  : "Comente o histórico de contato e edite os dados clicando neles."}
+                  : cliente
+                    ? `Cadastrado em ${formatarDataHora(cliente.createdAt)}`
+                    : null}
               </SheetDescription>
             </div>
 
@@ -85,6 +90,7 @@ export function ClienteSheet({
                 <ComentariosPanel
                   clienteId={cliente.id}
                   atorUsuarioId={atorUsuarioId}
+                  atorNome={atorNome}
                   atorRole={atorRole}
                 />
               </section>

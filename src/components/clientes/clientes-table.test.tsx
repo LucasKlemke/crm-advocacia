@@ -32,7 +32,7 @@ function respostaListagem(clientes: ClienteDTO[]) {
 }
 
 function renderTabela() {
-  return renderComQuery(<ClientesTable atorUsuarioId="user-1" atorRole="owner" />);
+  return renderComQuery(<ClientesTable atorUsuarioId="user-1" atorNome="Ana Titular" atorRole="owner" />);
 }
 
 beforeEach(() => {

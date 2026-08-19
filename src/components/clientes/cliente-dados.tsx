@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { formatarDataHora } from "@/lib/utils/data";
 import { useAtualizarCliente, type DadosClienteForm } from "@/hooks/use-clientes";
 import {
   CAMPOS,
@@ -151,16 +150,6 @@ export function ClienteDados({ cliente }: ClienteDadosProps) {
           </div>
         );
       })}
-
-      <div className="flex items-center gap-2">
-        <span className="flex w-32 shrink-0 items-center gap-2 text-xs text-muted-foreground">
-          <CalendarClock aria-hidden className="size-3.5" />
-          Cadastrado em
-        </span>
-        <span className="px-2 text-sm text-muted-foreground">
-          {formatarDataHora(cliente.createdAt)}
-        </span>
-      </div>
 
       {alterado ? (
         <div className="mt-3 flex justify-end gap-2">

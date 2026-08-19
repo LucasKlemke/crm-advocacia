@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/config";
 import {
   getTenantContext,
   NaoAutenticadoError,
@@ -16,6 +17,10 @@ export default async function ClientesPage() {
     throw error;
   }
 
+  // O nome do autor do comentário em rascunho sai da sessão: o TenantContext carrega
+  // só ids e papel.
+  const session = await auth();
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -25,7 +30,11 @@ export default async function ClientesPage() {
         </p>
       </div>
 
-      <ClientesTable atorUsuarioId={ctx.usuarioId} atorRole={ctx.role} />
+      <ClientesTable
+        atorUsuarioId={ctx.usuarioId}
+        atorNome={session?.user?.name ?? ""}
+        atorRole={ctx.role}
+      />
     </div>
   );
 }

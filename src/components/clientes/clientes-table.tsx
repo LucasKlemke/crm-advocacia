@@ -36,10 +36,11 @@ import type { ClienteDTO } from "@/types/cliente";
 
 export interface ClientesTableProps {
   atorUsuarioId: string;
+  atorNome: string;
   atorRole: RoleMembro;
 }
 
-export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
+export function ClientesTable({ atorUsuarioId, atorNome, atorRole }: ClientesTableProps) {
   const [buscaDigitada, setBuscaDigitada] = useState("");
   const [busca, setBusca] = useState("");
   const [incluirExcluidos, setIncluirExcluidos] = useState(false);
@@ -304,6 +305,7 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
         aberto={sheet !== null}
         onOpenChange={(aberto) => setSheet(aberto ? sheet : null)}
         atorUsuarioId={atorUsuarioId}
+        atorNome={atorNome}
         atorRole={atorRole}
       />
     </>

@@ -81,14 +81,14 @@ describe("ClienteDados", () => {
 
     await usuario.click(screen.getByRole("button", { name: "Editar Endereço" }));
     await usuario.type(screen.getByLabelText("Endereço"), "Rua 7, Joinville");
-    await usuario.click(screen.getByText("Cadastrado em"));
+    await usuario.click(screen.getByRole("button", { name: "Editar CPF" }));
 
     const linha = screen.getByRole("button", { name: "Editar Endereço" });
     expect(linha).toHaveTextContent("Rua 7, Joinville");
     expect(linha.querySelector("[data-alterado]")).toBeInTheDocument();
     // Campo intocado não ganha a marca.
     expect(
-      screen.getByRole("button", { name: "Editar CPF" }).querySelector("[data-alterado]")
+      screen.getByRole("button", { name: "Editar Telefone" }).querySelector("[data-alterado]")
     ).toBeNull();
   });
 
