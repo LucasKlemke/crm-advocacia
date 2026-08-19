@@ -3,21 +3,21 @@
  */
 import { POST } from "./route";
 import { unstable_update } from "@/lib/auth/config";
-import { getToken } from "next-auth/jwt";
+import { lerUsuarioIdDaSessao } from "@/lib/auth/token";
 import { membroService, PermissaoNegadaError } from "@/services/membro.service";
 
 jest.mock("@/lib/auth/config", () => ({
   unstable_update: jest.fn(),
 }));
-jest.mock("next-auth/jwt", () => ({
-  getToken: jest.fn(),
+jest.mock("@/lib/auth/token", () => ({
+  lerUsuarioIdDaSessao: jest.fn(),
 }));
 jest.mock("@/services/membro.service", () => {
   const actual = jest.requireActual("@/services/membro.service");
   return { ...actual, membroService: { trocarEscritorioAtivo: jest.fn() } };
 });
 
-const mockedGetToken = getToken as jest.Mock;
+const mockedLerUsuarioId = lerUsuarioIdDaSessao as jest.Mock;
 const mockedUpdate = unstable_update as jest.Mock;
 const mockedService = membroService as jest.Mocked<typeof membroService>;
 
@@ -31,11 +31,11 @@ function buildRequest(body: unknown) {
 describe("POST /api/sessao/escritorio-ativo", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedGetToken.mockResolvedValue({ sub: "user-1" });
+    mockedLerUsuarioId.mockResolvedValue("user-1");
   });
 
   it("retorna 401 sem sessão", async () => {
-    mockedGetToken.mockResolvedValue(null);
+    mockedLerUsuarioId.mockResolvedValue(null);
 
     const response = await POST(buildRequest({ escritorioId: "esc-1" }));
 
