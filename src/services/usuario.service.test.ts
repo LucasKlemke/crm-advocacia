@@ -153,6 +153,16 @@ describe("usuarioService.atualizarPerfil", () => {
     expect(mockedUsuarioRepo.findByEmail).not.toHaveBeenCalled();
     expect(mockedUsuarioRepo.update).toHaveBeenCalledWith("user-1", { nome: "Só Nome" });
   });
+
+  it("rejeita com EmailJaCadastradoError quando a constraint única do banco é violada em condição de corrida", async () => {
+    mockedUsuarioRepo.findByEmail.mockResolvedValue(null);
+    const prismaError = Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    mockedUsuarioRepo.update.mockRejectedValue(prismaError);
+
+    await expect(
+      usuarioService.atualizarPerfil("user-1", { email: "corrida@teste.com" })
+    ).rejects.toThrow(EmailJaCadastradoError);
+  });
 });
 
 describe("usuarioService.alterarSenha", () => {

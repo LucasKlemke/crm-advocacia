@@ -95,10 +95,17 @@ export const usuarioService = {
       }
     }
 
-    return usuarioRepository.update(usuarioId, {
-      ...(dados.nome ? { nome: dados.nome } : {}),
-      ...(dados.email ? { email: dados.email } : {}),
-    });
+    try {
+      return await usuarioRepository.update(usuarioId, {
+        ...(dados.nome ? { nome: dados.nome } : {}),
+        ...(dados.email ? { email: dados.email } : {}),
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new EmailJaCadastradoError();
+      }
+      throw error;
+    }
   },
 
   async alterarSenha(usuarioId: string, senhaAtual: string, novaSenha: string): Promise<void> {
