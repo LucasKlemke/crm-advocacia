@@ -44,6 +44,7 @@ export default function CadastroPage() {
       });
 
       if (loginResult?.error) {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/login";
         return;
       }

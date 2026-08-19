@@ -2,7 +2,12 @@
  * @jest-environment node
  */
 import { DELETE } from "./route";
-import { getTenantContext } from "@/lib/auth/tenant-context";
+import {
+  getTenantContext,
+  NaoAutenticadoError,
+  SemEscritorioAtivoError,
+  AcessoNegadoError,
+} from "@/lib/auth/tenant-context";
 import {
   conviteService,
   PermissaoNegadaError,
@@ -35,6 +40,30 @@ describe("DELETE /api/convites/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedGetTenantContext.mockResolvedValue(ctx);
+  });
+
+  it("retorna 401 sem sessão", async () => {
+    mockedGetTenantContext.mockRejectedValue(new NaoAutenticadoError());
+
+    const response = await DELETE(new Request("http://localhost"), { params });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("retorna 409 sem escritório ativo", async () => {
+    mockedGetTenantContext.mockRejectedValue(new SemEscritorioAtivoError());
+
+    const response = await DELETE(new Request("http://localhost"), { params });
+
+    expect(response.status).toBe(409);
+  });
+
+  it("retorna 403 quando o usuário não é membro do escritório", async () => {
+    mockedGetTenantContext.mockRejectedValue(new AcessoNegadoError());
+
+    const response = await DELETE(new Request("http://localhost"), { params });
+
+    expect(response.status).toBe(403);
   });
 
   it("retorna 404 quando o convite não existe ou é de outro escritório", async () => {

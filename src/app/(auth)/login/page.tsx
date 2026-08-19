@@ -34,6 +34,7 @@ export default function LoginPage() {
       // entrada de "/" com o redirect para /login pré-fetchada enquanto ainda
       // deslogado (via o Link da marca no layout de auth) — só um reload garante que
       // o middleware releia a sessão recém-criada em vez de reusar esse cache stale.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/";
     } finally {
       setCarregando(false);

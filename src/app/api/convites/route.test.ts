@@ -2,7 +2,12 @@
  * @jest-environment node
  */
 import { GET, POST } from "./route";
-import { getTenantContext } from "@/lib/auth/tenant-context";
+import {
+  getTenantContext,
+  NaoAutenticadoError,
+  SemEscritorioAtivoError,
+  AcessoNegadoError,
+} from "@/lib/auth/tenant-context";
 import {
   conviteService,
   PermissaoNegadaError,
@@ -49,6 +54,30 @@ describe("GET /api/convites", () => {
     expect(response.status).toBe(403);
   });
 
+  it("retorna 401 sem sessão", async () => {
+    mockedGetTenantContext.mockRejectedValue(new NaoAutenticadoError());
+
+    const response = await GET();
+
+    expect(response.status).toBe(401);
+  });
+
+  it("retorna 409 sem escritório ativo", async () => {
+    mockedGetTenantContext.mockRejectedValue(new SemEscritorioAtivoError());
+
+    const response = await GET();
+
+    expect(response.status).toBe(409);
+  });
+
+  it("retorna 403 quando o usuário não é membro do escritório", async () => {
+    mockedGetTenantContext.mockRejectedValue(new AcessoNegadoError());
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+  });
+
   it("retorna 200 com os convites pendentes", async () => {
     mockedService.listarPendentes.mockResolvedValue([{ id: "convite-1" }] as never);
 
@@ -74,11 +103,28 @@ describe("POST /api/convites", () => {
     mockedGetTenantContext.mockResolvedValue(ctx);
   });
 
+  it("retorna 400 para JSON inválido", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/convites", { method: "POST", body: "{x" })
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockedService.convidar).not.toHaveBeenCalled();
+  });
+
   it("retorna 400 para payload inválido", async () => {
     const response = await POST(buildPostRequest({ email: "invalido" }));
 
     expect(response.status).toBe(400);
     expect(mockedService.convidar).not.toHaveBeenCalled();
+  });
+
+  it("retorna 401 sem sessão", async () => {
+    mockedGetTenantContext.mockRejectedValue(new NaoAutenticadoError());
+
+    const response = await POST(buildPostRequest({ email: "novo@teste.com", role: "padrao" }));
+
+    expect(response.status).toBe(401);
   });
 
   it("retorna 403 quando a permissão é negada", async () => {

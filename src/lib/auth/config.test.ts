@@ -23,6 +23,9 @@ const mockedResolver = resolverEscritorioAtivo as jest.Mock;
 
 function getConfig() {
   jest.isolateModules(() => {
+    // Precisa de require() síncrono dentro de isolateModules para reexecutar
+    // NextAuth(config) a cada teste e capturar os callbacks passados ao mock.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("./config");
   });
   return mockedNextAuth.mock.calls[mockedNextAuth.mock.calls.length - 1][0];

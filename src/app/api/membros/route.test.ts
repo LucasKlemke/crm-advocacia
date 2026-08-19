@@ -37,6 +37,24 @@ describe("GET /api/membros", () => {
     expect(response.status).toBe(401);
   });
 
+  it("retorna 409 sem escritório ativo", async () => {
+    const { SemEscritorioAtivoError } = jest.requireMock("@/lib/auth/tenant-context");
+    mockedGetTenantContext.mockRejectedValue(new SemEscritorioAtivoError());
+
+    const response = await GET();
+
+    expect(response.status).toBe(409);
+  });
+
+  it("retorna 403 quando o usuário não é membro do escritório", async () => {
+    const { AcessoNegadoError } = jest.requireMock("@/lib/auth/tenant-context");
+    mockedGetTenantContext.mockRejectedValue(new AcessoNegadoError());
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+  });
+
   it("retorna 200 com a lista de membros", async () => {
     mockedGetTenantContext.mockResolvedValue(ctx);
     mockedService.listarMembros.mockResolvedValue([{ id: "membro-1" }] as never);

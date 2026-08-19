@@ -28,6 +28,11 @@ const config: Config = {
     // Wiring declarativo do NextAuth (providers/callbacks) — a lógica de negócio foi
     // extraída para authorize.ts/tenant-context.ts, que são testados isoladamente.
     "!src/lib/auth/config.ts",
+    // Primitivas geradas pelo shadcn CLI (docs/app/design-system.md: "tratados como
+    // gerados", nunca editados à mão) sem lógica própria — cobertas indiretamente
+    // pelos componentes que as compõem (ex. Table via MembrosTable), não testadas
+    // uma a uma.
+    "!src/components/ui/**",
   ],
   coverageThreshold: {
     global: {},
