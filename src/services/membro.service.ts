@@ -1,4 +1,7 @@
-import { membroRepository } from "@/repositories/membro.repository";
+import {
+  membroRepository,
+  type MembroComUsuarioPublico,
+} from "@/repositories/membro.repository";
 import {
   podeGerenciarMembro,
   podeAtribuirRole,
@@ -49,7 +52,8 @@ export const membroService = {
     return membro;
   },
 
-  async listarMembros(ctx: TenantContext) {
+  // Retorna o usuário já projetado (sem senhaHash) — ver USUARIO_PUBLICO_SELECT.
+  async listarMembros(ctx: TenantContext): Promise<MembroComUsuarioPublico[]> {
     return membroRepository.listarComUsuarioPorEscritorio(ctx.escritorioId);
   },
 

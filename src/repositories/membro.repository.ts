@@ -3,6 +3,21 @@ import type { Membro, Prisma, PrismaClient, RoleMembro } from "@prisma/client";
 
 type Db = Pick<PrismaClient, "membro">;
 
+// Projeção pública do usuário: nunca inclui senhaHash (RN19/segurança) — qualquer
+// listagem de membros que embuta o usuário deve usar este select.
+export const USUARIO_PUBLICO_SELECT = {
+  id: true,
+  nome: true,
+  email: true,
+  telefone: true,
+} satisfies Prisma.UsuarioSelect;
+
+export type UsuarioPublico = Prisma.UsuarioGetPayload<{
+  select: typeof USUARIO_PUBLICO_SELECT;
+}>;
+
+export type MembroComUsuarioPublico = Membro & { usuario: UsuarioPublico };
+
 export const membroRepository = {
   async create(data: Prisma.MembroCreateInput, db: Db = prisma): Promise<Membro> {
     return db.membro.create({ data });
@@ -39,11 +54,14 @@ export const membroRepository = {
     return db.membro.findMany({ where: { escritorioId }, orderBy: { createdAt: "asc" } });
   },
 
-  async listarComUsuarioPorEscritorio(escritorioId: string, db: Db = prisma) {
+  async listarComUsuarioPorEscritorio(
+    escritorioId: string,
+    db: Db = prisma
+  ): Promise<MembroComUsuarioPublico[]> {
     return db.membro.findMany({
       where: { escritorioId },
       orderBy: { createdAt: "asc" },
-      include: { usuario: true },
+      include: { usuario: { select: USUARIO_PUBLICO_SELECT } },
     });
   },
 
