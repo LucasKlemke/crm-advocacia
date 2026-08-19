@@ -19,6 +19,9 @@ import type { ClienteDTO } from "@/types/cliente";
 
 export interface ClienteDadosProps {
   cliente: ClienteDTO;
+  // O drawer mostra a data de atualização no subtítulo: sem isso ela ficaria
+  // desatualizada logo depois de salvar.
+  onAtualizado?: (cliente: ClienteDTO) => void;
 }
 
 // Edição inline campo a campo: clicar em um valor transforma só aquele campo em input,
@@ -26,7 +29,7 @@ export interface ClienteDadosProps {
 // para que a leitura continue sendo a operação silenciosa e comum.
 // Montado com `key={cliente.id}` pelo drawer: trocar de cliente remonta o componente
 // em vez de arrastar o rascunho do anterior.
-export function ClienteDados({ cliente }: ClienteDadosProps) {
+export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
   const atualizar = useAtualizarCliente();
   const [valores, setValores] = useState(() => valoresIniciais(cliente));
   const [original, setOriginal] = useState(() => valoresIniciais(cliente));
@@ -73,6 +76,7 @@ export function ClienteDados({ cliente }: ClienteDadosProps) {
       setValores(novos);
       setOriginal(novos);
       setAberto(null);
+      onAtualizado?.(atualizado);
       toast.success("Cliente atualizado.");
     } catch (erro) {
       if (erro instanceof ApiError && erro.detalhes) setErrosPorCampo(erro.detalhes);

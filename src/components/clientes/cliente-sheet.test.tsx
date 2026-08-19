@@ -67,6 +67,33 @@ describe("ClienteSheet", () => {
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria Silva");
   });
 
+  // Datas de contexto, não campos editáveis: ficam no subtítulo do drawer.
+  it("mostra as datas de cadastro e de última atualização", async () => {
+    renderSheet({ cliente: { ...CLIENTE, updatedAt: "2026-08-15T18:30:00.000Z" } });
+
+    expect(await screen.findByText(/Cadastrado em 01 de ago\. de 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Atualizado em 15 de ago\. de 2026/)).toBeInTheDocument();
+  });
+
+  it("a data de atualização acompanha o que acabou de ser salvo", async () => {
+    const usuario = userEvent.setup();
+    renderSheet();
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        cliente: { ...CLIENTE, endereco: "Rua 7", updatedAt: "2026-08-19T10:00:00.000Z" },
+      }),
+    } as Response);
+
+    await usuario.click(await screen.findByRole("button", { name: "Editar Endereço" }));
+    await usuario.type(screen.getByLabelText("Endereço"), "Rua 7");
+    await usuario.click(screen.getByRole("button", { name: /Salvar/ }));
+
+    expect(await screen.findByText(/Atualizado em 19 de ago\. de 2026/)).toBeInTheDocument();
+  });
+
   it("sinaliza visualmente um cliente excluído", async () => {
     renderSheet({ cliente: { ...CLIENTE, softDeletedAt: "2026-08-10T12:00:00.000Z" } });
 

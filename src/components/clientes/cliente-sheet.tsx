@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { toast } from "sonner";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
@@ -46,7 +47,11 @@ export function ClienteSheet({
   atorRole,
 }: ClienteSheetProps) {
   const acaoEmLote = useAcaoEmLoteClientes();
-  const excluido = cliente?.softDeletedAt != null;
+  // A tabela só recarrega depois; enquanto o drawer está aberto, o que foi salvo aqui
+  // é a versão mais recente do cadastro.
+  const [salvo, setSalvo] = useState<ClienteDTO | null>(null);
+  const exibido = salvo?.id === cliente?.id ? salvo : cliente;
+  const excluido = exibido?.softDeletedAt != null;
 
   async function alternarAtivacao() {
     if (!cliente) return;
@@ -67,15 +72,22 @@ export function ClienteSheet({
           <SheetHeader className="gap-3 border-b border-border">
             <div className="flex flex-col gap-0.5">
               <SheetTitle className="flex items-center gap-2">
-                {modo === "criar" ? "Novo cliente" : (cliente?.nome ?? "Cliente")}
+                {modo === "criar" ? "Novo cliente" : (exibido?.nome ?? "Cliente")}
                 {excluido ? <Badge variant="outline">Excluído</Badge> : null}
               </SheetTitle>
               <SheetDescription>
-                {modo === "criar"
-                  ? "Cadastre um cliente do escritório."
-                  : cliente
-                    ? `Cadastrado em ${formatarDataHora(cliente.createdAt)}`
-                    : null}
+                {modo === "criar" ? (
+                  "Cadastre um cliente do escritório."
+                ) : exibido ? (
+                  <>
+                    <span className="block">
+                      Cadastrado em {formatarDataHora(exibido.createdAt)}
+                    </span>
+                    <span className="block">
+                      Atualizado em {formatarDataHora(exibido.updatedAt)}
+                    </span>
+                  </>
+                ) : null}
               </SheetDescription>
             </div>
 
@@ -100,7 +112,7 @@ export function ClienteSheet({
                 onCancelar={() => onOpenChange(false)}
               />
             ) : cliente ? (
-              <ClienteDados key={cliente.id} cliente={cliente} />
+              <ClienteDados key={cliente.id} cliente={cliente} onAtualizado={setSalvo} />
             ) : null}
           </div>
         </div>
