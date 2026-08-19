@@ -91,7 +91,46 @@ describe("GET /api/comentarios", () => {
   });
 });
 
+describe("GET /api/comentarios — erros de comentário", () => {
+  it("responde 404 quando o Service não encontra o comentário", async () => {
+    const { ComentarioNaoEncontradoError } = jest.requireMock("@/services/comentario.service");
+    service.listar.mockRejectedValue(new ComentarioNaoEncontradoError());
+
+    const response = await GET(
+      new Request(`http://localhost/api/comentarios?escopo=cliente&escopoId=${CLIENTE_ID}`)
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("POST /api/comentarios", () => {
+  it("responde 400 quando o body não é JSON", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/comentarios", { method: "POST", body: "nao-e-json" })
+    );
+    expect(response.status).toBe(400);
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("responde 404 quando o cliente alvo não é do escritório", async () => {
+    const { ClienteNaoEncontradoError } = jest.requireMock("@/services/cliente.service");
+    service.criar.mockRejectedValue(new ClienteNaoEncontradoError());
+
+    const response = await post({ escopo: "cliente", escopoId: CLIENTE_ID, conteudo: "oi" });
+    expect(response.status).toBe(404);
+  });
+
+  it("responde 500 sem vazar detalhe interno em erro inesperado", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    service.criar.mockRejectedValue(new Error("connection reset by peer"));
+
+    const response = await post({ escopo: "cliente", escopoId: CLIENTE_ID, conteudo: "oi" });
+    const corpo = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(corpo.error).not.toMatch(/connection reset/);
+  });
+
   it("cria o comentário e responde 201", async () => {
     service.criar.mockResolvedValue({ id: "com-1" } as never);
 

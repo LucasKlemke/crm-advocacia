@@ -106,4 +106,46 @@ describe("comentarioRepository", () => {
     );
     expect(comentarios.map((c) => c.conteudo)).toEqual(["Recente", "Antigo"]);
   });
+
+  describe("comentarioRepository — leitura e edição pontual", () => {
+    it("findById devolve o comentário criado", async () => {
+      const criado = await criar(escritorioId, "cliente-1", "Para buscar por id");
+      await expect(comentarioRepository.findById(criado.id)).resolves.toMatchObject({
+        id: criado.id,
+        conteudo: "Para buscar por id",
+      });
+    });
+
+    it("update grava o novo conteúdo e a marca de edição", async () => {
+      const criado = await criar(escritorioId, "cliente-1", "Texto original");
+      const editadoEm = new Date();
+
+      const atualizado = await comentarioRepository.update(criado.id, {
+        conteudo: "Texto revisado",
+        editadoEm,
+      });
+
+      expect(atualizado.conteudo).toBe("Texto revisado");
+      expect(atualizado.editadoEm?.getTime()).toBe(editadoEm.getTime());
+    });
+
+    // O parâmetro `db` existe para compor com prisma.$transaction: se ele não fosse
+    // respeitado, comentário e log poderiam ser gravados fora da mesma transação.
+    it("respeita o cliente da transação recebido", async () => {
+      const criado = await prisma.$transaction((tx) =>
+        comentarioRepository.create(
+          {
+            escopo: "cliente",
+            escopoId: "cliente-tx",
+            conteudo: "Dentro da transação",
+            escritorio: { connect: { id: escritorioId } },
+            autor: { connect: { id: autorId } },
+          },
+          tx
+        )
+      );
+
+      expect(criado.escopoId).toBe("cliente-tx");
+    });
+  });
 });

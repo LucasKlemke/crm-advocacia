@@ -90,3 +90,17 @@ describe("logService.registrar", () => {
     expect(resumo).toHaveLength(255);
   });
 });
+
+describe("logService.listarPorEntidade", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("escopa a consulta ao escritório da sessão", async () => {
+    repo.listarPorEntidade.mockResolvedValue([]);
+
+    await logService.listarPorEntidade(ctx, "cliente", "cli-1");
+
+    expect(repo.listarPorEntidade).toHaveBeenCalledWith("esc-1", "cliente", "cli-1");
+  });
+});

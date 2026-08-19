@@ -21,13 +21,4 @@ export const logRepository = {
       include: { usuario: { select: { id: true, nome: true } } },
     });
   },
-
-  async listarPorEscritorio(escritorioId: string, take = 50, db: Db = prisma) {
-    return db.log.findMany({
-      where: { escritorioId },
-      orderBy: { createdAt: "desc" },
-      take,
-      include: { usuario: { select: { id: true, nome: true } } },
-    });
-  },
 };

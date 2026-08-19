@@ -7,7 +7,7 @@ import { MoreHorizontal } from "lucide-react";
 import { podeGerenciarMembro, ehAutoAlvo } from "@/lib/auth/permissoes";
 import type { RoleMembro } from "@prisma/client";
 import { ROLES_MEMBRO, labelRole } from "@/lib/utils/role";
-import { AvatarIniciais } from "@/components/configuracoes/avatar-iniciais";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import {
   Table,
   TableBody,

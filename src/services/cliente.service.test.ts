@@ -177,6 +177,19 @@ describe("clienteService.atualizar", () => {
     expect(repo.update).toHaveBeenCalled();
   });
 
+  it("normaliza e-mail e endereço, tratando string vazia como null", async () => {
+    repo.findById.mockResolvedValue(clienteFake({ email: "maria@ex.com", endereco: "Rua A, 10" }));
+    repo.update.mockResolvedValue(clienteFake());
+
+    await clienteService.atualizar(ctx, "cli-1", { email: "  ", endereco: "  Rua B, 20  " });
+
+    expect(repo.update).toHaveBeenCalledWith(
+      "cli-1",
+      { email: null, endereco: "Rua B, 20" },
+      expect.anything()
+    );
+  });
+
   it("rejeita CPF inválido na edição", async () => {
     repo.findById.mockResolvedValue(clienteFake());
     await expect(clienteService.atualizar(ctx, "cli-1", { cpf: "123" })).rejects.toThrow(
@@ -227,6 +240,16 @@ describe("clienteService.desativarEmLote", () => {
 });
 
 describe("clienteService.restaurarEmLote", () => {
+  it("não toca no banco quando nenhum id selecionado está excluído", async () => {
+    repo.listarPorIds.mockResolvedValue([clienteFake({ softDeletedAt: null })]);
+
+    const resultado = await clienteService.restaurarEmLote(ctx, ["cli-1"]);
+
+    expect(resultado).toEqual({ restaurados: 0, ignorados: 1 });
+    expect(repo.restaurar).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
   it("restaura só os que estavam excluídos e loga cada um", async () => {
     repo.listarPorIds.mockResolvedValue([
       clienteFake({ id: "cli-1", softDeletedAt: new Date() }),
@@ -247,6 +270,15 @@ describe("clienteService.restaurarEmLote", () => {
 });
 
 describe("clienteService.listar", () => {
+  it("usa filtros vazios quando nenhum é informado", async () => {
+    repo.listar.mockResolvedValue([]);
+    repo.contar.mockResolvedValue(0);
+
+    await clienteService.listar(ctx);
+
+    expect(repo.listar).toHaveBeenCalledWith("esc-1", {});
+  });
+
   it("escopa listagem e contagem ao escritório da sessão", async () => {
     repo.listar.mockResolvedValue([clienteFake()]);
     repo.contar.mockResolvedValue(1);

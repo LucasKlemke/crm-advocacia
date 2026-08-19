@@ -84,3 +84,41 @@ describe("logRepository", () => {
     expect(logs).toHaveLength(0);
   });
 });
+
+describe("logRepository dentro de uma transação", () => {
+  it("grava usando o cliente da transação recebido", async () => {
+    let escritorioTx: string;
+    let usuarioTx: string;
+
+    const criados = await prisma.$transaction(async (tx) => {
+      const escritorio = await tx.escritorio.create({ data: { nome: "Escritório Log Tx" } });
+      const usuario = await tx.usuario.create({
+        data: {
+          nome: "Autor Tx",
+          email: `autor-log-tx-${Date.now()}@teste.com`,
+          senhaHash: "hash",
+        },
+      });
+      escritorioTx = escritorio.id;
+      usuarioTx = usuario.id;
+
+      return logRepository.create(
+        {
+          acao: "criar",
+          entidade: "cliente",
+          entidadeId: "cliente-tx",
+          resumo: "Criado dentro da transação",
+          escritorio: { connect: { id: escritorio.id } },
+          usuario: { connect: { id: usuario.id } },
+        },
+        tx
+      );
+    });
+
+    expect(criados.entidadeId).toBe("cliente-tx");
+
+    await prisma.log.delete({ where: { id: criados.id } });
+    await prisma.escritorio.delete({ where: { id: escritorioTx! } });
+    await prisma.usuario.delete({ where: { id: usuarioTx! } });
+  });
+});
