@@ -3,19 +3,22 @@
  */
 import { POST } from "./route";
 import { escritorioService } from "@/services/escritorio.service";
-import { auth, unstable_update } from "@/lib/auth/config";
+import { unstable_update } from "@/lib/auth/config";
+import { getToken } from "next-auth/jwt";
 import type { Escritorio, Membro } from "@prisma/client";
 
 jest.mock("@/services/escritorio.service", () => ({
   escritorioService: { criarEscritorio: jest.fn() },
 }));
 jest.mock("@/lib/auth/config", () => ({
-  auth: jest.fn(),
   unstable_update: jest.fn(),
+}));
+jest.mock("next-auth/jwt", () => ({
+  getToken: jest.fn(),
 }));
 
 const mockedService = escritorioService as jest.Mocked<typeof escritorioService>;
-const mockedAuth = auth as jest.Mock;
+const mockedGetToken = getToken as jest.Mock;
 const mockedUpdate = unstable_update as jest.Mock;
 
 function buildRequest(body: unknown) {
@@ -30,11 +33,11 @@ describe("POST /api/escritorios", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedAuth.mockResolvedValue({ user: { id: "user-1" } });
+    mockedGetToken.mockResolvedValue({ sub: "user-1" });
   });
 
   it("retorna 401 sem sessão", async () => {
-    mockedAuth.mockResolvedValue(null);
+    mockedGetToken.mockResolvedValue(null);
 
     const response = await POST(buildRequest(payloadValido));
 

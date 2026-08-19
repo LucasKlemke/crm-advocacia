@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function CadastroPage() {
-  const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -46,11 +44,13 @@ export default function CadastroPage() {
       });
 
       if (loginResult?.error) {
-        router.push("/login");
+        window.location.href = "/login";
         return;
       }
 
-      router.push(data?.temEscritorio ? "/" : "/onboarding");
+      // Navegação forçada (não router.push): evita reusar uma entrada stale do Router
+      // Cache pré-fetchada enquanto ainda deslogado (mesmo problema do /login).
+      window.location.href = data?.temEscritorio ? "/" : "/onboarding";
     } finally {
       setCarregando(false);
     }

@@ -1,19 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import CadastroPage from "./page";
 
 jest.mock("next-auth/react", () => ({
   signIn: jest.fn(),
 }));
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
-
 const mockedSignIn = signIn as jest.Mock;
-const mockedUseRouter = useRouter as jest.Mock;
 
 async function preencherFormulario(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Seu nome"), "Fulano de Tal");
@@ -22,12 +16,19 @@ async function preencherFormulario(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("CadastroPage", () => {
-  const push = jest.fn();
+  const originalLocation = window.location;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedUseRouter.mockReturnValue({ push });
     global.fetch = jest.fn();
+    // Navegação pós-cadastro/login usa window.location.href (não router.push) — ver
+    // comentário no componente sobre o Router Cache stale pós-login.
+    Reflect.deleteProperty(window, "location");
+    window.location = { href: "" } as never;
+  });
+
+  afterAll(() => {
+    window.location = originalLocation as never;
   });
 
   it("exibe erro quando e-mail já está cadastrado", async () => {
@@ -43,7 +44,7 @@ describe("CadastroPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/já está cadastrado/i);
     expect(mockedSignIn).not.toHaveBeenCalled();
-    expect(push).not.toHaveBeenCalled();
+    expect(window.location.href).toBe("");
   });
 
   it("cadastra, loga automaticamente e vai para o onboarding quando não tem escritório", async () => {
@@ -62,7 +63,7 @@ describe("CadastroPage", () => {
       "/api/cadastro",
       expect.objectContaining({ method: "POST" })
     );
-    expect(push).toHaveBeenCalledWith("/onboarding");
+    expect(window.location.href).toBe("/onboarding");
   });
 
   it("cadastra e vai direto para a home quando já tem escritório (convite consumido)", async () => {
@@ -77,6 +78,6 @@ describe("CadastroPage", () => {
     await preencherFormulario(user);
     await user.click(screen.getByRole("button", { name: /cadastrar/i }));
 
-    expect(push).toHaveBeenCalledWith("/");
+    expect(window.location.href).toBe("/");
   });
 });

@@ -1,22 +1,20 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/navigation";
 import { OnboardingForm } from "./onboarding-form";
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
-
-const mockedUseRouter = useRouter as jest.Mock;
-
 describe("OnboardingForm", () => {
-  const push = jest.fn();
-  const refresh = jest.fn();
+  const originalLocation = window.location;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockedUseRouter.mockReturnValue({ push, refresh });
     global.fetch = jest.fn();
+    // Navega via window.location.href (não router.push) — ver comentário no
+    // componente sobre o Router Cache stale ao trocar de escritório ativo.
+    Reflect.deleteProperty(window, "location");
+    window.location = { href: "" } as never;
+  });
+
+  afterAll(() => {
+    window.location = originalLocation as never;
   });
 
   it("cria o escritório e redireciona para a home", async () => {
@@ -31,8 +29,7 @@ describe("OnboardingForm", () => {
       "/api/escritorios",
       expect.objectContaining({ method: "POST" })
     );
-    expect(push).toHaveBeenCalledWith("/");
-    expect(refresh).toHaveBeenCalled();
+    expect(window.location.href).toBe("/");
   });
 
   it("exibe erro do servidor sem redirecionar", async () => {
@@ -47,6 +44,6 @@ describe("OnboardingForm", () => {
     await user.click(screen.getByRole("button", { name: /criar escritório/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível/i);
-    expect(push).not.toHaveBeenCalled();
+    expect(window.location.href).toBe("");
   });
 });

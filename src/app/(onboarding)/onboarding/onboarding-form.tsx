@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function OnboardingForm() {
-  const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -36,8 +34,10 @@ export function OnboardingForm() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      // Navegação forçada (não router.push): a sessão trocou de escritório ativo
+      // (unstable_update) e "/" pode ter uma entrada stale no Router Cache do estado
+      // anterior — só um reload garante que o shell autenticado leia o tenant certo.
+      window.location.href = "/";
     } finally {
       setCarregando(false);
     }
