@@ -42,9 +42,9 @@ Todo request segue: **Auth Middleware → Tenant Context → Controller → Serv
 
 Serviço assíncrono separado: `NotificacaoScheduler` (Lambda) roda em background verificando prazos de **todos os escritórios** e acionando WhatsApp/e-mail — não depende de nenhum usuário estar com a interface aberta, e processa cada tenant de forma isolada.
 
-## Modelo de dados (12 tabelas)
+## Modelo de dados (16 tabelas)
 
-`escritorio` (tenant) · `usuario` (N por escritório; titular/colaborador) · `cliente` (FK escritório) · `estagio_pipeline` (FK escritório; colunas do kanban, configuráveis) · `caso` (FK cliente + estagio) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
+`escritorio` (tenant) · `usuario` (perfil global) · `membro` (N:N usuário↔escritório com papel) · `convite` (pendências por e-mail) · `cliente` (FK escritório; soft delete via `soft_deleted_at`) · `comentario` (ancorado por `escopo`+`escopo_id`, sem FK; hoje `cliente`) · `log` (auditoria append-only: quem/quando/o quê + diff) · `estagio_pipeline` (FK escritório; colunas do kanban, configuráveis) · `caso` (FK cliente + estagio) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso — a ser absorvida por `comentario` com escopo `caso`) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
 
 Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/database/docker-setup.md)); toda alteração de schema é feita via migration do Prisma, nunca `db push`, com histórico auditável em `prisma/migrations/` ([docs/database/migrations-prisma.md](docs/database/migrations-prisma.md)).
 
@@ -52,13 +52,15 @@ Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/databa
 
 - **RN02 (revisada)**: sistema multi-tenant — cadastro de escritório é self-service pela UI (cria o tenant + o usuário titular); um escritório nunca acessa dados de outro.
 - **RN02a**: usuário titular pode convidar/cadastrar colaboradores dentro do próprio escritório; apenas o titular gerencia usuários (criar, desativar, promover).
-- **RN04/RN05**: cliente nunca é excluído permanentemente se tiver casos vinculados (apenas inativado); CPF é único **por escritório** (não globalmente).
+- **RN04/RN05**: cliente nunca é excluído permanentemente — "desativar" grava `cliente.soft_deleted_at` (ativo = `NULL`), operação reversível por "Restaurar"; CPF é armazenado sem máscara e é único **por escritório** (não globalmente).
 - **RN06/RN07**: todo caso precisa de cliente ativo e etapa de pipeline; nunca existe "solto".
 - **RN08/RN09**: casos arquivados saem do kanban mas ficam no histórico; etapa do pipeline só pode ser removida se vazia.
 - **RN10/RN11/RN12**: prazo sempre vinculado a um caso; datas passadas viram "retroativo" com indicação visual; notificações automáticas em 3 dias antes, 1 dia antes e no dia — sem ação manual.
 - **RN13/RN14/RN15/RN16**: disparo de WhatsApp exige telefone cadastrado; processado assíncrono via Lambda; todo envio (sucesso/falha) fica no histórico; até 3 retentativas automáticas em falha.
 - **RN17/RN18**: upload de documento limitado a 10MB, tipos aceitos PDF/DOCX/JPG/PNG/JPEG.
 - **RN19 (nova)**: nenhuma query de aplicação pode retornar ou modificar dados de um `escritorio_id` diferente do da sessão autenticada — isolamento de tenant é regra transversal a todos os módulos.
+- **RN20 (nova)**: toda escrita gera um registro em `log` (quem/quando/o quê + diff dos campos), gravado na mesma transação da mudança — escrita que falha não deixa log, e mudança efetivada nunca fica sem log. Tabela append-only; ação em lote gera um log por entidade afetada.
+- **RN21 (nova)**: comentários (`comentario`) substituem campos livres de observação, são ancorados por `escopo`+`escopo_id` e o alvo é validado contra o tenant antes de qualquer escrita. Editar é exclusivo do autor; excluir (soft) cabe ao autor, `owner` ou `admin`.
 
 Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-negocio.md); casos de uso/user stories por fluxo em [docs/produto/casos-de-uso.md](docs/produto/casos-de-uso.md).
 

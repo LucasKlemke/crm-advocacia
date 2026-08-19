@@ -2,7 +2,7 @@
 
 Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia (seção 5.2), evoluído para **multi-tenant**. Ver também [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md), [../produto/regras-negocio.md](../produto/regras-negocio.md) e [migrations-prisma.md](migrations-prisma.md) (como aplicar mudanças neste schema).
 
-14 tabelas (as 10 originais + `escritorio`, a evolução de `advogado` para `usuario`, e `membro`/`convite` para o modelo N:N usuário↔escritório), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens e documentos. PK `uuid` em todas.
+16 tabelas (as 10 originais + `escritorio`, a evolução de `advogado` para `usuario`, `membro`/`convite` para o modelo N:N usuário↔escritório, e `comentario`/`log` para anotações por escopo e auditoria), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens, documentos e trilha de auditoria. PK `uuid` em todas.
 
 > **Multi-tenant real (evolução sobre o RFC original):** `usuario` deixou de pertencer a um único `escritorio` — vira um perfil global (um e-mail, uma senha), e a associação a um ou mais escritórios, com um papel por escritório, vive em `membro`. Isso permite a um mesmo profissional participar de múltiplos escritórios com papéis diferentes em cada um. `convite` guarda convites pendentes por e-mail, consumidos automaticamente no cadastro (ver [../produto/regras-negocio.md](../produto/regras-negocio.md)).
 
@@ -73,13 +73,62 @@ Cadastro dos clientes do escritório.
 | id | uuid | PK |
 | escritorio_id | uuid | FK → `escritorio` (obrigatório — escopo de tenant) |
 | nome | varchar(140) | |
-| cpf | varchar(14) | Único **por escritório** (RN05), não globalmente |
+| cpf | varchar(11) | Armazenado **sem máscara** (só dígitos); único **por escritório** (RN05), não globalmente |
 | email | varchar(140) | |
 | telefone | varchar(20) | Usado para disparo de WhatsApp (RN13) |
-| endereco | varchar | |
-| observacoes | text | Anotações livres iniciais |
-| ativo | boolean | Inativação em vez de exclusão (RN04) |
+| endereco | varchar(255) | |
+| soft_deleted_at | timestamp | Data da exclusão suave; `NULL` = cliente ativo (RN04) |
 | created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, cpf])` e `@@index([escritorio_id, soft_deleted_at])` (a listagem padrão filtra por tenant + ativos). Guardar o CPF normalizado é o que faz a unicidade valer independentemente de como o usuário digitou.
+
+Não há coluna `ativo` nem `observacoes`: a desativação é o próprio `soft_deleted_at` (uma única fonte de verdade, reversível por "Restaurar"), e as anotações livres viraram um CRUD de comentários na tabela `comentario`.
+
+O CPF de um cliente desativado continua reservado pela constraint. O Service detecta esse caso e devolve um erro específico orientando restaurar o cadastro, em vez de um erro cru de constraint.
+
+## `comentario` (novo — anotações por escopo)
+
+Comentários no estilo "thread do Notion", exibidos em ordem cronológica inversa com autor e data. Substituem o antigo campo livre `cliente.observacoes`.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` — escopo de tenant (RN19) |
+| escopo | enum | Entidade à qual o comentário está ancorado; hoje só `cliente` |
+| escopo_id | uuid | Id da entidade alvo — **sem FK**, porque o alvo varia com o escopo |
+| autor_usuario_id | uuid | FK → `usuario`, `onDelete: Restrict` — preserva a autoria |
+| conteudo | text | |
+| editado_em | timestamp | Preenchido na primeira edição; alimenta o rótulo "(editado)" |
+| soft_deleted_at | timestamp | Exclusão suave; `NULL` = visível |
+| created_at / updated_at | timestamp | |
+
+`@@index([escritorio_id, escopo, escopo_id, created_at])` — a consulta real é sempre "os comentários deste alvo, do mais novo ao mais antigo".
+
+Como `(escopo, escopo_id)` não tem integridade referencial do banco, o `ComentarioService` valida o alvo contra o tenant antes de qualquer escrita — essa checagem é a única garantia de que um comentário não seja ancorado num recurso de outro escritório (RN19/RN21).
+
+Adicionar um novo escopo (`caso`, `prazo`) é acrescentar um valor ao enum e um caso na validação de alvo, sem tabela nova.
+
+## `log` (novo — trilha de auditoria)
+
+Tabela transversal que responde, para qualquer operação de escrita do sistema: **quem fez**, **quando fez** e **o que fez** (RN20).
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| usuario_id | uuid | FK → `usuario`, `onDelete: Restrict` — **quem fez** |
+| acao | enum | `criar` \| `atualizar` \| `excluir` \| `restaurar` |
+| entidade | enum | `cliente` \| `comentario` (cresce com o domínio) |
+| entidade_id | uuid | Id do registro afetado |
+| resumo | varchar(255) | Texto legível, ex.: "Cliente Maria Silva desativado" |
+| dados | jsonb | Diff dos campos alterados: `{ campo: { antes, depois } }` |
+| created_at | timestamp | **quando fez** |
+
+`@@index([escritorio_id, created_at])` para a linha do tempo do escritório e `@@index([escritorio_id, entidade, entidade_id])` para o histórico de um registro específico.
+
+Sem `updated_at`: a tabela é *append-only* e o Repository não expõe `update` nem `delete`. O log é escrito **dentro da mesma transação** da mudança que o originou, então nunca existe log de uma operação que falhou, nem mudança efetivada sem log.
+
+Uma ação em lote gera **um log por entidade afetada**, não um log por clique — a auditoria é sobre registros, não sobre interações de UI.
 
 ## `estagio_pipeline`
 
@@ -168,6 +217,8 @@ Registro de mensagens disparadas.
 ## `anotacao`
 
 Observações vinculadas a um caso.
+
+> **A revisar quando `caso` for implementado:** esta tabela cobre exatamente o que `comentario` já resolve de forma genérica. A intenção é ancorar as anotações de caso em `comentario` com `escopo = 'caso'` e não criar `anotacao`, evitando duas tabelas concorrentes para o mesmo conceito.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|

@@ -88,6 +88,10 @@ Toda função de Service que lê/escreve dados recebe `escritorioId` como primei
 
 ## TanStack Query no client
 
+> **Estado atual:** implantado a partir do módulo de clientes. `components/providers/query-provider.tsx` monta o `QueryClient` (dentro de `useState`, para não vazar cache entre requisições) no layout do dashboard; `lib/api-client.ts` expõe `apiFetch` e o erro tipado `ApiError` (com `status` e `detalhes` por campo); `hooks/use-clientes.ts` e `hooks/use-comentarios.ts` são os primeiros hooks no padrão abaixo. Os módulos anteriores (membros, convites, perfil) ainda usam `fetch` inline + `router.refresh()` e devem migrar quando forem tocados.
+>
+> Em testes de componente, use `renderComQuery` de `lib/test-utils.tsx`: ele envolve a árvore num `QueryClientProvider` próprio, com `retry: false`, para uma falha simulada aparecer de imediato.
+
 - Hooks de query/mutation ficam em `src/hooks/`, um arquivo por entidade (`use-clientes.ts`, `use-casos.ts`), nunca `useQuery`/`useMutation` chamado solto dentro de um componente de página.
 - Query keys seguem o padrão `[entidade, ...filtros]`, ex.: `['clientes', { busca, ativo }]`, `['casos', 'kanban']` — consistente entre todos os hooks para permitir invalidação previsível (`queryClient.invalidateQueries({ queryKey: ['clientes'] })` após uma mutation).
 - Um hook nunca chama `fetch` para uma URL montada manualmente em mais de um lugar — usar uma função cliente HTTP compartilhada (`lib/api-client.ts`) para centralizar base URL, headers e tratamento de erro.
