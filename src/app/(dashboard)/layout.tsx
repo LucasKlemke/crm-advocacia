@@ -47,7 +47,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         />
         <SidebarInset className="min-h-0 overflow-y-auto">
           <main className="flex flex-1 flex-col gap-4 p-4">
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider escritorioId={session.user.escritorioId}>{children}</QueryProvider>
           </main>
         </SidebarInset>
         <Toaster />

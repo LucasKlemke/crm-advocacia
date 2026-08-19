@@ -56,4 +56,58 @@ describe("QueryProvider", () => {
     // A retentativa do React Query tem backoff (~1s), acima do timeout padrão do waitFor.
     await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2), { timeout: 5000 });
   });
+  // Todo dado em cache pertence ao escritório da sessão: ao trocar de tenant o cache
+  // anterior precisa morrer, senão a tela segue mostrando os registros do escritório antigo.
+  it("descarta o cache e busca de novo quando o escritório ativo muda", async () => {
+    const queryFn = jest
+      .fn()
+      .mockResolvedValueOnce("clientes do escritório A")
+      .mockResolvedValueOnce("clientes do escritório B");
+
+    function Clientes() {
+      const { data } = useQuery({ queryKey: ["clientes"], queryFn });
+      return <span>{data ?? "carregando"}</span>;
+    }
+
+    const { rerender } = render(
+      <QueryProvider escritorioId="esc-a">
+        <Clientes />
+      </QueryProvider>
+    );
+    expect(await screen.findByText("clientes do escritório A")).toBeInTheDocument();
+
+    rerender(
+      <QueryProvider escritorioId="esc-b">
+        <Clientes />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText("clientes do escritório B")).toBeInTheDocument();
+    expect(queryFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("mantém o cache enquanto o escritório ativo continua o mesmo", async () => {
+    const queryFn = jest.fn().mockResolvedValue("mesma lista");
+
+    function Clientes() {
+      const { data } = useQuery({ queryKey: ["clientes"], queryFn });
+      return <span>{data ?? "carregando"}</span>;
+    }
+
+    const { rerender } = render(
+      <QueryProvider escritorioId="esc-a">
+        <Clientes />
+      </QueryProvider>
+    );
+    expect(await screen.findByText("mesma lista")).toBeInTheDocument();
+
+    rerender(
+      <QueryProvider escritorioId="esc-a">
+        <Clientes />
+      </QueryProvider>
+    );
+
+    expect(screen.getByText("mesma lista")).toBeInTheDocument();
+    expect(queryFn).toHaveBeenCalledTimes(1);
+  });
 });

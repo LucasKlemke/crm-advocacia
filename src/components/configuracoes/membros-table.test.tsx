@@ -101,4 +101,12 @@ describe("MembrosTable", () => {
 
     expect(toast.error).toHaveBeenCalledWith("Não foi possível alterar o papel do membro.");
   });
+
+  it("mostra o label do cargo no select do membro, não o valor cru", () => {
+    render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
+
+    const select = screen.getByLabelText("Cargo de Fulano Padrao");
+    expect(select).toHaveTextContent("Padrão");
+    expect(select).not.toHaveTextContent("padrao");
+  });
 });
