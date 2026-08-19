@@ -1,0 +1,102 @@
+"use client";
+
+import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+export interface OpcaoMultiSelect {
+  id: string;
+  nome: string;
+  // Cor opcional (bolinha) para diferenciar status na lista, como no picker de ícones.
+  cor?: string;
+}
+
+export interface FiltroMultiSelectProps {
+  label: string;
+  icone?: LucideIcon;
+  opcoes: OpcaoMultiSelect[];
+  selecionados: string[];
+  onChange: (selecionados: string[]) => void;
+  buscaPlaceholder?: string;
+}
+
+// Popover + Command genérico para os filtros de casos (responsável/cliente/status/tipo):
+// botão mostra o rótulo com a contagem de selecionados, lista com busca e checkboxes.
+// A seleção é disparada por onSelect (não onClick) — cmdk não repassa onClick ao item.
+export function FiltroMultiSelect({
+  label,
+  icone: Icone,
+  opcoes,
+  selecionados,
+  onChange,
+  buscaPlaceholder,
+}: FiltroMultiSelectProps) {
+  const [aberto, setAberto] = useState(false);
+
+  function alternar(id: string) {
+    onChange(
+      selecionados.includes(id)
+        ? selecionados.filter((item) => item !== id)
+        : [...selecionados, id]
+    );
+  }
+
+  return (
+    <Popover open={aberto} onOpenChange={setAberto}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label={label}
+          />
+        }
+      >
+        {Icone ? <Icone className="size-4" /> : null}
+        {label}
+        {selecionados.length > 0 ? ` (${selecionados.length})` : ""}
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0">
+        <Command>
+          <CommandInput placeholder={buscaPlaceholder ?? `Buscar ${label.toLowerCase()}...`} />
+          <CommandList>
+            <CommandEmpty>Nenhuma opção encontrada.</CommandEmpty>
+            <CommandGroup>
+              {opcoes.map((opcao) => {
+                const marcado = selecionados.includes(opcao.id);
+                return (
+                  <CommandItem
+                    key={opcao.id}
+                    value={opcao.nome}
+                    onSelect={() => alternar(opcao.id)}
+                  >
+                    <Checkbox checked={marcado} aria-hidden tabIndex={-1} />
+                    {opcao.cor ? (
+                      <span
+                        aria-hidden
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: opcao.cor }}
+                      />
+                    ) : null}
+                    {opcao.nome}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

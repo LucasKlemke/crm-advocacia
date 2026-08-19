@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { CalendarPlus, History, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, CalendarPlus, History } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarDataHoraCurta } from "@/lib/utils/data";
-import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
-import { ClienteDados } from "@/components/clientes/cliente-dados";
-import { ClienteForm } from "@/components/clientes/cliente-form";
+import { useArquivarCaso } from "@/hooks/use-casos";
+import { CasoDados } from "@/components/casos/caso-dados";
+import { CasoForm } from "@/components/casos/caso-form";
 import { ComentariosPanel } from "@/components/shared/comentarios-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,13 +20,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { RoleMembro } from "@prisma/client";
-import type { ClienteDTO } from "@/types/cliente";
+import type { CasoDTO } from "@/types/caso";
 
 export type ModoSheet = "criar" | "ver";
 
-export interface ClienteSheetProps {
+export interface CasoSheetProps {
   modo: ModoSheet;
-  cliente: ClienteDTO | null;
+  caso: CasoDTO | null;
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
   atorUsuarioId: string;
@@ -34,34 +34,31 @@ export interface ClienteSheetProps {
   atorRole: RoleMembro;
 }
 
-// Um único drawer serve criação e consulta/edição: no modo criar mostra o formulário
-// completo; com um cliente carregado, os comentários ficam no topo (como no Notion) e
-// os dados abaixo, editáveis campo a campo.
-export function ClienteSheet({
+// Mesma estrutura do ClienteSheet: comentários no cabeçalho, dados abaixo, arquivar
+// no rodapé. Sem "desarquivar" — não há endpoint exposto para isso (casoService tem o
+// método, mas a rota não o usa), então um caso arquivado só mostra o selo.
+export function CasoSheet({
   modo,
-  cliente,
+  caso,
   aberto,
   onOpenChange,
   atorUsuarioId,
   atorNome,
   atorRole,
-}: ClienteSheetProps) {
-  const acaoEmLote = useAcaoEmLoteClientes();
-  // A tabela só recarrega depois; enquanto o drawer está aberto, o que foi salvo aqui
-  // é a versão mais recente do cadastro.
-  const [salvo, setSalvo] = useState<ClienteDTO | null>(null);
-  const exibido = salvo?.id === cliente?.id ? salvo : cliente;
-  const excluido = exibido?.softDeletedAt != null;
+}: CasoSheetProps) {
+  const arquivar = useArquivarCaso();
+  const [salvo, setSalvo] = useState<CasoDTO | null>(null);
+  const exibido = salvo?.id === caso?.id ? salvo : caso;
+  const arquivado = exibido?.arquivado ?? false;
 
-  async function alternarAtivacao() {
-    if (!cliente) return;
-    const acao = excluido ? "restaurar" : "desativar";
+  async function arquivarCaso() {
+    if (!caso) return;
     try {
-      await acaoEmLote.mutateAsync({ ids: [cliente.id], acao });
-      toast.success(excluido ? "Cliente restaurado." : "Cliente desativado.");
+      await arquivar.mutateAsync(caso.id);
+      toast.success("Caso arquivado.");
       onOpenChange(false);
     } catch (erro) {
-      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível concluir a ação.");
+      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível arquivar o caso.");
     }
   }
 
@@ -72,14 +69,13 @@ export function ClienteSheet({
           <SheetHeader className="gap-3 border-b border-border">
             <div className="flex flex-col gap-0.5">
               <SheetTitle className="flex items-center gap-2">
-                {modo === "criar" ? "Novo cliente" : (exibido?.nome ?? "Cliente")}
-                {excluido ? <Badge variant="outline">Excluído</Badge> : null}
+                {modo === "criar" ? "Novo caso" : (exibido?.titulo ?? "Caso")}
+                {arquivado ? <Badge variant="outline">Arquivado</Badge> : null}
               </SheetTitle>
               <SheetDescription>
                 {modo === "criar" ? (
-                  "Cadastre um cliente do escritório."
+                  "Cadastre um caso vinculado a um cliente do escritório."
                 ) : exibido ? (
-                  // Datas de contexto: uma linha discreta, não duas frases.
                   <span className="flex flex-wrap items-center gap-x-3 text-[11px]">
                     <span className="flex items-center gap-1">
                       <CalendarPlus aria-hidden className="size-3" />
@@ -94,13 +90,11 @@ export function ClienteSheet({
               </SheetDescription>
             </div>
 
-            {/* Comentários no cabeçalho, no lugar de uma aba: o histórico de contato é o
-                que se lê primeiro ao abrir um cliente; os dados mudam bem menos. */}
-            {cliente ? (
+            {caso ? (
               <section aria-label="Comentários">
                 <ComentariosPanel
-                  escopo="cliente"
-                  escopoId={cliente.id}
+                  escopo="caso"
+                  escopoId={caso.id}
                   atorUsuarioId={atorUsuarioId}
                   atorNome={atorNome}
                   atorRole={atorRole}
@@ -111,27 +105,24 @@ export function ClienteSheet({
 
           <div className="px-4 py-4">
             {modo === "criar" ? (
-              <ClienteForm
-                onSucesso={() => onOpenChange(false)}
-                onCancelar={() => onOpenChange(false)}
-              />
-            ) : cliente ? (
-              <ClienteDados key={cliente.id} cliente={cliente} onAtualizado={setSalvo} />
+              <CasoForm onSucesso={() => onOpenChange(false)} onCancelar={() => onOpenChange(false)} />
+            ) : caso ? (
+              <CasoDados key={caso.id} caso={caso} onAtualizado={setSalvo} />
             ) : null}
           </div>
         </div>
 
-        {cliente ? (
+        {caso && !arquivado ? (
           <SheetFooter className="border-t border-border">
             <Button
-              variant={excluido ? "outline" : "destructive"}
+              variant="destructive"
               size="sm"
               className="self-start"
-              disabled={acaoEmLote.isPending}
-              onClick={alternarAtivacao}
+              disabled={arquivar.isPending}
+              onClick={arquivarCaso}
             >
-              {excluido ? <RotateCcw /> : <Trash2 />}
-              {excluido ? "Restaurar cliente" : "Desativar cliente"}
+              <Archive />
+              Arquivar caso
             </Button>
           </SheetFooter>
         ) : null}

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { ComentariosPanel } from "./comentarios-panel";
-import type { ComentarioDTO } from "@/types/cliente";
+import type { ComentarioDTO } from "@/types/comentario";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
@@ -24,7 +24,8 @@ function respostaLista(comentarios: ComentarioDTO[]) {
 function renderPanel(props: { atorUsuarioId?: string; atorRole?: "owner" | "padrao" } = {}) {
   return renderComQuery(
     <ComentariosPanel
-      clienteId="cli-1"
+      escopo="cliente"
+      escopoId="cli-1"
       atorUsuarioId={props.atorUsuarioId ?? "user-1"}
       atorNome="Ana Titular"
       atorRole={props.atorRole ?? "padrao"}

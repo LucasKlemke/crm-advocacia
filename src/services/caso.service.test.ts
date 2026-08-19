@@ -11,7 +11,7 @@ import { clienteService, ClienteNaoEncontradoError } from "@/services/cliente.se
 import { statusService, StatusNaoEncontradoError } from "@/services/status.service";
 import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
-import type { Caso, Cliente, Membro, Status } from "@prisma/client";
+import type { Cliente, Membro, Status } from "@prisma/client";
 
 jest.mock("@/repositories/caso.repository");
 jest.mock("@/repositories/status.repository");
@@ -95,7 +95,7 @@ function membroFake(over: Partial<Membro> = {}): Membro {
   };
 }
 
-function casoFake(over: Partial<Caso> = {}): CasoComRelacoes {
+function casoFake(over: Partial<CasoComRelacoes> = {}): CasoComRelacoes {
   return {
     id: "caso-1",
     escritorioId: "esc-1",

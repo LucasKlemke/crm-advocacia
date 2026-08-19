@@ -23,25 +23,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { RoleMembro } from "@prisma/client";
-import type { ComentarioDTO } from "@/types/cliente";
+import type { ComentarioDTO, EscopoComentarioDTO } from "@/types/comentario";
 
 export interface ComentariosPanelProps {
-  clienteId: string;
+  escopo: EscopoComentarioDTO;
+  escopoId: string;
   atorUsuarioId: string;
   atorNome: string;
   atorRole: RoleMembro;
 }
 
+// Painel genérico: ancorado por escopo+escopoId (RN21), hoje usado por cliente e caso.
 export function ComentariosPanel({
-  clienteId,
+  escopo,
+  escopoId,
   atorUsuarioId,
   atorNome,
   atorRole,
 }: ComentariosPanelProps) {
-  const { data, isLoading, isError } = useComentarios("cliente", clienteId);
-  const criar = useCriarComentario("cliente", clienteId);
-  const atualizar = useAtualizarComentario("cliente", clienteId);
-  const excluir = useExcluirComentario("cliente", clienteId);
+  const { data, isLoading, isError } = useComentarios(escopo, escopoId);
+  const criar = useCriarComentario(escopo, escopoId);
+  const atualizar = useAtualizarComentario(escopo, escopoId);
+  const excluir = useExcluirComentario(escopo, escopoId);
 
   const [rascunho, setRascunho] = useState("");
   const [emEdicao, setEmEdicao] = useState<string | null>(null);
