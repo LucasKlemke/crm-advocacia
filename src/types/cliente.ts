@@ -25,13 +25,6 @@ export interface FiltrosClientes {
   pagina: number;
 }
 
-export interface ComentarioDTO {
-  id: string;
-  conteudo: string;
-  autorUsuarioId: string;
-  editadoEm: string | null;
-  createdAt: string;
-  autor: { id: string; nome: string; email: string };
-}
-
-export type EscopoComentarioDTO = "cliente";
+// Comentário deixou de ser exclusivo de cliente (RN21): os tipos vivem em
+// @/types/comentario, reexportados aqui para não quebrar quem já importa daqui.
+export type { ComentarioDTO, EscopoComentarioDTO } from "@/types/comentario";
