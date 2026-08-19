@@ -1,10 +1,12 @@
 import type { RoleMembro } from "@prisma/client";
 
-export const LABEL_ROLE: Record<RoleMembro, string> = {
+const LABEL_ROLE: Record<RoleMembro, string> = {
   owner: "Dono",
   admin: "Administrador",
   padrao: "Padrão",
 };
+
+export const ROLES_MEMBRO: RoleMembro[] = ["owner", "admin", "padrao"];
 
 export function labelRole(role: RoleMembro): string {
   return LABEL_ROLE[role];
