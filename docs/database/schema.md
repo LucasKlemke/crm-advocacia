@@ -8,7 +8,7 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 
 ## `escritorio` (novo — tenant)
 
-Representa cada escritório de advocacia cadastrado na plataforma. Toda entidade "de topo" do domínio (`cliente`, `estagio_pipeline`, `template_mensagem`, `usuario`) pertence a exatamente um escritório.
+Representa cada escritório de advocacia cadastrado na plataforma. Toda entidade "de topo" do domínio (`cliente`, `status`, `caso`, `template_mensagem`, `usuario`) pertence a exatamente um escritório.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
@@ -120,7 +120,7 @@ Tabela transversal que responde, para qualquer operação de escrita do sistema:
 | escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
 | usuario_id | uuid | FK → `usuario`, `onDelete: Restrict` — **quem fez** |
 | acao | enum | `criar` \| `atualizar` \| `excluir` \| `restaurar` |
-| entidade | enum | `cliente` \| `comentario` (cresce com o domínio) |
+| entidade | enum | `cliente` \| `comentario` \| `caso` \| `status` (cresce com o domínio) |
 | entidade_id | uuid | Id do registro afetado |
 | resumo | varchar(255) | Texto legível, ex.: "Cliente Maria Silva desativado" |
 | dados | jsonb | Diff dos campos alterados: `{ campo: { antes, depois } }` |
@@ -132,36 +132,58 @@ Sem `updated_at`: a tabela é *append-only* e o Repository não expõe `update` 
 
 Uma ação em lote gera **um log por entidade afetada**, não um log por clique — a auditoria é sobre registros, não sobre interações de UI.
 
-## `estagio_pipeline`
+## `tipo_status`
 
-Colunas do kanban, configuráveis por escritório (compartilhadas entre os usuários do mesmo tenant).
+Referência **global** do sistema (não pertence a nenhum escritório): padroniza o funil de todos os tenants, permitindo agrupar/comparar status diferentes entre escritórios (ex.: relatórios). Só o desenvolvedor administrador do sistema altera esta tabela, via migration — nenhum endpoint de escrita é exposto para ela.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| escritorio_id | uuid | FK → `escritorio` (obrigatório) |
-| nome | varchar(50) | Ex.: "Em Andamento" |
-| ordem | int | Posição no kanban |
+| chave | varchar(30) | Identificador estável, único (ex.: `nova_conversa`, `proposta`) |
+| nome | varchar(60) | Ex.: "Proposta" |
+| icone | varchar(60) | Nome de um ícone Lucide |
+| cor | varchar(9) | Hex |
+| descricao | varchar(255) | Opcional |
+| ordem | int | Posição sugerida no funil |
 
-Padrão sugerido ao criar um novo escritório (seed automático no cadastro): Prospecção, Consulta, Contrato, Em Andamento, Concluído.
+Seedada com 6 linhas fixas (Nova conversa, Análise, Qualificado, Proposta, Sucesso, Perda) diretamente no SQL da migration que cria a tabela — garante que ela exista em todo banco novo, sem depender de um script de seed separado.
+
+## `status`
+
+Colunas do kanban, definidas por cada escritório e associadas a um `tipo_status` (compartilhadas entre os usuários do mesmo tenant).
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório) |
+| tipo_status_id | uuid | FK → `tipo_status`, `onDelete: Restrict` (obrigatório) |
+| nome | varchar(60) | Ex.: "Reunião agendada" — único por escritório |
+| icone | varchar(60) | Nome de um ícone Lucide |
+| cor | varchar(9) | Hex |
+| descricao | varchar(255) | Opcional |
+| ordem | int | Posição no kanban |
+| created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, nome])`. Todo escritório novo já nasce com 6 status básicos (um por `tipo_status`), criados dentro da mesma transação que cria o escritório — não é um seed de banco, é um comportamento do `EscritorioService`/`StatusService` no momento do cadastro.
 
 ## `caso`
 
-Processos/casos vinculados a um cliente e posicionados no pipeline. Não tem `escritorio_id` direto — o tenant é resolvido via `cliente.escritorio_id`, mas todo Repository deve fazer `join` com `cliente` (ou `estagio_pipeline`) para aplicar o filtro de isolamento (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)).
+Casos do escritório, vinculados a um cliente ativo e a um status (RN06/RN07). Ao contrário do sugerido inicialmente, guarda `escritorio_id` diretamente (como `cliente`/`comentario`/`log`) em vez de resolver o tenant via `join` com `cliente` — mesmo padrão do restante do schema, evita join obrigatório em toda query do kanban e mantém RN19 simples de auditar.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| cliente_id | uuid | FK → `cliente` (obrigatório, RN06) |
-| estagio_id | uuid | FK → `estagio_pipeline` (obrigatório, RN07) |
-| criado_por_usuario_id | uuid | FK → `usuario` — autoria, útil com múltiplos colaboradores |
-| tipo_acao | varchar(140) | Área/tipo do processo (ex.: "Civil") |
-| numero_processo | varchar(40) | |
-| comarca | varchar(140) | |
-| descricao | text | |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| cliente_id | uuid | FK → `cliente`, `onDelete: Restrict` (obrigatório, RN06) |
+| status_id | uuid | FK → `status`, `onDelete: Restrict` (obrigatório, RN07) |
+| responsavel_membro_id | uuid | FK → `membro`, `onDelete: SetNull` — opcional ("sem responsável" é um estado válido) |
+| titulo | varchar(140) | |
+| descricao | text | Opcional |
+| valor | decimal(12,2) | Quanto o advogado recebe ao concluir o caso — opcional |
 | arquivado | boolean | Sai do kanban ativo, mantém histórico (RN08) |
-| prioridade | varchar | |
 | created_at / updated_at | timestamp | |
+
+`onDelete: Restrict` em `caso.status_id` é a garantia física de RN09 ("status só pode ser removido se vazio") — a checagem amigável (contar casos antes de excluir) fica no `StatusService`, a constraint é a rede de segurança contra bugs.
 
 ## `prazo`
 
@@ -253,11 +275,13 @@ Arquivos anexados a um caso.
 | `convite` | N:1 | `escritorio` |
 | `convite` | N:1 | `usuario` (criado por) |
 | `cliente` | N:1 | `escritorio` |
-| `estagio_pipeline` | N:1 | `escritorio` |
+| `status` | N:1 | `escritorio` |
+| `status` | N:1 | `tipo_status` |
 | `template_mensagem` | N:1 | `escritorio` |
+| `caso` | N:1 | `escritorio` |
 | `caso` | N:1 | `cliente` |
-| `caso` | N:1 | `estagio_pipeline` |
-| `caso` | N:1 | `usuario` (autoria) |
+| `caso` | N:1 | `status` |
+| `caso` | N:1 | `membro` (responsável, opcional) |
 | `prazo` | N:1 | `caso` |
 | `notificacoes_prazo` | N:1 | `prazo` |
 | `anotacao` | N:1 | `caso` |
@@ -273,8 +297,7 @@ Arquivos anexados a um caso.
 - Usar `@id @default(uuid())` em todas as PKs.
 - `usuario.email` com `@unique` (global — identidade de login única, independente de quantos escritórios o usuário integra via `membro`).
 - `cliente.cpf` com `@@unique([escritorio_id, cpf])` — único **composto** por escritório, não globalmente.
-- Índice composto `@@index([escritorio_id])` em `cliente`, `estagio_pipeline`, `template_mensagem`, `membro` para performance de queries escopadas por tenant.
-- `onDelete: Restrict` (ou equivalente) em `caso.cliente_id` para impedir exclusão física de cliente com casos — a regra é sempre inativar, nunca deletar (RN04).
-- `estagio_pipeline` sem FK obrigatória de exclusão automática: a validação "coluna vazia antes de excluir" (RN09) é regra de aplicação no `EstagioService`, não constraint de banco.
-- **Todo Repository que consulta `caso`, `prazo`, `anotacao`, `documento` ou `historico_mensagem` deve fazer join até `cliente`/`estagio_pipeline` para aplicar o filtro de `escritorio_id`** — essas tabelas não guardam o tenant diretamente para evitar duplicação de dado derivável, mas isso exige disciplina na camada de Repository (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)). Alternativa mais defensiva, se preferível na implementação: desnormalizar `escritorio_id` também nessas tabelas para permitir filtro direto sem join — trade-off entre simplicidade de schema e robustez contra bugs de isolamento.
+- Índice composto `@@index([escritorio_id, ...])` em `cliente`, `status`, `caso`, `template_mensagem`, `membro` para performance de queries escopadas por tenant. `caso` guarda `escritorio_id` diretamente (não resolve por join) — mesmo padrão de `cliente`/`comentario`/`log`.
+- `onDelete: Restrict` em `caso.cliente_id` e `caso.status_id` para impedir exclusão física de cliente/status com casos vinculados — a regra é sempre inativar/bloquear, nunca deletar em cascata (RN04/RN09).
+- **Todo Repository que consulta `prazo`, `anotacao`, `documento` ou `historico_mensagem` deve fazer join até `caso`/`cliente` para aplicar o filtro de `escritorio_id`**, já que essas tabelas ainda não guardam o tenant diretamente — isso exige disciplina na camada de Repository (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)). Alternativa mais defensiva, se preferível na implementação: desnormalizar `escritorio_id` também nessas tabelas para permitir filtro direto sem join — trade-off entre simplicidade de schema e robustez contra bugs de isolamento.
 - Toda alteração neste schema segue o fluxo de migrations descrito em [migrations-prisma.md](migrations-prisma.md) — nunca editar o banco diretamente.
