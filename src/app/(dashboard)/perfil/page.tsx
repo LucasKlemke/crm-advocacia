@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { PerfilForm } from "@/components/perfil/perfil-form";
 import { SenhaForm } from "@/components/perfil/senha-form";
 import { Separator } from "@/components/ui/separator";
+import { PageContainer } from "@/components/shared/page-container";
 
 export default async function PerfilPage() {
   const session = await auth();
@@ -13,7 +14,7 @@ export default async function PerfilPage() {
   const usuario = { nome: session.user.name ?? "", email: session.user.email ?? "" };
 
   return (
-    <div className="flex max-w-lg flex-col gap-8">
+    <PageContainer>
       <div>
         <h1 className="text-2xl font-semibold">Meu perfil</h1>
         <p className="text-muted-foreground">Gerencie seus dados pessoais e sua senha.</p>
@@ -37,6 +38,6 @@ export default async function PerfilPage() {
         <h2 className="text-sm font-medium text-muted-foreground">Senha</h2>
         <SenhaForm />
       </section>
-    </div>
+    </PageContainer>
   );
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTenantContext, NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/tenant-context";
 import { escritorioService } from "@/services/escritorio.service";
 import { EscritorioForm } from "@/components/configuracoes/escritorio-form";
+import { PageContainer } from "@/components/shared/page-container";
 
 export default async function ConfiguracoesEscritorioPage() {
   let ctx;
@@ -16,7 +17,7 @@ export default async function ConfiguracoesEscritorioPage() {
   const escritorio = await escritorioService.obterEscritorioAtivo(ctx);
 
   return (
-    <div className="flex max-w-lg flex-col gap-6">
+    <PageContainer className="gap-6">
       <div>
         <h1 className="text-xl font-semibold">Dados do escritório</h1>
         <p className="text-sm text-muted-foreground">
@@ -33,6 +34,6 @@ export default async function ConfiguracoesEscritorioPage() {
         }}
         somenteLeitura={ctx.role === "padrao"}
       />
-    </div>
+    </PageContainer>
   );
 }
