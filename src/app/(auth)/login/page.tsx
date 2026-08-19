@@ -44,7 +44,6 @@ export default function LoginPage() {
       // deslogado (via o Link da marca no layout de auth) — só um reload garante que
       // o middleware releia a sessão recém-criada em vez de reusar esse cache stale.
       const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = destinoSeguro(callbackUrl);
     } catch {
       setErro("Não foi possível entrar. Tente novamente.");
