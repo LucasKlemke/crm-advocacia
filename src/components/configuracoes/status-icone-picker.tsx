@@ -98,29 +98,33 @@ export function StatusIconePicker({ value, onChange, disabled }: StatusIconePick
           />
         }
       >
-        {IconeSelecionado ? <IconeSelecionado className="size-4" /> : null}
-        {value ?? "Selecione um ícone"}
+        {IconeSelecionado ? (
+          <IconeSelecionado className="size-4" />
+        ) : (
+          "Selecione um ícone"
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0">
         <Command>
           <CommandInput placeholder="Buscar ícone..." />
           <CommandList>
             <CommandEmpty>Nenhum ícone encontrado.</CommandEmpty>
-            <CommandGroup>
+            <CommandGroup className="**:[[cmdk-group-items]]:grid **:[[cmdk-group-items]]:grid-cols-3 **:[[cmdk-group-items]]:gap-1">
               {ICONES_STATUS_PERMITIDOS.map((nomeIcone) => {
                 const Icone = MAPA_ICONES_STATUS[nomeIcone];
                 return (
                   <CommandItem
                     key={nomeIcone}
                     value={nomeIcone}
+                    aria-label={nomeIcone}
                     data-checked={nomeIcone === value}
                     onSelect={() => {
                       onChange(nomeIcone);
                       setAberto(false);
                     }}
+                    className="aspect-square items-center justify-center rounded-md p-0 data-[checked=true]:bg-muted data-[checked=true]:ring-2 data-[checked=true]:ring-foreground [&>svg:last-child]:hidden"
                   >
                     {Icone ? <Icone className="size-4" /> : null}
-                    {nomeIcone}
                   </CommandItem>
                 );
               })}

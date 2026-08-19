@@ -138,6 +138,7 @@ export function StatusForm({ status, onSucesso, onCancelar }: StatusFormProps) {
           <SelectContent>
             {tipos.map((tipo) => (
               <SelectItem key={tipo.id} value={tipo.id}>
+                <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: tipo.cor }} />
                 {tipo.nome}
               </SelectItem>
             ))}

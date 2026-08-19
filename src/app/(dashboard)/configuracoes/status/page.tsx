@@ -6,16 +6,7 @@ export default async function ConfiguracoesStatusPage() {
   const ctx = await getTenantContextOuRedirect();
 
   return (
-    <PageContainer className="max-w-3xl">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Status</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure as etapas do funil de casos do seu escritório.
-          </p>
-        </div>
-      </div>
-
+    <PageContainer className="max-w-5xl">
       <StatusTable somenteLeitura={ctx.role === "padrao"} />
     </PageContainer>
   );

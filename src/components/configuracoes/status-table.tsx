@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { useExcluirStatus, useStatus, useTiposStatus } from "@/hooks/use-status";
 import {
@@ -76,9 +76,18 @@ export function StatusTable({ somenteLeitura }: StatusTableProps) {
 
   return (
     <>
-      <div className="flex items-center justify-end">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">Status</h1>
+          <p className="text-sm text-muted-foreground">
+            Configure as etapas do funil de casos do seu escritório.
+          </p>
+        </div>
         {!somenteLeitura ? (
-          <Button onClick={() => setCriando(true)}>Novo status</Button>
+          <Button onClick={() => setCriando(true)}>
+            <Plus />
+            Novo status
+          </Button>
         ) : null}
       </div>
 
@@ -118,7 +127,20 @@ export function StatusTable({ somenteLeitura }: StatusTableProps) {
                     </TableCell>
                     <TableCell>
                       {tipo ? (
-                        <Badge variant="outline" className="font-normal">
+                        <Badge
+                          variant="outline"
+                          className="gap-1.5 font-normal"
+                          style={{
+                            borderColor: `color-mix(in oklch, ${tipo.cor}, transparent 50%)`,
+                            color: tipo.cor,
+                            backgroundColor: `color-mix(in oklch, ${tipo.cor}, transparent 92%)`,
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: tipo.cor }}
+                          />
                           {tipo.nome}
                         </Badge>
                       ) : null}
