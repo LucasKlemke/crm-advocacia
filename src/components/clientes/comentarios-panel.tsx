@@ -116,8 +116,8 @@ export function ComentariosPanel({
           return (
             <li key={comentario.id} className="flex gap-2">
               <AvatarIniciais nome={comentario.autor.nome} className="size-6" />
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex h-6 items-center gap-2">
                   <span className="text-xs font-medium text-foreground">
                     {comentario.autor.nome}
                   </span>
@@ -134,12 +134,12 @@ export function ComentariosPanel({
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            className="ml-auto"
+                            className="ml-auto size-6 [&_svg]:size-3.5"
                             aria-label={`Ações do comentário de ${comentario.autor.nome}`}
                           />
                         }
                       >
-                        <MoreHorizontal className="size-4" />
+                        <MoreHorizontal />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {podeEditarComentario(ehAutor) ? (
