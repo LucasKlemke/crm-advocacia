@@ -127,6 +127,26 @@ describe("usuarioService.cadastrarUsuario", () => {
   });
 });
 
+describe("usuarioService.obterPerfil", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("retorna o usuário do banco (não do JWT) para o id informado", async () => {
+    const usuario = { id: "u1", nome: "Nome Novo", email: "novo@teste.com" };
+    mockedUsuarioRepo.findById.mockResolvedValue(usuario as never);
+
+    await expect(usuarioService.obterPerfil("u1")).resolves.toEqual(usuario);
+    expect(mockedUsuarioRepo.findById).toHaveBeenCalledWith("u1");
+  });
+
+  it("retorna null quando o usuário não existe mais", async () => {
+    mockedUsuarioRepo.findById.mockResolvedValue(null as never);
+
+    await expect(usuarioService.obterPerfil("sumiu")).resolves.toBeNull();
+  });
+});
+
 describe("usuarioService.atualizarPerfil", () => {
   beforeEach(() => jest.clearAllMocks());
 
