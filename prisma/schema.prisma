@@ -16,6 +16,24 @@ enum RoleMembro {
   padrao
 }
 
+// Escopo de um comentário: a entidade à qual ele está ancorado. Cresce junto com o
+// domínio (caso, prazo...) sem precisar de uma tabela de comentários por entidade.
+enum EscopoComentario {
+  cliente
+}
+
+enum EntidadeLog {
+  cliente
+  comentario
+}
+
+enum AcaoLog {
+  criar
+  atualizar
+  excluir
+  restaurar
+}
+
 model Escritorio {
   id               String   @id @default(uuid())
   nome             String   @db.VarChar(140)
@@ -25,8 +43,11 @@ model Escritorio {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  membros  Membro[]
-  convites Convite[]
+  membros     Membro[]
+  convites    Convite[]
+  clientes    Cliente[]
+  comentarios Comentario[]
+  logs        Log[]
 
   @@map("escritorio")
 }
@@ -45,8 +66,10 @@ model Usuario {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  membros           Membro[]
-  convitesEnviados  Convite[] @relation("ConviteCriadoPor")
+  membros          Membro[]
+  convitesEnviados Convite[]    @relation("ConviteCriadoPor")
+  comentarios      Comentario[] @relation("ComentarioAutor")
+  logs             Log[]        @relation("LogAutor")
 
   @@map("usuario")
 }
@@ -72,14 +95,14 @@ model Membro {
 // Convite pendente para um e-mail entrar num escritório com um papel. Linha existe =
 // convite pendente; aceitar/cancelar remove a linha (evita índice parcial — RFC).
 model Convite {
-  id                  String     @id @default(uuid())
-  escritorioId        String     @map("escritorio_id")
-  email               String     @db.VarChar(255)
-  role                RoleMembro @default(padrao)
-  criadoPorUsuarioId  String     @map("criado_por_usuario_id")
-  expiraEm            DateTime   @map("expira_em")
-  createdAt           DateTime   @default(now()) @map("created_at")
-  updatedAt           DateTime   @updatedAt @map("updated_at")
+  id                 String     @id @default(uuid())
+  escritorioId       String     @map("escritorio_id")
+  email              String     @db.VarChar(255)
+  role               RoleMembro @default(padrao)
+  criadoPorUsuarioId String     @map("criado_por_usuario_id")
+  expiraEm           DateTime   @map("expira_em")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   criadoPor  Usuario    @relation("ConviteCriadoPor", fields: [criadoPorUsuarioId], references: [id])
@@ -87,4 +110,68 @@ model Convite {
   @@unique([escritorioId, email])
   @@index([email])
   @@map("convite")
+}
+
+// Cliente do escritório. Nunca é apagado (RN04): "desativar" grava soft_deleted_at,
+// e cliente ativo é simplesmente soft_deleted_at = null.
+model Cliente {
+  id            String    @id @default(uuid())
+  escritorioId  String    @map("escritorio_id")
+  nome          String    @db.VarChar(140)
+  cpf           String    @db.VarChar(11)
+  email         String?   @db.VarChar(140)
+  telefone      String?   @db.VarChar(20)
+  endereco      String?   @db.VarChar(255)
+  softDeletedAt DateTime? @map("soft_deleted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+
+  @@unique([escritorioId, cpf])
+  @@index([escritorioId, softDeletedAt])
+  @@map("cliente")
+}
+
+// Comentário ancorado numa entidade via (escopo, escopo_id) — sem FK, porque o alvo
+// varia. O isolamento continua vindo de escritorio_id (RN19).
+model Comentario {
+  id             String           @id @default(uuid())
+  escritorioId   String           @map("escritorio_id")
+  escopo         EscopoComentario
+  escopoId       String           @map("escopo_id")
+  autorUsuarioId String           @map("autor_usuario_id")
+  conteudo       String           @db.Text
+  editadoEm      DateTime?        @map("editado_em")
+  softDeletedAt  DateTime?        @map("soft_deleted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  autor      Usuario    @relation("ComentarioAutor", fields: [autorUsuarioId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, escopo, escopoId, createdAt])
+  @@map("comentario")
+}
+
+// Trilha de auditoria transversal (RN20): quem fez (usuario_id), quando fez (created_at)
+// e o que fez (acao + entidade + entidade_id + resumo + diff em dados).
+// Append-only: sem updated_at, e o Repository não expõe update/delete.
+model Log {
+  id           String      @id @default(uuid())
+  escritorioId String      @map("escritorio_id")
+  usuarioId    String      @map("usuario_id")
+  acao         AcaoLog
+  entidade     EntidadeLog
+  entidadeId   String      @map("entidade_id")
+  resumo       String      @db.VarChar(255)
+  dados        Json?
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  usuario    Usuario    @relation("LogAutor", fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, createdAt])
+  @@index([escritorioId, entidade, entidadeId])
+  @@map("log")
 }

@@ -4,6 +4,8 @@ import {
   podeAtribuirRole,
   violaUltimoOwner,
   ehAutoAlvo,
+  podeEditarComentario,
+  podeModerarComentario,
 } from "./permissoes";
 
 describe("permissoes", () => {
@@ -65,6 +67,28 @@ describe("permissoes", () => {
 
     it("false quando são usuários diferentes", () => {
       expect(ehAutoAlvo("user-1", "user-2")).toBe(false);
+    });
+  });
+
+  describe("podeEditarComentario", () => {
+    it("só o autor edita o próprio comentário", () => {
+      expect(podeEditarComentario(true)).toBe(true);
+      expect(podeEditarComentario(false)).toBe(false);
+    });
+  });
+
+  describe("podeModerarComentario", () => {
+    it("o autor pode excluir o próprio comentário, seja qual for o papel", () => {
+      expect(podeModerarComentario("padrao", true)).toBe(true);
+    });
+
+    it("owner e admin podem excluir comentário de terceiros", () => {
+      expect(podeModerarComentario("owner", false)).toBe(true);
+      expect(podeModerarComentario("admin", false)).toBe(true);
+    });
+
+    it("padrao não pode excluir comentário de terceiros", () => {
+      expect(podeModerarComentario("padrao", false)).toBe(false);
     });
   });
 
