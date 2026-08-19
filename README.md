@@ -1,6 +1,7 @@
 # CRM Advocacia
 
 CRM multi-tenant para escritórios de advocacia. Visão de produto, stack e regras de negócio: **[CLAUDE.md](CLAUDE.md)**. Documentação técnica detalhada por área: **[docs/README.md](docs/README.md)**.
+Projeto TCC Católica SC (Projeto trabalho de conclusão de curso)
 
 ## Setup local
 
