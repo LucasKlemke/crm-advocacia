@@ -44,6 +44,19 @@ export const conviteRepository = {
     return db.convite.findMany({ where: { escritorioId }, orderBy: { createdAt: "asc" } });
   },
 
+  // Pendente de verdade: linha existente E ainda dentro do prazo (mesmo critério do
+  // aceite no cadastro e do re-convite — convite vencido não vale mais nada).
+  async listarPendentesPorEscritorio(
+    escritorioId: string,
+    agora: Date = new Date(),
+    db: Db = prisma
+  ): Promise<Convite[]> {
+    return db.convite.findMany({
+      where: { escritorioId, expiraEm: { gt: agora } },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
   async remover(id: string, db: Db = prisma): Promise<void> {
     await db.convite.delete({ where: { id } });
   },

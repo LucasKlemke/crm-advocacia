@@ -90,7 +90,11 @@ export const conviteService = {
     if (ctx.role === "padrao") {
       throw new PermissaoNegadaError();
     }
-    return conviteRepository.listarPorEscritorio(ctx.escritorioId);
+    // Só é "pendente" o convite ainda dentro do prazo (expiraEm > agora), o mesmo
+    // critério usado no aceite (usuarioService.cadastrarUsuario) e no re-convite acima.
+    // Convite vencido não é listado; `expiraEm` continua no retorno para o consumidor
+    // exibir o prazo restante se quiser.
+    return conviteRepository.listarPendentesPorEscritorio(ctx.escritorioId, new Date());
   },
 
   async cancelar(ctx: TenantContext, conviteId: string): Promise<void> {

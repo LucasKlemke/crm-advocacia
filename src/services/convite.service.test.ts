@@ -115,12 +115,32 @@ describe("conviteService.listarPendentes", () => {
     );
   });
 
-  it("lista convites pendentes do escritório para owner/admin", async () => {
-    mockedConviteRepo.listarPorEscritorio.mockResolvedValue([{ id: "convite-1" }] as never);
+  it("lista convites dentro do prazo como pendentes para owner/admin", async () => {
+    const amanha = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    mockedConviteRepo.listarPendentesPorEscritorio.mockResolvedValue([
+      { id: "convite-1", expiraEm: amanha },
+    ] as never);
 
     const resultado = await conviteService.listarPendentes(ctx("admin"));
 
-    expect(resultado).toEqual([{ id: "convite-1" }]);
+    expect(resultado).toEqual([{ id: "convite-1", expiraEm: amanha }]);
+    expect(mockedConviteRepo.listarPorEscritorio).not.toHaveBeenCalled();
+  });
+
+  it("consulta o repositório filtrando por expiração (convite vencido não é pendente)", async () => {
+    mockedConviteRepo.listarPendentesPorEscritorio.mockResolvedValue([] as never);
+
+    const antes = Date.now();
+    const resultado = await conviteService.listarPendentes(ctx("owner"));
+    const depois = Date.now();
+
+    expect(resultado).toEqual([]);
+    expect(mockedConviteRepo.listarPendentesPorEscritorio).toHaveBeenCalledTimes(1);
+    const [escritorioId, agora] = mockedConviteRepo.listarPendentesPorEscritorio.mock.calls[0];
+    expect(escritorioId).toBe("esc-1");
+    expect(agora).toBeInstanceOf(Date);
+    expect((agora as Date).getTime()).toBeGreaterThanOrEqual(antes);
+    expect((agora as Date).getTime()).toBeLessThanOrEqual(depois);
   });
 });
 
