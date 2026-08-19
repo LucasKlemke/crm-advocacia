@@ -20,11 +20,15 @@ jest.mock("@/services/cliente.service", () => {
   class ClienteNaoEncontradoError extends Error {}
   class CpfInvalidoError extends Error {}
   class CpfDuplicadoError extends Error {}
+  class TelefoneInvalidoError extends Error {}
+  class EmailInvalidoError extends Error {}
   return {
     clienteService: { listar: jest.fn(), criar: jest.fn() },
     ClienteNaoEncontradoError,
     CpfInvalidoError,
     CpfDuplicadoError,
+    TelefoneInvalidoError,
+    EmailInvalidoError,
   };
 });
 
@@ -108,6 +112,45 @@ describe("POST /api/clientes", () => {
     const body = await response.json();
     expect(body.detalhes.nome).toBeDefined();
     expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  // A validação de forma acontece no zod para que o erro volte por campo e o
+  // formulário destaque o input certo, em vez de um toast genérico.
+  it("retorna 400 com detalhes quando o CPF não passa nos dígitos verificadores", async () => {
+    const response = await post({ nome: "Maria Silva", cpf: "083688379" });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).detalhes.cpf).toBeDefined();
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 com detalhes quando o telefone está incompleto", async () => {
+    const response = await post({ nome: "Maria Silva", cpf: CPF, telefone: "47996589979" });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).detalhes.telefone).toBeDefined();
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 com detalhes quando o e-mail é malformado", async () => {
+    const response = await post({ nome: "Maria Silva", cpf: CPF, email: "lucasklemketeste" });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).detalhes.email).toBeDefined();
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("aceita telefone e e-mail válidos", async () => {
+    service.criar.mockResolvedValue({ id: "cli-1" } as never);
+
+    const response = await post({
+      nome: "Maria Silva",
+      cpf: CPF,
+      telefone: "+55 (47) 99658-9979",
+      email: "lucas.klemke84@gmail.com",
+    });
+
+    expect(response.status).toBe(201);
   });
 
   it("retorna 400 quando o body não é JSON", async () => {

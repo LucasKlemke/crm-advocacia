@@ -11,7 +11,7 @@ function clienteFake(over: Partial<ClienteDTO> = {}): ClienteDTO {
     nome: "Maria Silva",
     cpf: "52998224725",
     email: "maria@ex.com",
-    telefone: "48999990000",
+    telefone: "5548999990000",
     endereco: null,
     softDeletedAt: null,
     createdAt: "2026-08-01T12:00:00.000Z",

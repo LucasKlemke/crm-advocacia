@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { clienteRepository, type FiltrosCliente } from "@/repositories/cliente.repository";
 import { logService } from "@/services/log.service";
 import { cpfValido, normalizarCpf } from "@/lib/utils/cpf";
+import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
+import { emailValido, normalizarEmail } from "@/lib/utils/email";
 import { calcularDiff } from "@/lib/utils/diff";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Cliente } from "@prisma/client";
@@ -31,6 +33,20 @@ export class CpfDuplicadoError extends Error {
   }
 }
 
+export class TelefoneInvalidoError extends Error {
+  constructor() {
+    super("Telefone inválido. Use o formato +55 (00) 00000-0000, com DDD e nono dígito.");
+    this.name = "TelefoneInvalidoError";
+  }
+}
+
+export class EmailInvalidoError extends Error {
+  constructor() {
+    super("E-mail inválido.");
+    this.name = "EmailInvalidoError";
+  }
+}
+
 export interface DadosNovoCliente {
   nome: string;
   cpf: string;
@@ -42,6 +58,23 @@ export interface DadosNovoCliente {
 export type DadosEdicaoCliente = Partial<DadosNovoCliente>;
 
 const CAMPOS_AUDITADOS = ["nome", "cpf", "email", "telefone", "endereco"] as const;
+
+// Telefone e e-mail são opcionais: em branco vira null. Preenchidos, precisam estar
+// corretos — o telefone é a chave do disparo de WhatsApp (RN13) e um número mal
+// formado só é descoberto na hora em que a mensagem falha.
+function prepararTelefone(valor: string | null | undefined): string | null {
+  const bruto = valor?.trim();
+  if (!bruto) return null;
+  if (!telefoneValido(bruto)) throw new TelefoneInvalidoError();
+  return normalizarTelefone(bruto);
+}
+
+function prepararEmail(valor: string | null | undefined): string | null {
+  const bruto = valor?.trim();
+  if (!bruto) return null;
+  if (!emailValido(bruto)) throw new EmailInvalidoError();
+  return normalizarEmail(bruto);
+}
 
 // Clientes são o trabalho diário do escritório: qualquer papel (inclusive padrao)
 // pode criar, editar e desativar. A única barreira é o tenant (RN19).
@@ -68,6 +101,9 @@ export const clienteService = {
     if (!cpfValido(cpf)) {
       throw new CpfInvalidoError();
     }
+    // Validado antes da transação: entrada malformada não chega a consultar o banco.
+    const email = prepararEmail(dados.email);
+    const telefone = prepararTelefone(dados.telefone);
 
     const existente = await clienteRepository.findByCpf(ctx.escritorioId, cpf);
     if (existente) {
@@ -79,8 +115,8 @@ export const clienteService = {
         {
           nome: dados.nome.trim(),
           cpf,
-          email: dados.email?.trim() || null,
-          telefone: dados.telefone?.trim() || null,
+          email,
+          telefone,
           endereco: dados.endereco?.trim() || null,
           escritorio: { connect: { id: ctx.escritorioId } },
         },
@@ -111,8 +147,8 @@ export const clienteService = {
 
     const mudancas: DadosEdicaoCliente = {
       ...(dados.nome !== undefined ? { nome: dados.nome.trim() } : {}),
-      ...(dados.email !== undefined ? { email: dados.email?.trim() || null } : {}),
-      ...(dados.telefone !== undefined ? { telefone: dados.telefone?.trim() || null } : {}),
+      ...(dados.email !== undefined ? { email: prepararEmail(dados.email) } : {}),
+      ...(dados.telefone !== undefined ? { telefone: prepararTelefone(dados.telefone) } : {}),
       ...(dados.endereco !== undefined ? { endereco: dados.endereco?.trim() || null } : {}),
     };
 

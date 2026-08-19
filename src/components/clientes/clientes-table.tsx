@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarCpf } from "@/lib/utils/cpf";
+import { formatarTelefone } from "@/lib/utils/telefone";
 import { useAcaoEmLoteClientes, useClientes } from "@/hooks/use-clientes";
 import { ClienteSheet, type ModoSheet } from "@/components/clientes/cliente-sheet";
 import { Button } from "@/components/ui/button";
@@ -238,7 +239,7 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
                       </span>
                     </TableCell>
                     <TableCell>{formatarCpf(cliente.cpf)}</TableCell>
-                    <TableCell>{cliente.telefone ?? "–"}</TableCell>
+                    <TableCell>{cliente.telefone ? formatarTelefone(cliente.telefone) : "–"}</TableCell>
                     <TableCell>{cliente.email ?? "–"}</TableCell>
                     <TableCell className="px-4">
                       <DropdownMenu>

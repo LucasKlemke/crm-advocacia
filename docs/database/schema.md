@@ -74,8 +74,8 @@ Cadastro dos clientes do escritório.
 | escritorio_id | uuid | FK → `escritorio` (obrigatório — escopo de tenant) |
 | nome | varchar(140) | |
 | cpf | varchar(11) | Armazenado **sem máscara** (só dígitos); único **por escritório** (RN05), não globalmente |
-| email | varchar(140) | |
-| telefone | varchar(20) | Usado para disparo de WhatsApp (RN13) |
+| email | varchar(140) | Normalizado em caixa baixa |
+| telefone | varchar(20) | Armazenado **sem máscara**, no formato internacional completo `55 + DDD + 9 dígitos` — é assim que a Uazapi identifica o destinatário no disparo (RN13) |
 | endereco | varchar(255) | |
 | soft_deleted_at | timestamp | Data da exclusão suave; `NULL` = cliente ativo (RN04) |
 | created_at / updated_at | timestamp | |
@@ -83,6 +83,8 @@ Cadastro dos clientes do escritório.
 `@@unique([escritorio_id, cpf])` e `@@index([escritorio_id, soft_deleted_at])` (a listagem padrão filtra por tenant + ativos). Guardar o CPF normalizado é o que faz a unicidade valer independentemente de como o usuário digitou.
 
 Não há coluna `ativo` nem `observacoes`: a desativação é o próprio `soft_deleted_at` (uma única fonte de verdade, reversível por "Restaurar"), e as anotações livres viraram um CRUD de comentários na tabela `comentario`.
+
+CPF, telefone e e-mail são validados no `ClienteService` antes de qualquer escrita (dígitos verificadores do CPF, celular brasileiro completo, forma do e-mail). As rotas repetem a checagem no schema zod para que o erro volte por campo em `detalhes` e o formulário destaque o input certo — os dois lados usam os mesmos validadores de `src/lib/utils/`.
 
 O CPF de um cliente desativado continua reservado pela constraint. O Service detecta esse caso e devolve um erro específico orientando restaurar o cadastro, em vez de um erro cru de constraint.
 

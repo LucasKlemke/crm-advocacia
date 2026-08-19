@@ -20,11 +20,15 @@ jest.mock("@/services/cliente.service", () => {
   class ClienteNaoEncontradoError extends Error {}
   class CpfInvalidoError extends Error {}
   class CpfDuplicadoError extends Error {}
+  class TelefoneInvalidoError extends Error {}
+  class EmailInvalidoError extends Error {}
   return {
     clienteService: { obter: jest.fn(), atualizar: jest.fn() },
     ClienteNaoEncontradoError,
     CpfInvalidoError,
     CpfDuplicadoError,
+    TelefoneInvalidoError,
+    EmailInvalidoError,
   };
 });
 
@@ -81,10 +85,10 @@ describe("PATCH /api/clientes/[id]", () => {
   it("atualiza apenas os campos enviados", async () => {
     service.atualizar.mockResolvedValue({ id: "cli-1" } as never);
 
-    const response = await patch({ telefone: "48988887777" });
+    const response = await patch({ telefone: "5548988887777" });
 
     expect(response.status).toBe(200);
-    expect(service.atualizar).toHaveBeenCalledWith(ctx, "cli-1", { telefone: "48988887777" });
+    expect(service.atualizar).toHaveBeenCalledWith(ctx, "cli-1", { telefone: "5548988887777" });
   });
 
   it("aceita null para limpar um campo opcional", async () => {

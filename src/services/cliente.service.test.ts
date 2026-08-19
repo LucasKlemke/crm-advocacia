@@ -3,6 +3,8 @@ import {
   ClienteNaoEncontradoError,
   CpfDuplicadoError,
   CpfInvalidoError,
+  EmailInvalidoError,
+  TelefoneInvalidoError,
 } from "./cliente.service";
 import { clienteRepository } from "@/repositories/cliente.repository";
 import { logService } from "@/services/log.service";
@@ -31,7 +33,7 @@ function clienteFake(over: Partial<Cliente> = {}): Cliente {
     nome: "Maria Silva",
     cpf: CPF_VALIDO,
     email: null,
-    telefone: "48999990000",
+    telefone: "5548999990000",
     endereco: null,
     softDeletedAt: null,
     createdAt: new Date(),
@@ -105,6 +107,54 @@ describe("clienteService.criar", () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  it("normaliza o telefone válido para só dígitos", async () => {
+    repo.findByCpf.mockResolvedValue(null);
+    repo.create.mockResolvedValue(clienteFake());
+
+    await clienteService.criar(ctx, {
+      nome: "Maria",
+      cpf: CPF_VALIDO,
+      telefone: "+55 (47) 99658-9979",
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ telefone: "5547996589979" }),
+      expect.anything()
+    );
+  });
+
+  it("normaliza o e-mail para caixa baixa", async () => {
+    repo.findByCpf.mockResolvedValue(null);
+    repo.create.mockResolvedValue(clienteFake());
+
+    await clienteService.criar(ctx, {
+      nome: "Maria",
+      cpf: CPF_VALIDO,
+      email: " Lucas.Klemke84@Gmail.com ",
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "lucas.klemke84@gmail.com" }),
+      expect.anything()
+    );
+  });
+
+  // RN13: sem o número completo o disparo de WhatsApp falha só na hora do envio.
+  it("rejeita telefone incompleto antes de tocar no banco", async () => {
+    await expect(
+      clienteService.criar(ctx, { nome: "Maria", cpf: CPF_VALIDO, telefone: "47996589979" })
+    ).rejects.toThrow(TelefoneInvalidoError);
+    expect(repo.findByCpf).not.toHaveBeenCalled();
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita e-mail malformado antes de tocar no banco", async () => {
+    await expect(
+      clienteService.criar(ctx, { nome: "Maria", cpf: CPF_VALIDO, email: "lucasklemketeste" })
+    ).rejects.toThrow(EmailInvalidoError);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
   it("rejeita CPF já usado no escritório (RN05)", async () => {
     repo.findByCpf.mockResolvedValue(clienteFake());
     await expect(clienteService.criar(ctx, { nome: "Outra", cpf: CPF_VALIDO })).rejects.toThrow(
@@ -123,18 +173,18 @@ describe("clienteService.criar", () => {
 describe("clienteService.atualizar", () => {
   it("grava só os campos alterados e loga o diff", async () => {
     repo.findById.mockResolvedValue(clienteFake());
-    repo.update.mockResolvedValue(clienteFake({ telefone: "48988887777" }));
+    repo.update.mockResolvedValue(clienteFake({ telefone: "5548988887777" }));
 
     await clienteService.atualizar(ctx, "cli-1", {
       nome: "Maria Silva",
-      telefone: "48988887777",
+      telefone: "5548988887777",
     });
 
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx,
       expect.objectContaining({
         acao: "atualizar",
-        dados: { telefone: { antes: "48999990000", depois: "48988887777" } },
+        dados: { telefone: { antes: "5548999990000", depois: "5548988887777" } },
       }),
       expect.anything()
     );
@@ -194,6 +244,42 @@ describe("clienteService.atualizar", () => {
     repo.findById.mockResolvedValue(clienteFake());
     await expect(clienteService.atualizar(ctx, "cli-1", { cpf: "123" })).rejects.toThrow(
       CpfInvalidoError
+    );
+  });
+});
+
+describe("clienteService.atualizar — validação de contato", () => {
+  it("rejeita telefone inválido sem gravar nem logar", async () => {
+    repo.findById.mockResolvedValue(clienteFake());
+
+    await expect(
+      clienteService.atualizar(ctx, "cli-1", { telefone: "4796589979" })
+    ).rejects.toThrow(TelefoneInvalidoError);
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  it("rejeita e-mail inválido sem gravar nem logar", async () => {
+    repo.findById.mockResolvedValue(clienteFake());
+
+    await expect(clienteService.atualizar(ctx, "cli-1", { email: "12345325" })).rejects.toThrow(
+      EmailInvalidoError
+    );
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  // Limpar o campo continua permitido: o contato é opcional.
+  it("aceita telefone em branco como remoção do contato", async () => {
+    repo.findById.mockResolvedValue(clienteFake());
+    repo.update.mockResolvedValue(clienteFake({ telefone: null }));
+
+    await clienteService.atualizar(ctx, "cli-1", { telefone: "" });
+
+    expect(repo.update).toHaveBeenCalledWith(
+      "cli-1",
+      expect.objectContaining({ telefone: null }),
+      expect.anything()
     );
   });
 });

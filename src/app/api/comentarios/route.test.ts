@@ -31,7 +31,15 @@ jest.mock("@/services/cliente.service", () => {
   class ClienteNaoEncontradoError extends Error {}
   class CpfInvalidoError extends Error {}
   class CpfDuplicadoError extends Error {}
-  return { ClienteNaoEncontradoError, CpfInvalidoError, CpfDuplicadoError };
+  class TelefoneInvalidoError extends Error {}
+  class EmailInvalidoError extends Error {}
+  return {
+    ClienteNaoEncontradoError,
+    CpfInvalidoError,
+    CpfDuplicadoError,
+    TelefoneInvalidoError,
+    EmailInvalidoError,
+  };
 });
 
 const mockedGetTenantContext = getTenantContext as jest.Mock;

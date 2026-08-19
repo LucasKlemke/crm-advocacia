@@ -29,3 +29,12 @@ export function cpfValido(valor: string): boolean {
     digitoVerificador(digitos.slice(0, 10), 11) === Number(digitos[10])
   );
 }
+
+// Máscara progressiva do campo de digitação: formata o que já foi digitado
+// sem esperar os 11 dígitos completos.
+export function mascararCpf(valor: string): string {
+  const digitos = normalizarCpf(valor).slice(0, 11);
+  const partes = [digitos.slice(0, 3), digitos.slice(3, 6), digitos.slice(6, 9)].filter(Boolean);
+  const inicio = partes.join(".");
+  return digitos.length > 9 ? `${inicio}-${digitos.slice(9)}` : inicio;
+}

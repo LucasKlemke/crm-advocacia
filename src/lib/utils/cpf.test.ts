@@ -1,4 +1,4 @@
-import { normalizarCpf, formatarCpf, cpfValido } from "@/lib/utils/cpf";
+import { normalizarCpf, formatarCpf, mascararCpf, cpfValido } from "@/lib/utils/cpf";
 
 describe("normalizarCpf", () => {
   it("remove máscara e mantém só os dígitos", () => {
@@ -51,5 +51,24 @@ describe("cpfValido", () => {
 
   it("rejeita string vazia", () => {
     expect(cpfValido("")).toBe(false);
+  });
+});
+
+describe("mascararCpf", () => {
+  // Máscara progressiva: o campo formata enquanto o usuário digita.
+  it("formata parcialmente conforme os dígitos chegam", () => {
+    expect(mascararCpf("083")).toBe("083");
+    expect(mascararCpf("0836")).toBe("083.6");
+    expect(mascararCpf("083688379")).toBe("083.688.379");
+    expect(mascararCpf("08368837995")).toBe("083.688.379-95");
+  });
+
+  it("ignora dígitos além dos 11 do formato", () => {
+    expect(mascararCpf("0836883799512")).toBe("083.688.379-95");
+  });
+
+  it("descarta o que não é dígito", () => {
+    expect(mascararCpf("lucas")).toBe("");
+    expect(mascararCpf("")).toBe("");
   });
 });

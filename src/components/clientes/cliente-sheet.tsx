@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatarCpf } from "@/lib/utils/cpf";
+import { formatarTelefone } from "@/lib/utils/telefone";
 import { formatarDataHora } from "@/lib/utils/data";
 import { ClienteForm } from "@/components/clientes/cliente-form";
 import { ComentariosPanel } from "@/components/clientes/comentarios-panel";
@@ -94,7 +95,10 @@ export function ClienteSheet({
                     <dl className="grid grid-cols-2 gap-4">
                       <LinhaDado rotulo="Nome completo" valor={cliente.nome} />
                       <LinhaDado rotulo="CPF" valor={formatarCpf(cliente.cpf)} />
-                      <LinhaDado rotulo="Telefone" valor={cliente.telefone} />
+                      <LinhaDado
+                        rotulo="Telefone"
+                        valor={cliente.telefone ? formatarTelefone(cliente.telefone) : null}
+                      />
                       <LinhaDado rotulo="E-mail" valor={cliente.email} />
                       <LinhaDado rotulo="Endereço" valor={cliente.endereco} />
                       <LinhaDado

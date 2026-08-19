@@ -10,7 +10,7 @@ const CLIENTE: ClienteDTO = {
   nome: "Maria Silva",
   cpf: "52998224725",
   email: "maria@ex.com",
-  telefone: "48999990000",
+  telefone: "5548999990000",
   endereco: null,
   softDeletedAt: null,
   createdAt: "2026-08-01T12:00:00.000Z",
@@ -78,17 +78,72 @@ describe("ClienteForm", () => {
     renderComQuery(<ClienteForm cliente={CLIENTE} onSucesso={jest.fn()} />);
 
     expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
+    // Vem do banco só com dígitos e aparece formatado para edição.
+    expect(screen.getByLabelText(/Telefone/)).toHaveValue("+55 (48) 99999-0000");
 
     await usuario.clear(screen.getByLabelText(/Telefone/));
-    await usuario.type(screen.getByLabelText(/Telefone/), "48988887777");
+    await usuario.type(screen.getByLabelText(/Telefone/), "5548988887777");
     await usuario.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
     await waitFor(() => {
       const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
       expect(url).toBe("/api/clientes/cli-1");
       expect(init.method).toBe("PATCH");
-      expect(JSON.parse(init.body).telefone).toBe("48988887777");
+      // O campo é mascarado enquanto se digita; o Service normaliza para só dígitos.
+      expect(JSON.parse(init.body).telefone).toBe("+55 (48) 98888-7777");
     });
+  });
+
+  it("mascara CPF e telefone enquanto o usuário digita", async () => {
+    const usuario = userEvent.setup();
+    renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
+
+    await usuario.type(screen.getByLabelText("CPF"), "08368837995");
+    await usuario.type(screen.getByLabelText(/Telefone/), "5547996589979");
+
+    expect(screen.getByLabelText("CPF")).toHaveValue("083.688.379-95");
+    expect(screen.getByLabelText(/Telefone/)).toHaveValue("+55 (47) 99658-9979");
+  });
+
+  // Validação no cliente evita um round-trip só para ouvir que o formato está errado.
+  it("bloqueia o envio de telefone sem o código do país", async () => {
+    const usuario = userEvent.setup();
+    renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
+
+    await usuario.type(screen.getByLabelText(/Nome completo/), "Maria Silva");
+    await usuario.type(screen.getByLabelText("CPF"), "08368837995");
+    await usuario.type(screen.getByLabelText(/Telefone/), "47996589979");
+    await usuario.click(screen.getByRole("button", { name: "Criar cliente" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Telefone inválido/);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia o envio de e-mail malformado", async () => {
+    const usuario = userEvent.setup();
+    renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
+
+    await usuario.type(screen.getByLabelText(/Nome completo/), "Maria Silva");
+    await usuario.type(screen.getByLabelText("CPF"), "08368837995");
+    await usuario.type(screen.getByLabelText(/E-mail/), "lucasklemketeste");
+    await usuario.click(screen.getByRole("button", { name: "Criar cliente" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("E-mail inválido.");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("limpa o erro do campo assim que o usuário corrige", async () => {
+    const usuario = userEvent.setup();
+    renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
+
+    await usuario.type(screen.getByLabelText(/Nome completo/), "Maria Silva");
+    await usuario.type(screen.getByLabelText("CPF"), "0836");
+    await usuario.click(screen.getByRole("button", { name: "Criar cliente" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    await usuario.type(screen.getByLabelText("CPF"), "88379995");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("envia null nos campos opcionais deixados em branco", async () => {

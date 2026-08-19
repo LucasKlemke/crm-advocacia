@@ -19,6 +19,7 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 - **RN04 (revisada)** — Cliente nunca é excluído permanentemente: "desativar" grava a data em `cliente.soft_deleted_at` (soft delete), e cliente ativo é simplesmente `soft_deleted_at IS NULL`. O cadastro e todo o histórico vinculado (casos, comentários, mensagens) são preservados, e a operação é reversível por "Restaurar". A listagem omite os desativados por padrão, com filtro explícito para exibi-los. *(`ClienteService`)*
 - **RN05 (revisada)** — CPF único **dentro do mesmo escritório**; o mesmo CPF pode existir em escritórios diferentes (são tenants distintos). Bloquear apenas duplicidade dentro do próprio tenant. *(`ClienteService`, constraint composta `@@unique([escritorio_id, cpf])`)*
   - No RFC original, o CPF era único globalmente — fazia sentido em um sistema de usuário único.
+- **RN05a (nova)** — CPF, telefone e e-mail do cliente são validados no cadastro e na edição: CPF pelos dígitos verificadores, telefone como celular brasileiro completo (`+55` + DDD + nono dígito) e e-mail pela forma. Campo opcional em branco continua válido; preenchido, precisa estar correto — um telefone incompleto só apareceria como falha na hora do disparo de WhatsApp (RN13). Armazenados sem máscara; a formatação é de apresentação. *(`ClienteService` + schemas zod das rotas)*
 - **RN06** — Todo caso deve pertencer a um cliente existente, ativo, e do mesmo escritório do usuário logado. *(`CasoService`)*
 
 ## Gestão de Casos

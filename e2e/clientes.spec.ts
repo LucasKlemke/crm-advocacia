@@ -47,9 +47,11 @@ test.describe("CRUD de clientes", () => {
     await page.getByRole("button", { name: "Ações de Maria Silva" }).click();
     await page.getByRole("menuitem", { name: "Visualizar" }).click();
     await page.getByRole("button", { name: "Editar dados" }).click();
-    await page.getByLabel(/Telefone/).fill("48988887777");
+    // O campo mascara enquanto digita; a leitura mostra o número já formatado.
+    await page.getByLabel(/Telefone/).fill("5548988887777");
+    await expect(page.getByLabel(/Telefone/)).toHaveValue("+55 (48) 98888-7777");
     await page.getByRole("button", { name: "Salvar alterações" }).click();
-    await expect(page.getByText("48988887777")).toBeVisible();
+    await expect(page.getByText("+55 (48) 98888-7777")).toBeVisible();
 
     // Comentar no cliente aberto
     await page.getByRole("tab", { name: "Comentários" }).click();
@@ -88,6 +90,32 @@ test.describe("CRUD de clientes", () => {
     await page.getByRole("button", { name: "Criar cliente" }).click();
 
     await expect(page.getByText(/Já existe um cliente com este CPF/)).toBeVisible();
+  });
+
+  test("bloqueia CPF, telefone e e-mail malformados antes de enviar", async ({ page }) => {
+    await cadastrarECriarEscritorio(page, "Escritório Validação E2E");
+    await page.goto("/clientes");
+
+    await page.getByRole("button", { name: "Criar novo cliente" }).click();
+    await page.getByLabel(/Nome completo/).fill("Maria Silva");
+    await page.getByLabel("CPF").fill("083688379");
+    await page.getByLabel(/Telefone/).fill("47996589979");
+    await page.getByLabel(/E-mail/).fill("lucasklemketeste");
+    await page.getByRole("button", { name: "Criar cliente" }).click();
+
+    await expect(page.getByText(/CPF inválido/)).toBeVisible();
+    await expect(page.getByText(/Telefone inválido/)).toBeVisible();
+    await expect(page.getByText("E-mail inválido.")).toBeVisible();
+
+    // Corrigindo os três, o cadastro passa e o CPF aparece formatado na tabela.
+    await page.getByLabel("CPF").fill("08368837995");
+    await page.getByLabel(/Telefone/).fill("5547996589979");
+    await page.getByLabel(/E-mail/).fill("lucas.klemke84@gmail.com");
+    await page.getByRole("button", { name: "Criar cliente" }).click();
+
+    await expect(page.getByRole("dialog", { name: "Novo cliente" })).toBeHidden();
+    await expect(page.getByText("083.688.379-95")).toBeVisible();
+    await expect(page.getByText("+55 (47) 99658-9979")).toBeVisible();
   });
 
   test("restaura um cliente desativado", async ({ page }) => {
