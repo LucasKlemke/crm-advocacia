@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { z } from "zod";
 import { unstable_update } from "@/lib/auth/config";
+import { lerUsuarioIdDaSessao } from "@/lib/auth/token";
 import { membroService, PermissaoNegadaError } from "@/services/membro.service";
 
 const trocarEscritorioSchema = z.object({
@@ -11,12 +11,12 @@ const trocarEscritorioSchema = z.object({
 // Só troca a sessão para um escritório onde o usuário é membro — nunca confia no
 // escritorioId enviado sem revalidar contra o banco (RN19).
 //
-// Usa getToken() (leitura pura do JWT) em vez de auth(): auth() sempre reemite um
-// Set-Cookie de "rolling refresh" da sessão, que colide com o Set-Cookie emitido por
+// Usa leitura pura do JWT em vez de auth(): auth() sempre reemite um Set-Cookie de
+// "rolling refresh" da sessão, que colide com o Set-Cookie emitido por
 // unstable_update() logo abaixo — o browser acaba não aplicando a troca de escritório.
+// A detecção do cookie `__Secure-` fica centralizada em src/lib/auth/token.ts.
 export async function POST(request: Request) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  const usuarioId = token?.sub;
+  const usuarioId = await lerUsuarioIdDaSessao(request);
   if (!usuarioId) {
     return NextResponse.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   }

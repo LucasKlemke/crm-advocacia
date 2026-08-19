@@ -73,7 +73,8 @@ export function ConviteForm({ onSucesso }: ConviteFormProps = {}) {
           onValueChange={(value) => setRole((value as RoleMembro) ?? CARGO_PADRAO)}
         >
           <SelectTrigger id="role" className="w-full">
-            <SelectValue />
+            {/* Sem children o Base UI mostra o valor cru ("admin"); o label vem do mapa. */}
+            <SelectValue>{(valor: RoleMembro | null) => (valor ? labelRole(valor) : "")}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {ROLES_MEMBRO.map((opcao) => (

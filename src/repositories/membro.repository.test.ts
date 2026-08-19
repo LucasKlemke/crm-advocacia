@@ -124,6 +124,20 @@ describe("membroRepository", () => {
     expect(lista[0].usuario.id).toBe(usuarioId);
   });
 
+  it("não expõe senhaHash (nem outros campos sensíveis) do usuário na listagem", async () => {
+    const criado = await membroRepository.create({
+      usuario: { connect: { id: usuarioId } },
+      escritorio: { connect: { id: escritorioId } },
+    });
+    membrosCriados.push(criado.id);
+
+    const lista = await membroRepository.listarComUsuarioPorEscritorio(escritorioId);
+
+    expect(lista[0].usuario).not.toHaveProperty("senhaHash");
+    expect(Object.keys(lista[0].usuario).sort()).toEqual(["email", "id", "nome", "telefone"]);
+    expect(JSON.stringify(lista)).not.toContain("senhaHash");
+  });
+
   it("conta owners de um escritório", async () => {
     const criado = await membroRepository.create({
       usuario: { connect: { id: usuarioId } },

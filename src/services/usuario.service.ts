@@ -89,6 +89,12 @@ export const usuarioService = {
     }
   },
 
+  // Fonte de verdade do perfil exibido na UI: o JWT carrega nome/e-mail do momento do
+  // login e não é renovado pelo PATCH /api/perfil, então a página lê o usuário do banco.
+  async obterPerfil(usuarioId: string): Promise<Usuario | null> {
+    return usuarioRepository.findById(usuarioId);
+  },
+
   async atualizarPerfil(usuarioId: string, dados: AtualizarPerfilInput): Promise<Usuario> {
     if (dados.email) {
       const existente = await usuarioRepository.findByEmail(dados.email);

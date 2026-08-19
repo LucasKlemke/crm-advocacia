@@ -35,3 +35,14 @@ export function violaUltimoOwner(alvoRoleAtual: RoleMembro, totalOwners: number)
 export function ehAutoAlvo(atorUsuarioId: string, alvoUsuarioId: string): boolean {
   return atorUsuarioId === alvoUsuarioId;
 }
+
+// Comentário é conteúdo autoral: só o autor edita o próprio texto.
+export function podeEditarComentario(ehAutor: boolean): boolean {
+  return ehAutor;
+}
+
+// Excluir é moderação: o autor pode remover o que escreveu, e owner/admin podem
+// remover comentário de qualquer membro do escritório.
+export function podeModerarComentario(atorRole: RoleMembro, ehAutor: boolean): boolean {
+  return ehAutor || atorRole === "owner" || atorRole === "admin";
+}

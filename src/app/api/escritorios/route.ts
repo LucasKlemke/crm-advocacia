@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { z } from "zod";
 import { unstable_update } from "@/lib/auth/config";
+import { lerUsuarioIdDaSessao } from "@/lib/auth/token";
 import { escritorioService } from "@/services/escritorio.service";
-
-const criarEscritorioSchema = z.object({
-  nome: z.string().min(1, "Informe o nome do escritório"),
-  oabResponsavel: z.string().optional(),
-  telefoneWhatsapp: z.string().optional(),
-});
+import { criarEscritorioSchema } from "./schemas";
 
 // Sessão exigida (onboarding do primeiro escritório ou criação de outro pelo switcher),
 // mas NÃO passa por getTenantContext() — o usuário pode não ter nenhum escritório ainda.
 //
-// Usa getToken() (leitura pura do JWT) em vez de auth() aqui: auth() sempre reemite um
+// Usa leitura pura do JWT em vez de auth() aqui: auth() sempre reemite um
 // Set-Cookie de "rolling refresh" da sessão JWT, e como este handler já emite outro
 // Set-Cookie via unstable_update(), os dois juntos confundem o cookie jar do browser
-// (a sessão nunca reflete o escritório recém-criado). getToken() só lê, sem gravar.
+// (a sessão nunca reflete o escritório recém-criado). lerUsuarioIdDaSessao() só lê, sem
+// gravar — e cuida da detecção do cookie `__Secure-` (ver src/lib/auth/token.ts).
 export async function POST(request: Request) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  const usuarioId = token?.sub;
+  const usuarioId = await lerUsuarioIdDaSessao(request);
   if (!usuarioId) {
     return NextResponse.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   }

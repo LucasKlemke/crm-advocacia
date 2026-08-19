@@ -7,7 +7,7 @@ import { MoreHorizontal } from "lucide-react";
 import { podeGerenciarMembro, ehAutoAlvo } from "@/lib/auth/permissoes";
 import type { RoleMembro } from "@prisma/client";
 import { ROLES_MEMBRO, labelRole } from "@/lib/utils/role";
-import { AvatarIniciais } from "@/components/configuracoes/avatar-iniciais";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import {
   Table,
   TableBody,
@@ -141,7 +141,9 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
                         aria-label={`Cargo de ${membro.usuario.nome}`}
                         className="w-36 rounded-full"
                       >
-                        <SelectValue />
+                        <SelectValue>
+                          {(valor: RoleMembro | null) => (valor ? labelRole(valor) : "")}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {ROLES_MEMBRO.map((role) => (

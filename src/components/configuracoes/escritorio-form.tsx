@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function campoOpcional(valor: FormDataEntryValue | null): string {
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
 export interface EscritorioFormProps {
   escritorio: { nome: string; oabResponsavel: string | null; telefoneWhatsapp: string | null };
   somenteLeitura: boolean;
@@ -24,10 +28,13 @@ export function EscritorioForm({ escritorio, somenteLeitura }: EscritorioFormPro
     setCarregando(true);
 
     const formData = new FormData(event.currentTarget);
+    // Campos opcionais vão como string (vazia inclusive): omitir o campo do JSON faria a
+    // API ignorá-lo (schema `.optional()`), e o usuário nunca conseguiria limpar OAB ou
+    // WhatsApp — o toast dizia "salvo" sem nada ter mudado.
     const payload = {
       nome: formData.get("nome"),
-      oabResponsavel: formData.get("oabResponsavel") || undefined,
-      telefoneWhatsapp: formData.get("telefoneWhatsapp") || undefined,
+      oabResponsavel: campoOpcional(formData.get("oabResponsavel")),
+      telefoneWhatsapp: campoOpcional(formData.get("telefoneWhatsapp")),
     };
 
     try {

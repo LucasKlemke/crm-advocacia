@@ -78,4 +78,20 @@ describe("ConviteForm", () => {
       })
     );
   });
+
+  // Base UI mostra o valor cru no gatilho quando o SelectValue não formata: o usuário
+  // escolhia "Administrador" e via "admin".
+  it("mostra o label do cargo escolhido no gatilho, não o valor cru", async () => {
+    const user = userEvent.setup();
+
+    render(<ConviteForm />);
+    const gatilho = screen.getByLabelText("Cargo");
+    expect(gatilho).toHaveTextContent("Padrão");
+
+    await user.click(gatilho);
+    await user.click(await screen.findByRole("option", { name: "Administrador" }));
+
+    expect(gatilho).toHaveTextContent("Administrador");
+    expect(gatilho).not.toHaveTextContent("admin");
+  });
 });

@@ -16,9 +16,10 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 
 ## Gestão de Clientes
 
-- **RN04** — Cliente com casos vinculados não pode ser excluído permanentemente, apenas inativado; histórico preservado. *(`ClienteService`)*
+- **RN04 (revisada)** — Cliente nunca é excluído permanentemente: "desativar" grava a data em `cliente.soft_deleted_at` (soft delete), e cliente ativo é simplesmente `soft_deleted_at IS NULL`. O cadastro e todo o histórico vinculado (casos, comentários, mensagens) são preservados, e a operação é reversível por "Restaurar". A listagem omite os desativados por padrão, com filtro explícito para exibi-los. *(`ClienteService`)*
 - **RN05 (revisada)** — CPF único **dentro do mesmo escritório**; o mesmo CPF pode existir em escritórios diferentes (são tenants distintos). Bloquear apenas duplicidade dentro do próprio tenant. *(`ClienteService`, constraint composta `@@unique([escritorio_id, cpf])`)*
   - No RFC original, o CPF era único globalmente — fazia sentido em um sistema de usuário único.
+- **RN05a (nova)** — CPF, telefone e e-mail do cliente são validados no cadastro e na edição: CPF pelos dígitos verificadores, telefone como celular brasileiro completo (`+55` + DDD + nono dígito) e e-mail pela forma. Campo opcional em branco continua válido; preenchido, precisa estar correto — um telefone incompleto só apareceria como falha na hora do disparo de WhatsApp (RN13). Armazenados sem máscara; a formatação é de apresentação. *(`ClienteService` + schemas zod das rotas)*
 - **RN06** — Todo caso deve pertencer a um cliente existente, ativo, e do mesmo escritório do usuário logado. *(`CasoService`)*
 
 ## Gestão de Casos
@@ -46,6 +47,11 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 - **RN17** — Tamanho máximo por arquivo: 10 MB. *(`DocumentoService`, campo `documento.tamanho_kb`)*
 - **RN18** — Tipos aceitos: PDF, DOCX, JPG, PNG, JPEG; outros formatos rejeitados com mensagem de erro clara. *(`DocumentoService`)*
 
+## Auditoria e comentários
+
+- **RN20 (nova)** — Toda operação de escrita do sistema gera um registro em `log` respondendo três perguntas: **quem fez** (`usuario_id`), **quando fez** (`created_at`) e **o que fez** (`acao` + `entidade` + `entidade_id` + `resumo`, com o diff dos campos alterados em `dados`). O log é gravado na **mesma transação** da mudança que o originou — uma escrita que falha não deixa log órfão, e um log existente sempre corresponde a uma mudança efetivada. Atualização que não altera nenhum campo não gera log. A tabela é *append-only*: não há update nem delete de registro de auditoria. *(`LogService`, tabela `log`)*
+- **RN21 (nova)** — Comentários substituem o campo livre de observações e são ancorados a uma entidade por `(escopo, escopo_id)` — hoje `cliente`, extensível a casos/prazos sem tabela nova. Como não há FK para o alvo, o Service valida que o alvo pertence ao escritório da sessão antes de ancorar o comentário (RN19). Editar o texto é exclusivo do autor (nem `owner` edita fala alheia); excluir é moderação e cabe ao autor, `owner` ou `admin`. Exclusão é soft delete, e toda operação sobre comentário alimenta o `log` (RN20). *(`ComentarioService`, tabela `comentario`)*
+
 ## Requisitos não funcionais que afetam regras de negócio
 
 - **RNF03/RNF04/RNF05** — Autenticação JWT (com `escritorioId` + `role` embutidos), senha com bcrypt, tudo via HTTPS.
@@ -60,8 +66,11 @@ Derivados dos fluxos principais (cadastro de escritório, login, convite de cola
 - **FA-01** — Login com credenciais inválidas → mensagem de erro, permanece na tela.
 - **FA-02** — Cancelamento do cadastro de cliente → modal fecha sem salvar.
 - **FA-03** — CPF já cadastrado **no mesmo escritório** → erro de duplicidade, modal permanece aberto (aplica RN05 revisada).
+- **FA-03a (nova)** — CPF pertence a um cliente **desativado** do mesmo escritório → erro específico orientando restaurar o cadastro existente em vez de criar outro (aplica RN04 + RN05).
 - **FA-04** — Cancelamento do cadastro de caso → modal fecha sem criar.
 - **FA-05** — Tentativa de criar caso sem cliente selecionado → validação de campo obrigatório, não prossegue (aplica RN06).
 - **FA-06 (nova)** — Cadastro com e-mail já usado por outro usuário → erro de duplicidade, cadastro não prossegue (aplica RN02b).
 - **FA-07 (nova)** — Membro `padrao` tenta convidar/gerenciar outro membro → ação bloqueada (403), a UI esconde as ações de gestão (aplica RN02a).
 - **FA-08 (nova)** — Usuário autenticado tenta acessar (via URL direta ou manipulação de request) um recurso de outro escritório → sistema retorna 404, sem confirmar existência do recurso (aplica RN19).
+- **FA-09 (nova)** — Ação em lote recebe ids de clientes de outro escritório ou já desativados → esses ids são silenciosamente descartados e contados como ignorados; apenas os alvos legítimos são afetados (aplica RN19 + RN04).
+- **FA-10 (nova)** — Usuário tenta editar comentário de outra pessoa → ação bloqueada (403) e a UI não oferece a opção (aplica RN21).

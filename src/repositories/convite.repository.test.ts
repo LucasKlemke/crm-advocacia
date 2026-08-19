@@ -120,6 +120,31 @@ describe("conviteRepository", () => {
     expect(lista.some((c) => c.id === criado.id)).toBe(true);
   });
 
+  it("lista como pendente apenas o convite dentro do prazo", async () => {
+    const valido = await conviteRepository.create({
+      email: `pendente-valido-${Date.now()}@teste.com`,
+      escritorio: { connect: { id: escritorioId } },
+      criadoPor: { connect: { id: usuarioId } },
+    });
+    convitesCriados.push(valido.id);
+
+    const expirado = await conviteRepository.create({
+      email: `pendente-expirado-${Date.now()}@teste.com`,
+      escritorio: { connect: { id: escritorioId } },
+      criadoPor: { connect: { id: usuarioId } },
+      expiraEm: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    });
+    convitesCriados.push(expirado.id);
+
+    const pendentes = await conviteRepository.listarPendentesPorEscritorio(escritorioId);
+
+    expect(pendentes.some((c) => c.id === valido.id)).toBe(true);
+    expect(pendentes.some((c) => c.id === expirado.id)).toBe(false);
+    // a listagem crua continua enxergando os dois
+    const todos = await conviteRepository.listarPorEscritorio(escritorioId);
+    expect(todos.some((c) => c.id === expirado.id)).toBe(true);
+  });
+
   it("remove um convite", async () => {
     const criado = await conviteRepository.create({
       email: `remover-${Date.now()}@teste.com`,

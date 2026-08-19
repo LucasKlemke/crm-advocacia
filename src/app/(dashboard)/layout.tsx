@@ -7,6 +7,7 @@ import { membroService } from "@/services/membro.service";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { EscritorioSwitcher } from "@/components/shell/escritorio-switcher";
 
@@ -45,7 +46,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           usuario={{ nome: session.user.name ?? "", email: session.user.email ?? "" }}
         />
         <SidebarInset className="min-h-0 overflow-y-auto">
-          <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
+          <main className="flex flex-1 flex-col gap-4 p-4">
+            <QueryProvider escritorioId={session.user.escritorioId}>{children}</QueryProvider>
+          </main>
         </SidebarInset>
         <Toaster />
       </SidebarProvider>
