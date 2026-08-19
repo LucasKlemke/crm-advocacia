@@ -126,7 +126,14 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
                   <div className="flex items-center gap-3">
                     <AvatarIniciais nome={membro.usuario.nome} />
                     <div className="flex flex-col">
-                      <span className="font-medium text-foreground">{membro.usuario.nome}</span>
+                      <span className="flex items-center gap-2 font-medium text-foreground">
+                        {membro.usuario.nome}
+                        {ehAutoAlvo(atorUsuarioId, membro.usuario.id) ? (
+                          <Badge variant="secondary" className="font-normal">
+                            Você
+                          </Badge>
+                        ) : null}
+                      </span>
                       <span className="text-sm text-muted-foreground">{membro.usuario.email}</span>
                     </div>
                   </div>
