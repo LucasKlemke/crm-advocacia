@@ -64,4 +64,41 @@ describe("MembrosTable", () => {
     expect(global.fetch).toHaveBeenCalledWith("/api/membros/membro-2", { method: "DELETE" });
     expect(refresh).toHaveBeenCalled();
   });
+
+  it("mostra o nome do membro no diálogo de confirmação", async () => {
+    const user = userEvent.setup();
+    render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
+
+    await user.click(screen.getByLabelText("Ações de Fulano Padrao"));
+    await user.click(await screen.findByRole("menuitem", { name: "Remover" }));
+
+    expect(screen.getByText(/fulano padrao perderá acesso/i)).toBeInTheDocument();
+  });
+
+  it("mostra mensagem de erro se a remoção falhar na rede", async () => {
+    const { toast } = jest.requireMock("sonner") as { toast: { error: jest.Mock } };
+    (global.fetch as jest.Mock | undefined) = jest.fn().mockRejectedValue(new Error("offline"));
+    const user = userEvent.setup();
+
+    render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
+
+    await user.click(screen.getByLabelText("Ações de Fulano Padrao"));
+    await user.click(await screen.findByRole("menuitem", { name: "Remover" }));
+    await user.click(await screen.findByRole("button", { name: "Remover" }));
+
+    expect(toast.error).toHaveBeenCalledWith("Não foi possível remover o membro.");
+  });
+
+  it("mostra mensagem de erro se a alteração de cargo falhar na rede", async () => {
+    const { toast } = jest.requireMock("sonner") as { toast: { error: jest.Mock } };
+    (global.fetch as jest.Mock | undefined) = jest.fn().mockRejectedValue(new Error("offline"));
+    const user = userEvent.setup();
+
+    render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
+
+    await user.click(screen.getByLabelText("Cargo de Fulano Padrao"));
+    await user.click(await screen.findByRole("option", { name: "Administrador" }));
+
+    expect(toast.error).toHaveBeenCalledWith("Não foi possível alterar o papel do membro.");
+  });
 });

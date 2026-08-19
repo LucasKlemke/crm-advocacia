@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import { podeGerenciarMembro, ehAutoAlvo } from "@/lib/auth/permissoes";
 import type { RoleMembro } from "@prisma/client";
-import { iniciais } from "@/lib/utils/nome";
-import { labelRole } from "@/lib/utils/role";
+import { ROLES_MEMBRO, labelRole } from "@/lib/utils/role";
+import { AvatarIniciais } from "@/components/configuracoes/avatar-iniciais";
 import {
   Table,
   TableBody,
@@ -16,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -55,30 +54,38 @@ export interface MembrosTableProps {
   atorRole: RoleMembro;
 }
 
-const ROLES: RoleMembro[] = ["owner", "admin", "padrao"];
-
 export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableProps) {
   const router = useRouter();
-  const [removendoId, setRemovendoId] = useState<string | null>(null);
   const [membroParaRemover, setMembroParaRemover] = useState<MembroLinha | null>(null);
+  const [removendo, setRemovendo] = useState(false);
+  const [nomeMembroExibido, setNomeMembroExibido] = useState("");
+
+  function abrirRemocao(membro: MembroLinha) {
+    setNomeMembroExibido(membro.usuario.nome);
+    setMembroParaRemover(membro);
+  }
 
   async function alterarRole(membroId: string, role: RoleMembro) {
-    const response = await fetch(`/api/membros/${membroId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      toast.error(data?.error ?? "Não foi possível alterar o papel do membro.");
-      return;
+    try {
+      const response = await fetch(`/api/membros/${membroId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        toast.error(data?.error ?? "Não foi possível alterar o papel do membro.");
+        return;
+      }
+      toast.success("Cargo atualizado.");
+      router.refresh();
+    } catch {
+      toast.error("Não foi possível alterar o papel do membro.");
     }
-    toast.success("Cargo atualizado.");
-    router.refresh();
   }
 
   async function remover(membroId: string) {
-    setRemovendoId(membroId);
+    setRemovendo(true);
     try {
       const response = await fetch(`/api/membros/${membroId}`, { method: "DELETE" });
       if (!response.ok) {
@@ -88,8 +95,10 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
       }
       toast.success("Membro removido.");
       router.refresh();
+    } catch {
+      toast.error("Não foi possível remover o membro.");
     } finally {
-      setRemovendoId(null);
+      setRemovendo(false);
       setMembroParaRemover(null);
     }
   }
@@ -115,11 +124,7 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
               <TableRow key={membro.id}>
                 <TableCell className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <Avatar className="size-8 rounded-full">
-                      <AvatarFallback className="rounded-full text-xs">
-                        {iniciais(membro.usuario.nome)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <AvatarIniciais nome={membro.usuario.nome} />
                     <div className="flex flex-col">
                       <span className="font-medium text-foreground">{membro.usuario.nome}</span>
                       <span className="text-sm text-muted-foreground">{membro.usuario.email}</span>
@@ -139,7 +144,7 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ROLES.map((role) => (
+                        {ROLES_MEMBRO.map((role) => (
                           <SelectItem key={role} value={role}>
                             {labelRole(role)}
                           </SelectItem>
@@ -172,7 +177,7 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           variant="destructive"
-                          onClick={() => setMembroParaRemover(membro)}
+                          onClick={() => abrirRemocao(membro)}
                         >
                           Remover
                         </DropdownMenuItem>
@@ -196,13 +201,13 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
           <AlertDialogHeader>
             <AlertDialogTitle>Remover membro</AlertDialogTitle>
             <AlertDialogDescription>
-              {membroParaRemover?.usuario.nome} perderá acesso a este escritório.
+              {nomeMembroExibido} perderá acesso a este escritório.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={removendoId !== null}
+              disabled={removendo}
               onClick={() => membroParaRemover && remover(membroParaRemover.id)}
             >
               Remover
