@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { escritorioRepository } from "@/repositories/escritorio.repository";
 import { membroRepository } from "@/repositories/membro.repository";
 import { PermissaoNegadaError } from "@/services/membro.service";
+import { statusService } from "@/services/status.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Escritorio, Membro } from "@prisma/client";
 
@@ -56,6 +57,11 @@ export const escritorioService = {
         },
         tx
       );
+
+      // Todo escritório novo já nasce com um funil padrão de Status, um por TipoStatus,
+      // para que o kanban não comece vazio (mesma transação: escritório sem status
+      // nunca fica visível).
+      await statusService.criarPadroes(escritorio.id, tx);
 
       return { escritorio, membro };
     });
