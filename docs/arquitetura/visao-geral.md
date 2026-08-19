@@ -4,11 +4,11 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 
 ## Visão geral (C4 — Contexto)
 
-Usuários: qualquer número de **escritórios** cadastrados, cada um com um usuário titular e, opcionalmente, colaboradores — todos acessando via navegador (HTTPS).
+Usuários: qualquer número de **escritórios** cadastrados; cada usuário é um perfil global que pode participar de um ou mais escritórios (via `membro`), com um papel — `owner`, `admin` ou `padrao` — por escritório — todos acessando via navegador (HTTPS).
 
 Sistemas externos:
 - **Uazapi / WhatsApp** — REST/HTTPS, disparo de mensagens (lembretes, follow-ups, atualizações), uma conexão/número por escritório.
-- **Servidor de e-mail** — SMTP/HTTPS, alertas de prazo e e-mails transacionais (confirmação de cadastro, convite de colaborador, reset de senha).
+- **Servidor de e-mail** — SMTP/HTTPS, alertas de prazo e e-mails transacionais (confirmação de cadastro, convite de membro, reset de senha).
 
 ## Containers
 
@@ -31,7 +31,7 @@ Pipeline de toda requisição autenticada: **Auth Middleware → Tenant Context 
 | Auth Middleware | NextAuth.js | Valida JWT; extrai `usuarioId`, `escritorioId` e `role` da sessão |
 | Tenant Context | Middleware/helper interno | Injeta `escritorioId` em todo Service/Repository chamado na requisição; nenhuma query roda sem esse contexto |
 | Controllers | Route Handlers | Recebem HTTP, delegam para Services. Novos: `EscritorioController` (cadastro/dados do tenant), `UsuarioController` (convite, gestão de membros, perfil) |
-| Services | TypeScript | Regras de negócio, incluindo validação de isolamento de tenant e controle de papéis (`titular` vs `colaborador`) |
+| Services | TypeScript | Regras de negócio, incluindo validação de isolamento de tenant e controle de papéis (`owner` > `admin` > `padrao`, ver `permissoes.ts`) |
 | Repositories | Prisma ORM | Único ponto de acesso ao banco; **todo método aceita/exige `escritorioId`** e filtra por ele |
 | Clientes Externos | HTTP Clients | `UazapiClient` (WhatsApp, credenciais por escritório), `S3Client` (documentos), `EmailClient` (SMTP) |
 
@@ -47,10 +47,12 @@ Pipeline de toda requisição autenticada: **Auth Middleware → Tenant Context 
 Cada módulo segue o padrão de camadas acima, com regras de negócio concentradas no Service e acesso a dados isolado no Repository.
 
 ### Autenticação e Tenants (novo/expandido)
-- `AuthMiddleware` (valida JWT em rotas protegidas), `AuthService` (login, gera/renova token com `escritorioId` + `role`).
-- `EscritorioController` / `EscritorioService` — cadastro self-service de novo escritório (cria o tenant + o primeiro usuário como `titular`).
-- `UsuarioController` / `UsuarioService` — cadastro de usuário, convite de colaborador (apenas `titular`), edição de perfil, desativação de membro.
-- Tabelas: `escritorio`, `usuario`. Ver [../database/schema.md](../database/schema.md) e [../produto/regras-negocio.md](../produto/regras-negocio.md) RN01–RN03, RN02a.
+- `AuthMiddleware` (valida JWT em rotas protegidas), `AuthService`/`authorize.ts` (login, resolve o escritório ativo inicial — membership mais antiga).
+- `EscritorioController` / `EscritorioService` — cria escritório (onboarding ou "criar outro" pelo switcher), lê/atualiza dados do escritório ativo.
+- `UsuarioController` / `UsuarioService` — cadastro de usuário (consumindo convites pendentes automaticamente), edição de perfil, troca de senha.
+- `MembroController` / `MembroService` — lista escritórios do usuário, troca o escritório ativo da sessão (sempre revalidando a membership no banco), gestão de membros (papel, remoção) respeitando a hierarquia e a proteção do último `owner`.
+- `ConviteController` / `ConviteService` — convida (cria membership direto se o e-mail já é usuário, senão grava convite pendente), lista pendentes, cancela.
+- Tabelas: `escritorio`, `usuario`, `membro`, `convite`. Ver [../database/schema.md](../database/schema.md) e [../produto/regras-negocio.md](../produto/regras-negocio.md) RN01–RN03, RN02a–RN02c.
 
 ### Gestão de Clientes
 - `ClienteController`, `ClienteService` (unicidade de CPF **por escritório**, inativação vs. exclusão), `ClienteRepository`.
@@ -72,7 +74,7 @@ Cada módulo segue o padrão de camadas acima, com regras de negócio concentrad
 
 ### Mensagens WhatsApp
 - `MensagemController`, `MensagemService` (substituição de variáveis `{{nome}}`/`{{processo}}`, validação de telefone, controle de tentativas), `MensagemRepository`, `UazapiClient`.
-- Templates (`template_mensagem`) são por escritório — colaboradores do mesmo tenant compartilham os mesmos templates.
+- Templates (`template_mensagem`) são por escritório — todos os membros do mesmo tenant compartilham os mesmos templates.
 - Regras: RN13, RN15, RN16.
 
 ### Anotações e Documentos

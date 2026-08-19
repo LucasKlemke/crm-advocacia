@@ -2,7 +2,9 @@
 
 Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia (seção 5.2), evoluído para **multi-tenant**. Ver também [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md), [../produto/regras-negocio.md](../produto/regras-negocio.md) e [migrations-prisma.md](migrations-prisma.md) (como aplicar mudanças neste schema).
 
-12 tabelas (as 10 originais + `escritorio` e a evolução de `advogado` para `usuario`), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens e documentos. PK `uuid` em todas.
+14 tabelas (as 10 originais + `escritorio`, a evolução de `advogado` para `usuario`, e `membro`/`convite` para o modelo N:N usuário↔escritório), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens e documentos. PK `uuid` em todas.
+
+> **Multi-tenant real (evolução sobre o RFC original):** `usuario` deixou de pertencer a um único `escritorio` — vira um perfil global (um e-mail, uma senha), e a associação a um ou mais escritórios, com um papel por escritório, vive em `membro`. Isso permite a um mesmo profissional participar de múltiplos escritórios com papéis diferentes em cada um. `convite` guarda convites pendentes por e-mail, consumidos automaticamente no cadastro (ver [../produto/regras-negocio.md](../produto/regras-negocio.md)).
 
 ## `escritorio` (novo — tenant)
 
@@ -17,24 +19,50 @@ Representa cada escritório de advocacia cadastrado na plataforma. Toda entidade
 | ativo | boolean | Permite suspender um tenant sem apagar dados |
 | created_at / updated_at | timestamp | |
 
-## `usuario` (substitui `advogado`)
+## `usuario` (substitui `advogado`; perfil global, não pertence a um escritório)
 
-Usuários que acessam o sistema, sempre vinculados a um escritório.
+Perfil de quem acessa o sistema. Não tem `escritorio_id` — a associação a escritório(s) e o papel em cada um vivem em `membro`.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| escritorio_id | uuid | FK → `escritorio` (obrigatório) |
 | nome | varchar(140) | Nome completo |
-| email | varchar | Login; único globalmente (um e-mail não pode estar em dois escritórios) |
+| email | varchar(255) | Login; único globalmente |
 | senha_hash | varchar(255) | Hash bcrypt |
-| oab | varchar(20) | Número da OAB (opcional para colaboradores não-advogados, ex. estagiário) |
+| avatar_url | varchar(500) | Reservado para upload de avatar via S3 (ainda não implementado) |
+| oab | varchar(20) | Número da OAB (opcional) |
 | telefone | varchar(20) | Telefone de contato |
-| role | varchar(20) | `titular` ou `colaborador` (RN02a) |
-| ativo | boolean | Desativação de membro pelo titular, sem apagar histórico de autoria |
+| ativo | boolean | Desativação global da conta, sem apagar histórico de autoria |
 | created_at / updated_at | timestamp | |
 
-> O primeiro `usuario` de um `escritorio` é sempre criado com `role = titular` no fluxo de cadastro self-service. Apenas um `titular` por escritório é necessário para autorizar convites, mas nada impede promover mais de um colaborador a `titular` futuramente (decisão de produto, não uma restrição do banco).
+Cadastro self-service coleta só nome/e-mail/senha. Se já havia `convite` pendente para o e-mail, o cadastro consome todos os convites na mesma transação e cria as respectivas linhas de `membro` — senão o usuário segue para o onboarding, que cria seu primeiro escritório (e vira `owner` dele).
+
+## `membro` (novo — associação N:N usuário↔escritório com papel)
+
+Tabela híbrida: cada linha é a participação de um `usuario` em um `escritorio`, com um papel.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| usuario_id | uuid | FK → `usuario`, `onDelete: Cascade` |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| role | varchar(20) | `owner` \| `admin` \| `padrao` (hierarquia: owner > admin > padrao) |
+| created_at / updated_at | timestamp | |
+
+`@@unique([usuario_id, escritorio_id])` — um usuário tem no máximo uma membership por escritório. `@@index([escritorio_id])` e `@@index([usuario_id])` para as duas direções de consulta (membros de um escritório; escritórios de um usuário). O escritório ativo da sessão é resolvido contra esta tabela a cada login/troca (nunca confiando em payload cru do client) — ver [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md). Regras de negócio (nunca remover/rebaixar o último `owner`, só `owner` promove a `owner`, sem auto-remoção) ficam no Service, não em constraint de banco.
+
+## `convite` (novo — convite pendente de e-mail para um escritório)
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| email | varchar(255) | E-mail convidado (normalizado, minúsculo/trim) |
+| role | varchar(20) | Papel que o convidado terá ao aceitar |
+| criado_por_usuario_id | uuid | FK → `usuario` — quem convidou |
+| created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, email])`, `@@index([email])`. Convite pendente = linha existente (evita índice parcial); aceitar (cadastro com e-mail convidado) ou cancelar removem a linha dentro de uma transação.
 
 ## `cliente`
 
@@ -167,7 +195,10 @@ Arquivos anexados a um caso.
 
 | Origem | Cardinalidade | Destino |
 |---|---|---|
-| `usuario` | N:1 | `escritorio` |
+| `membro` | N:1 | `usuario` |
+| `membro` | N:1 | `escritorio` |
+| `convite` | N:1 | `escritorio` |
+| `convite` | N:1 | `usuario` (criado por) |
 | `cliente` | N:1 | `escritorio` |
 | `estagio_pipeline` | N:1 | `escritorio` |
 | `template_mensagem` | N:1 | `escritorio` |
@@ -187,9 +218,9 @@ Arquivos anexados a um caso.
 ## Notas de implementação (Prisma)
 
 - Usar `@id @default(uuid())` em todas as PKs.
-- `usuario.email` com `@unique` (global — um e-mail é a identidade de login, não pode repetir entre escritórios).
+- `usuario.email` com `@unique` (global — identidade de login única, independente de quantos escritórios o usuário integra via `membro`).
 - `cliente.cpf` com `@@unique([escritorio_id, cpf])` — único **composto** por escritório, não globalmente.
-- Índice composto `@@index([escritorio_id])` em `cliente`, `estagio_pipeline`, `template_mensagem`, `usuario` para performance de queries escopadas por tenant.
+- Índice composto `@@index([escritorio_id])` em `cliente`, `estagio_pipeline`, `template_mensagem`, `membro` para performance de queries escopadas por tenant.
 - `onDelete: Restrict` (ou equivalente) em `caso.cliente_id` para impedir exclusão física de cliente com casos — a regra é sempre inativar, nunca deletar (RN04).
 - `estagio_pipeline` sem FK obrigatória de exclusão automática: a validação "coluna vazia antes de excluir" (RN09) é regra de aplicação no `EstagioService`, não constraint de banco.
 - **Todo Repository que consulta `caso`, `prazo`, `anotacao`, `documento` ou `historico_mensagem` deve fazer join até `cliente`/`estagio_pipeline` para aplicar o filtro de `escritorio_id`** — essas tabelas não guardam o tenant diretamente para evitar duplicação de dado derivável, mas isso exige disciplina na camada de Repository (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)). Alternativa mais defensiva, se preferível na implementação: desnormalizar `escritorio_id` também nessas tabelas para permitir filtro direto sem join — trade-off entre simplicidade de schema e robustez contra bugs de isolamento.

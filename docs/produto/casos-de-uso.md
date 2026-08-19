@@ -4,29 +4,36 @@ Documentação mínima exigida pela linha Web Apps ([directions-webapp.md](https
 
 ## Papéis (personas)
 
-- **Titular** — usuário que cadastrou o escritório; único que gerencia outros usuários.
-- **Colaborador** — usuário convidado pelo titular, compartilha clientes/casos/templates do mesmo escritório, sem gerenciar membros.
+> Terminologia evoluiu de "titular"/"colaborador" (RFC original, 1 usuário : 1 escritório) para papéis por escritório via `membro`, já que um mesmo usuário pode pertencer a vários escritórios com papéis diferentes em cada um (ver RN02/RN02a em [regras-negocio.md](regras-negocio.md)).
+
+- **Owner** — criou o escritório (ou foi promovido); gerencia membros e dados do escritório; todo escritório sempre tem ao menos um.
+- **Admin** — gerencia membros de nível igual/inferior (exceto promover a owner), edita dados do escritório.
+- **Padrao** — compartilha clientes/casos/templates do escritório, sem gerenciar membros nem editar dados do escritório.
 - **Sistema** — ações automáticas sem usuário logado (agendador de notificações).
 
-## 1. Cadastro de escritório e login
+## 1. Cadastro e login
 
-> Como um advogado autônomo ou escritório, quero me cadastrar criando meu próprio tenant, para começar a usar o CRM sem depender de nenhum administrador da plataforma.
+> Como um advogado autônomo, quero me cadastrar com nome/e-mail/senha e criar meu próprio escritório, para começar a usar o CRM sem depender de nenhum administrador da plataforma.
 
-- Critérios de aceite: cadastro cria `escritorio` + `usuario` titular numa única operação (RN02); e-mail único globalmente (RN02b, FA-06); login exige sessão válida para qualquer recurso (RN01); credenciais inválidas mantêm o usuário na tela de login com erro (FA-01).
+- Critérios de aceite: cadastro cria só o `usuario` (perfil global) numa operação (RN02); sem convite pendente, segue para o onboarding, que cria `escritorio` + `membro` owner numa única transação; e-mail único globalmente (RN02b, FA-06); login exige sessão válida para qualquer recurso (RN01); credenciais inválidas mantêm o usuário na tela de login com erro (FA-01).
 
-## 2. Gestão de colaboradores
+## 2. Gestão de membros e convites
 
-> Como titular, quero convidar colegas do meu escritório para o sistema, para que todos compartilhem a mesma base de clientes e casos sem duplicar cadastro.
+> Como owner/admin, quero convidar colegas do meu escritório para o sistema, para que todos compartilhem a mesma base de clientes e casos sem duplicar cadastro.
 
-- Critérios de aceite: apenas titular convida/desativa membros (RN02a); colaborador que tenta gerenciar membros é bloqueado com mensagem explicativa (FA-07).
+- Critérios de aceite: apenas owner/admin convidam/gerenciam membros (RN02a); membro `padrao` que tenta gerenciar membros é bloqueado com mensagem explicativa (FA-07); convidar um e-mail já cadastrado cria a membership na hora, senão grava um convite pendente consumido no cadastro (RN02).
 
-> Como colaborador, quero acessar os mesmos clientes, casos e templates de mensagem do meu escritório, para trabalhar em conjunto com o titular sem re-cadastrar nada.
+> Como membro `padrao`, quero acessar os mesmos clientes, casos e templates de mensagem do meu escritório, para trabalhar em conjunto com o resto do time sem re-cadastrar nada.
 
-- Critérios de aceite: templates de mensagem compartilhados entre todos os usuários do tenant (RN16a); isolamento continua valendo entre escritórios diferentes, nunca entre usuários do mesmo escritório (RN19).
+- Critérios de aceite: templates de mensagem compartilhados entre todos os membros do tenant (RN16a); isolamento continua valendo entre escritórios diferentes, nunca entre membros do mesmo escritório (RN19).
+
+> Como usuário com mais de um escritório, quero trocar o escritório ativo pelo seletor do header, para alternar de contexto sem precisar fazer logout/login.
+
+- Critérios de aceite: a troca só é aceita para um escritório onde o usuário é membro, revalidado contra o banco (RN19); "criar escritório" pelo seletor leva ao mesmo fluxo de onboarding.
 
 ## 3. Cadastro e gestão de clientes
 
-> Como usuário do escritório (titular ou colaborador), quero cadastrar um cliente com CPF, telefone e dados de contato, para centralizar o histórico dele em vez de espalhar informação em planilhas/WhatsApp.
+> Como membro do escritório (qualquer papel), quero cadastrar um cliente com CPF, telefone e dados de contato, para centralizar o histórico dele em vez de espalhar informação em planilhas/WhatsApp.
 
 - Critérios de aceite: CPF único dentro do escritório, permitido repetir entre escritórios diferentes (RN05); tentativa de duplicar CPF no mesmo escritório mostra erro sem fechar o formulário (FA-03); cancelar o formulário não salva nada (FA-02).
 
