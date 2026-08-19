@@ -1,0 +1,109 @@
+/**
+ * @jest-environment node
+ */
+import { prisma } from "@/lib/prisma";
+import { comentarioRepository } from "./comentario.repository";
+import { escritorioRepository } from "./escritorio.repository";
+import { usuarioRepository } from "./usuario.repository";
+
+describe("comentarioRepository", () => {
+  let escritorioId: string;
+  let outroEscritorioId: string;
+  let autorId: string;
+
+  beforeAll(async () => {
+    escritorioId = (await escritorioRepository.create({ nome: "Escritório Comentário Repo" })).id;
+    outroEscritorioId = (await escritorioRepository.create({ nome: "Outro Comentário Repo" })).id;
+    autorId = (
+      await usuarioRepository.create({
+        nome: "Autora",
+        email: `autora-comentario-${Date.now()}@teste.com`,
+        senhaHash: "hash",
+      })
+    ).id;
+  });
+
+  afterEach(async () => {
+    await prisma.comentario.deleteMany({
+      where: { escritorioId: { in: [escritorioId, outroEscritorioId] } },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.escritorio.deleteMany({
+      where: { id: { in: [escritorioId, outroEscritorioId] } },
+    });
+    await prisma.usuario.delete({ where: { id: autorId } });
+    await prisma.$disconnect();
+  });
+
+  function criar(escritorio: string, escopoId: string, conteudo: string) {
+    return comentarioRepository.create({
+      escopo: "cliente",
+      escopoId,
+      conteudo,
+      escritorio: { connect: { id: escritorio } },
+      autor: { connect: { id: autorId } },
+    });
+  }
+
+  it("lista os comentários do escopo com o autor embutido", async () => {
+    await criar(escritorioId, "cliente-1", "Primeiro contato feito.");
+
+    const comentarios = await comentarioRepository.listarPorEscopo(
+      escritorioId,
+      "cliente",
+      "cliente-1"
+    );
+    expect(comentarios).toHaveLength(1);
+    expect(comentarios[0].autor.nome).toBe("Autora");
+  });
+
+  it("não mistura comentários de escopos diferentes", async () => {
+    await criar(escritorioId, "cliente-1", "Do cliente 1");
+    await criar(escritorioId, "cliente-2", "Do cliente 2");
+
+    const comentarios = await comentarioRepository.listarPorEscopo(
+      escritorioId,
+      "cliente",
+      "cliente-1"
+    );
+    expect(comentarios.map((c) => c.conteudo)).toEqual(["Do cliente 1"]);
+  });
+
+  // Mesmo escopoId em tenants distintos não pode vazar de um para o outro (RN19).
+  it("não devolve comentário de outro escritório", async () => {
+    await criar(outroEscritorioId, "cliente-1", "De outro tenant");
+    const comentarios = await comentarioRepository.listarPorEscopo(
+      escritorioId,
+      "cliente",
+      "cliente-1"
+    );
+    expect(comentarios).toHaveLength(0);
+  });
+
+  it("omite comentários soft-deletados", async () => {
+    const comentario = await criar(escritorioId, "cliente-1", "Será removido");
+    await comentarioRepository.marcarExcluido(comentario.id, new Date());
+
+    const comentarios = await comentarioRepository.listarPorEscopo(
+      escritorioId,
+      "cliente",
+      "cliente-1"
+    );
+    expect(comentarios).toHaveLength(0);
+  });
+
+  it("ordena do mais recente para o mais antigo", async () => {
+    await criar(escritorioId, "cliente-1", "Antigo");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await criar(escritorioId, "cliente-1", "Recente");
+
+    const comentarios = await comentarioRepository.listarPorEscopo(
+      escritorioId,
+      "cliente",
+      "cliente-1"
+    );
+    expect(comentarios.map((c) => c.conteudo)).toEqual(["Recente", "Antigo"]);
+  });
+});
