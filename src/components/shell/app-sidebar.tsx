@@ -7,7 +7,6 @@ import {
   CalendarClock,
   LayoutDashboard,
   MessageCircle,
-  Scale,
   Settings,
   Users,
 } from "lucide-react";
@@ -17,7 +16,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -41,18 +39,7 @@ export function AppSidebar({ usuario }: AppSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <Link
-          href="/"
-          className="flex items-center gap-2 px-2 py-1.5 font-heading text-sm font-semibold"
-        >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand text-brand-foreground">
-            <Scale className="size-4" />
-          </span>
-          <span className="group-data-[collapsible=icon]:hidden">CRM Advocacia</span>
-        </Link>
-      </SidebarHeader>
+    <Sidebar collapsible="none" className="h-full border-r border-sidebar-border">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
