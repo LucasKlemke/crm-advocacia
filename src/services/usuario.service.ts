@@ -61,8 +61,10 @@ export const usuarioService = {
         );
 
         const convitesPendentes = await conviteRepository.listarPorEmail(input.email, tx);
+        const agora = new Date();
+        const convitesValidos = convitesPendentes.filter((convite) => convite.expiraEm > agora);
 
-        for (const convite of convitesPendentes) {
+        for (const convite of convitesValidos) {
           await membroRepository.create(
             {
               usuario: { connect: { id: usuario.id } },
@@ -77,7 +79,7 @@ export const usuarioService = {
           await conviteRepository.removerTodosPorEmail(input.email, tx);
         }
 
-        return { usuario, temEscritorio: convitesPendentes.length > 0 };
+        return { usuario, temEscritorio: convitesValidos.length > 0 };
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {

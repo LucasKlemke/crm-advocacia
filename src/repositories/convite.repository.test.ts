@@ -47,6 +47,20 @@ describe("conviteRepository", () => {
     expect(convite.role).toBe("padrao");
   });
 
+  it("define expiraEm com 7 dias de validade por padrão", async () => {
+    const antes = Date.now();
+    const convite = await conviteRepository.create({
+      email: `expiracao-${Date.now()}@teste.com`,
+      escritorio: { connect: { id: escritorioId } },
+      criadoPor: { connect: { id: usuarioId } },
+    });
+    convitesCriados.push(convite.id);
+
+    const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
+    expect(convite.expiraEm.getTime()).toBeGreaterThanOrEqual(antes + seteDiasMs - 1000);
+    expect(convite.expiraEm.getTime()).toBeLessThanOrEqual(Date.now() + seteDiasMs + 1000);
+  });
+
   it("busca por id", async () => {
     const criado = await conviteRepository.create({
       email: `busca-id-${Date.now()}@teste.com`,

@@ -76,11 +76,33 @@ describe("conviteService.convidar", () => {
 
   it("rejeita convite duplicado para o mesmo e-mail no escritório", async () => {
     mockedUsuarioRepo.findByEmail.mockResolvedValue(null);
-    mockedConviteRepo.findByEscritorioEEmail.mockResolvedValue({ id: "convite-existente" } as never);
+    const amanha = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    mockedConviteRepo.findByEscritorioEEmail.mockResolvedValue({
+      id: "convite-existente",
+      expiraEm: amanha,
+    } as never);
 
     await expect(
       conviteService.convidar(ctx("owner"), { email: "novo@teste.com", role: "padrao" })
     ).rejects.toThrow(ConviteJaExisteError);
+  });
+
+  it("descarta convite expirado e cria um novo no lugar", async () => {
+    mockedUsuarioRepo.findByEmail.mockResolvedValue(null);
+    const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    mockedConviteRepo.findByEscritorioEEmail.mockResolvedValue({
+      id: "convite-expirado",
+      expiraEm: ontem,
+    } as never);
+    mockedConviteRepo.create.mockResolvedValue({ id: "convite-novo" } as never);
+
+    const resultado = await conviteService.convidar(ctx("owner"), {
+      email: "novo@teste.com",
+      role: "padrao",
+    });
+
+    expect(mockedConviteRepo.remover).toHaveBeenCalledWith("convite-expirado");
+    expect(resultado).toEqual({ tipo: "convite", convite: { id: "convite-novo" } });
   });
 });
 

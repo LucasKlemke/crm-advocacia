@@ -70,7 +70,11 @@ export const conviteService = {
       dados.email
     );
     if (conviteExistente) {
-      throw new ConviteJaExisteError();
+      if (conviteExistente.expiraEm > new Date()) {
+        throw new ConviteJaExisteError();
+      }
+      // Convite anterior expirado: descarta e deixa criar um novo abaixo.
+      await conviteRepository.remover(conviteExistente.id);
     }
 
     const convite = await conviteRepository.create({

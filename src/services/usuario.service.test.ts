@@ -69,9 +69,10 @@ describe("usuarioService.cadastrarUsuario", () => {
   it("cadastra com convite(s) pendente(s) -> cria membership(s) e consome os convites (temEscritorio true)", async () => {
     mockedUsuarioRepo.findByEmail.mockResolvedValue(null);
     mockedUsuarioRepo.create.mockResolvedValue({ id: "user-1" } as never);
+    const amanha = new Date(Date.now() + 24 * 60 * 60 * 1000);
     mockedConviteRepo.listarPorEmail.mockResolvedValue([
-      { id: "conv-1", escritorioId: "esc-1", role: "admin" },
-      { id: "conv-2", escritorioId: "esc-2", role: "padrao" },
+      { id: "conv-1", escritorioId: "esc-1", role: "admin", expiraEm: amanha },
+      { id: "conv-2", escritorioId: "esc-2", role: "padrao", expiraEm: amanha },
     ] as never);
 
     const resultado = await usuarioService.cadastrarUsuario(input);
@@ -90,6 +91,24 @@ describe("usuarioService.cadastrarUsuario", () => {
       expect.anything()
     );
     expect(resultado.temEscritorio).toBe(true);
+  });
+
+  it("ignora convites expirados ao cadastrar (nao cria membership, mas limpa a linha)", async () => {
+    mockedUsuarioRepo.findByEmail.mockResolvedValue(null);
+    mockedUsuarioRepo.create.mockResolvedValue({ id: "user-1" } as never);
+    const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    mockedConviteRepo.listarPorEmail.mockResolvedValue([
+      { id: "conv-1", escritorioId: "esc-1", role: "admin", expiraEm: ontem },
+    ] as never);
+
+    const resultado = await usuarioService.cadastrarUsuario(input);
+
+    expect(mockedMembroRepo.create).not.toHaveBeenCalled();
+    expect(mockedConviteRepo.removerTodosPorEmail).toHaveBeenCalledWith(
+      input.email,
+      expect.anything()
+    );
+    expect(resultado.temEscritorio).toBe(false);
   });
 
   it("rejeita cadastro quando a constraint única do banco é violada em condição de corrida", async () => {

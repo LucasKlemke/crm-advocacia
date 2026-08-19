@@ -77,6 +77,7 @@ model Convite {
   email               String     @db.VarChar(255)
   role                RoleMembro @default(padrao)
   criadoPorUsuarioId  String     @map("criado_por_usuario_id")
+  expiraEm            DateTime   @map("expira_em")
   createdAt           DateTime   @default(now()) @map("created_at")
   updatedAt           DateTime   @updatedAt @map("updated_at")
 
