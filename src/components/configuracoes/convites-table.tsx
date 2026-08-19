@@ -3,12 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { iniciais } from "@/lib/utils/nome";
 import { labelRole } from "@/lib/utils/role";
+import { AvatarIniciais } from "@/components/configuracoes/avatar-iniciais";
 import type { RoleMembro } from "@prisma/client";
 
 export interface ConviteLinha {
@@ -32,6 +38,8 @@ export function ConvitesTable({ convites }: { convites: ConviteLinha[] }) {
       }
       toast.success("Convite cancelado.");
       router.refresh();
+    } catch {
+      toast.error("Não foi possível cancelar o convite.");
     } finally {
       setCancelandoId(null);
     }
@@ -43,16 +51,19 @@ export function ConvitesTable({ convites }: { convites: ConviteLinha[] }) {
 
   return (
     <Table>
+      <TableHeader>
+        <TableRow className="bg-muted/40 hover:bg-muted/40">
+          <TableHead className="px-4">E-mail</TableHead>
+          <TableHead>Cargo</TableHead>
+          <TableHead className="px-4 text-right" />
+        </TableRow>
+      </TableHeader>
       <TableBody>
         {convites.map((convite) => (
           <TableRow key={convite.id}>
             <TableCell className="px-4 py-3">
               <div className="flex items-center gap-3">
-                <Avatar className="size-8 rounded-full">
-                  <AvatarFallback className="rounded-full text-xs">
-                    {iniciais(convite.email)}
-                  </AvatarFallback>
-                </Avatar>
+                <AvatarIniciais nome={convite.email} />
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">{convite.email}</span>
                   <Badge variant="outline" className="border-brand/30 text-brand">
