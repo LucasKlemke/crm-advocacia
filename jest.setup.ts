@@ -38,3 +38,21 @@ if (typeof Element !== "undefined" && !Element.prototype.hasPointerCapture) {
   Element.prototype.setPointerCapture = () => {};
   Element.prototype.releasePointerCapture = () => {};
 }
+
+// jsdom não implementa ResizeObserver, usado pelo cmdk (Command) para medir a lista —
+// sem isso qualquer teste que abra um Command (ex. StatusIconePicker) estoura
+// "ResizeObserver is not defined" ao montar.
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  class ResizeObserverPolyfill {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverPolyfill as unknown as typeof window.ResizeObserver;
+}
+
+// jsdom também não implementa scrollIntoView, usado pelo cmdk (Command) para rolar até
+// o item destacado ao navegar pela lista com teclado/mouse.
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
