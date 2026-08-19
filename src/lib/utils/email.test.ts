@@ -2,18 +2,18 @@ import { emailValido, normalizarEmail } from "@/lib/utils/email";
 
 describe("normalizarEmail", () => {
   it("remove espaços e normaliza o caixa", () => {
-    expect(normalizarEmail("  Lucas.Klemke84@Gmail.com ")).toBe("lucas.klemke84@gmail.com");
+    expect(normalizarEmail("  Maria.Silva@Exemplo.com ")).toBe("maria.silva@exemplo.com");
   });
 });
 
 describe("emailValido", () => {
   it("aceita e-mail com usuário, arroba e domínio com TLD", () => {
-    expect(emailValido("lucas.klemke84@gmail.com")).toBe(true);
-    expect(emailValido("  lucas.klemke84@gmail.com  ")).toBe(true);
+    expect(emailValido("maria.silva@exemplo.com")).toBe(true);
+    expect(emailValido("  maria.silva@exemplo.com  ")).toBe(true);
   });
 
   it("rejeita texto sem arroba", () => {
-    expect(emailValido("lucasklemketeste")).toBe(false);
+    expect(emailValido("mariasilvateste")).toBe(false);
     expect(emailValido("12345325")).toBe(false);
   });
 
@@ -24,7 +24,7 @@ describe("emailValido", () => {
   });
 
   it("rejeita e-mail com espaço interno", () => {
-    expect(emailValido("lucas klemke@gmail.com")).toBe(false);
+    expect(emailValido("maria silva@exemplo.com")).toBe(false);
   });
 
   it("rejeita string vazia", () => {

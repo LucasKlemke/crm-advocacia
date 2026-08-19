@@ -130,7 +130,7 @@ describe("ClienteDados", () => {
 
     await usuario.click(screen.getByRole("button", { name: "Editar CPF" }));
     await usuario.clear(screen.getByLabelText("CPF"));
-    await usuario.type(screen.getByLabelText("CPF"), "0836");
+    await usuario.type(screen.getByLabelText("CPF"), "1234");
     await usuario.click(screen.getByRole("button", { name: /Salvar/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/CPF inválido/);

@@ -99,9 +99,9 @@ test.describe("CRUD de clientes", () => {
 
     await page.getByRole("button", { name: "Criar novo cliente" }).click();
     await page.getByLabel(/Nome completo/).fill("Maria Silva");
-    await page.getByLabel("CPF").fill("083688379");
-    await page.getByLabel(/Telefone/).fill("47996589979");
-    await page.getByLabel(/E-mail/).fill("lucasklemketeste");
+    await page.getByLabel("CPF").fill("123456789");
+    await page.getByLabel(/Telefone/).fill("47999998888");
+    await page.getByLabel(/E-mail/).fill("mariasilvateste");
     await page.getByRole("button", { name: "Criar cliente" }).click();
 
     await expect(page.getByText(/CPF inválido/)).toBeVisible();
@@ -109,14 +109,14 @@ test.describe("CRUD de clientes", () => {
     await expect(page.getByText("E-mail inválido.")).toBeVisible();
 
     // Corrigindo os três, o cadastro passa e o CPF aparece formatado na tabela.
-    await page.getByLabel("CPF").fill("08368837995");
-    await page.getByLabel(/Telefone/).fill("5547996589979");
-    await page.getByLabel(/E-mail/).fill("lucas.klemke84@gmail.com");
+    await page.getByLabel("CPF").fill("12345678909");
+    await page.getByLabel(/Telefone/).fill("5547999998888");
+    await page.getByLabel(/E-mail/).fill("maria.silva@exemplo.com");
     await page.getByRole("button", { name: "Criar cliente" }).click();
 
     await expect(page.getByRole("dialog", { name: "Novo cliente" })).toBeHidden();
-    await expect(page.getByText("083.688.379-95")).toBeVisible();
-    await expect(page.getByText("+55 (47) 99658-9979")).toBeVisible();
+    await expect(page.getByText("123.456.789-09")).toBeVisible();
+    await expect(page.getByText("+55 (47) 99999-8888")).toBeVisible();
   });
 
   test("restaura um cliente desativado", async ({ page }) => {

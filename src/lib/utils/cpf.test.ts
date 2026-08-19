@@ -58,13 +58,13 @@ describe("mascararCpf", () => {
   // Máscara progressiva: o campo formata enquanto o usuário digita.
   it("formata parcialmente conforme os dígitos chegam", () => {
     expect(mascararCpf("083")).toBe("083");
-    expect(mascararCpf("0836")).toBe("083.6");
-    expect(mascararCpf("083688379")).toBe("083.688.379");
-    expect(mascararCpf("08368837995")).toBe("083.688.379-95");
+    expect(mascararCpf("1234")).toBe("123.4");
+    expect(mascararCpf("123456789")).toBe("123.456.789");
+    expect(mascararCpf("12345678909")).toBe("123.456.789-09");
   });
 
   it("ignora dígitos além dos 11 do formato", () => {
-    expect(mascararCpf("0836883799512")).toBe("083.688.379-95");
+    expect(mascararCpf("1234567890912")).toBe("123.456.789-09");
   });
 
   it("descarta o que não é dígito", () => {

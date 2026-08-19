@@ -117,7 +117,7 @@ describe("POST /api/clientes", () => {
   // A validação de forma acontece no zod para que o erro volte por campo e o
   // formulário destaque o input certo, em vez de um toast genérico.
   it("retorna 400 com detalhes quando o CPF não passa nos dígitos verificadores", async () => {
-    const response = await post({ nome: "Maria Silva", cpf: "083688379" });
+    const response = await post({ nome: "Maria Silva", cpf: "123456789" });
 
     expect(response.status).toBe(400);
     expect((await response.json()).detalhes.cpf).toBeDefined();
@@ -125,7 +125,7 @@ describe("POST /api/clientes", () => {
   });
 
   it("retorna 400 com detalhes quando o telefone está incompleto", async () => {
-    const response = await post({ nome: "Maria Silva", cpf: CPF, telefone: "47996589979" });
+    const response = await post({ nome: "Maria Silva", cpf: CPF, telefone: "47999998888" });
 
     expect(response.status).toBe(400);
     expect((await response.json()).detalhes.telefone).toBeDefined();
@@ -133,7 +133,7 @@ describe("POST /api/clientes", () => {
   });
 
   it("retorna 400 com detalhes quando o e-mail é malformado", async () => {
-    const response = await post({ nome: "Maria Silva", cpf: CPF, email: "lucasklemketeste" });
+    const response = await post({ nome: "Maria Silva", cpf: CPF, email: "mariasilvateste" });
 
     expect(response.status).toBe(400);
     expect((await response.json()).detalhes.email).toBeDefined();
@@ -146,8 +146,8 @@ describe("POST /api/clientes", () => {
     const response = await post({
       nome: "Maria Silva",
       cpf: CPF,
-      telefone: "+55 (47) 99658-9979",
-      email: "lucas.klemke84@gmail.com",
+      telefone: "+55 (47) 99999-8888",
+      email: "maria.silva@exemplo.com",
     });
 
     expect(response.status).toBe(201);

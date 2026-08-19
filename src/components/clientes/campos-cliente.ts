@@ -40,7 +40,7 @@ export const CAMPOS: readonly Campo[] = [
     placeholder: "000.000.000-00",
     mascara: mascararCpf,
     validar: (valor) =>
-      cpfValido(valor) ? null : "CPF inválido. Informe os 11 dígitos, como 083.688.379-95.",
+      cpfValido(valor) ? null : "CPF inválido. Informe os 11 dígitos, como 123.456.789-09.",
   },
   {
     nome: "telefone",

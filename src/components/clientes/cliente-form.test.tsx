@@ -98,11 +98,11 @@ describe("ClienteForm", () => {
     const usuario = userEvent.setup();
     renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
 
-    await usuario.type(screen.getByLabelText("CPF"), "08368837995");
-    await usuario.type(screen.getByLabelText(/Telefone/), "5547996589979");
+    await usuario.type(screen.getByLabelText("CPF"), "12345678909");
+    await usuario.type(screen.getByLabelText(/Telefone/), "5547999998888");
 
-    expect(screen.getByLabelText("CPF")).toHaveValue("083.688.379-95");
-    expect(screen.getByLabelText(/Telefone/)).toHaveValue("+55 (47) 99658-9979");
+    expect(screen.getByLabelText("CPF")).toHaveValue("123.456.789-09");
+    expect(screen.getByLabelText(/Telefone/)).toHaveValue("+55 (47) 99999-8888");
   });
 
   // Validação no cliente evita um round-trip só para ouvir que o formato está errado.
@@ -111,8 +111,8 @@ describe("ClienteForm", () => {
     renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
 
     await usuario.type(screen.getByLabelText(/Nome completo/), "Maria Silva");
-    await usuario.type(screen.getByLabelText("CPF"), "08368837995");
-    await usuario.type(screen.getByLabelText(/Telefone/), "47996589979");
+    await usuario.type(screen.getByLabelText("CPF"), "12345678909");
+    await usuario.type(screen.getByLabelText(/Telefone/), "47999998888");
     await usuario.click(screen.getByRole("button", { name: "Criar cliente" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Telefone inválido/);
@@ -124,8 +124,8 @@ describe("ClienteForm", () => {
     renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
 
     await usuario.type(screen.getByLabelText(/Nome completo/), "Maria Silva");
-    await usuario.type(screen.getByLabelText("CPF"), "08368837995");
-    await usuario.type(screen.getByLabelText(/E-mail/), "lucasklemketeste");
+    await usuario.type(screen.getByLabelText("CPF"), "12345678909");
+    await usuario.type(screen.getByLabelText(/E-mail/), "mariasilvateste");
     await usuario.click(screen.getByRole("button", { name: "Criar cliente" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("E-mail inválido.");
@@ -137,11 +137,11 @@ describe("ClienteForm", () => {
     renderComQuery(<ClienteForm onSucesso={jest.fn()} />);
 
     await usuario.type(screen.getByLabelText(/Nome completo/), "Maria Silva");
-    await usuario.type(screen.getByLabelText("CPF"), "0836");
+    await usuario.type(screen.getByLabelText("CPF"), "1234");
     await usuario.click(screen.getByRole("button", { name: "Criar cliente" }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
 
-    await usuario.type(screen.getByLabelText("CPF"), "88379995");
+    await usuario.type(screen.getByLabelText("CPF"), "5678909");
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

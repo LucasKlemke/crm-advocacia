@@ -114,11 +114,11 @@ describe("clienteService.criar", () => {
     await clienteService.criar(ctx, {
       nome: "Maria",
       cpf: CPF_VALIDO,
-      telefone: "+55 (47) 99658-9979",
+      telefone: "+55 (47) 99999-8888",
     });
 
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ telefone: "5547996589979" }),
+      expect.objectContaining({ telefone: "5547999998888" }),
       expect.anything()
     );
   });
@@ -130,11 +130,11 @@ describe("clienteService.criar", () => {
     await clienteService.criar(ctx, {
       nome: "Maria",
       cpf: CPF_VALIDO,
-      email: " Lucas.Klemke84@Gmail.com ",
+      email: " Maria.Silva@Exemplo.com ",
     });
 
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "lucas.klemke84@gmail.com" }),
+      expect.objectContaining({ email: "maria.silva@exemplo.com" }),
       expect.anything()
     );
   });
@@ -142,7 +142,7 @@ describe("clienteService.criar", () => {
   // RN13: sem o número completo o disparo de WhatsApp falha só na hora do envio.
   it("rejeita telefone incompleto antes de tocar no banco", async () => {
     await expect(
-      clienteService.criar(ctx, { nome: "Maria", cpf: CPF_VALIDO, telefone: "47996589979" })
+      clienteService.criar(ctx, { nome: "Maria", cpf: CPF_VALIDO, telefone: "47999998888" })
     ).rejects.toThrow(TelefoneInvalidoError);
     expect(repo.findByCpf).not.toHaveBeenCalled();
     expect(repo.create).not.toHaveBeenCalled();
@@ -150,7 +150,7 @@ describe("clienteService.criar", () => {
 
   it("rejeita e-mail malformado antes de tocar no banco", async () => {
     await expect(
-      clienteService.criar(ctx, { nome: "Maria", cpf: CPF_VALIDO, email: "lucasklemketeste" })
+      clienteService.criar(ctx, { nome: "Maria", cpf: CPF_VALIDO, email: "mariasilvateste" })
     ).rejects.toThrow(EmailInvalidoError);
     expect(repo.create).not.toHaveBeenCalled();
   });
@@ -253,7 +253,7 @@ describe("clienteService.atualizar — validação de contato", () => {
     repo.findById.mockResolvedValue(clienteFake());
 
     await expect(
-      clienteService.atualizar(ctx, "cli-1", { telefone: "4796589979" })
+      clienteService.atualizar(ctx, "cli-1", { telefone: "4799998888" })
     ).rejects.toThrow(TelefoneInvalidoError);
     expect(repo.update).not.toHaveBeenCalled();
     expect(logs.registrar).not.toHaveBeenCalled();

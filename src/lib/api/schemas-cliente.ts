@@ -10,7 +10,7 @@ export const nomeSchema = z.string().trim().min(3, "Informe o nome completo.").m
 export const cpfSchema = z
   .string()
   .trim()
-  .refine(cpfValido, "CPF inválido. Informe os 11 dígitos, como 083.688.379-95.");
+  .refine(cpfValido, "CPF inválido. Informe os 11 dígitos, como 123.456.789-09.");
 
 export const emailSchema = z
   .string()
