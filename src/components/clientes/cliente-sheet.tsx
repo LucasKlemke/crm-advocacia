@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { MessageSquare, RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarDataHora } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
@@ -82,11 +82,7 @@ export function ClienteSheet({
             {/* Comentários no cabeçalho, no lugar de uma aba: o histórico de contato é o
                 que se lê primeiro ao abrir um cliente; os dados mudam bem menos. */}
             {cliente ? (
-              <section aria-label="Comentários" className="flex flex-col gap-2">
-                <h3 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <MessageSquare aria-hidden className="size-3.5" />
-                  Comentários
-                </h3>
+              <section aria-label="Comentários">
                 <ComentariosPanel
                   clienteId={cliente.id}
                   atorUsuarioId={atorUsuarioId}

@@ -102,7 +102,7 @@ export function ComentariosPanel({
       ) : null}
 
       {!isLoading && !isError && comentarios.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Nenhum comentário ainda. Registre aqui o histórico de contato.
         </p>
       ) : null}
@@ -118,14 +118,14 @@ export function ComentariosPanel({
               <AvatarIniciais nome={comentario.autor.nome} className="size-6" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-xs font-medium text-foreground">
                     {comentario.autor.nome}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[11px] text-muted-foreground">
                     {formatarDataHora(comentario.createdAt)}
                   </span>
                   {comentario.editadoEm ? (
-                    <span className="text-xs text-muted-foreground">(editado)</span>
+                    <span className="text-[11px] text-muted-foreground">(editado)</span>
                   ) : null}
                   {podeAlgumaAcao ? (
                     <DropdownMenu>
@@ -187,7 +187,7 @@ export function ComentariosPanel({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm whitespace-pre-wrap text-foreground">
+                  <p className="text-xs whitespace-pre-wrap text-foreground">
                     {comentario.conteudo}
                   </p>
                 )}
@@ -199,12 +199,12 @@ export function ComentariosPanel({
 
       {/* Composer minimalista no rodapé, como numa conversa: uma linha que cresce com o
           texto (field-sizing-content) e um botão redondo de enviar. */}
-      <form onSubmit={comentar} className="flex items-end gap-2">
+      <form onSubmit={comentar} className="flex items-center gap-2">
         <AvatarIniciais nome={atorNome} className="size-6" />
         <Textarea
           aria-label="Novo comentário"
           placeholder="Adicionar um comentário..."
-          className="min-h-7 flex-1 resize-none border-0 px-0 py-0.5 text-sm shadow-none focus-visible:border-0 focus-visible:ring-0"
+          className="min-h-6 flex-1 resize-none border-0 px-0 py-0 text-xs shadow-none md:text-xs focus-visible:border-0 focus-visible:ring-0"
           value={rascunho}
           onChange={(evento) => setRascunho(evento.target.value)}
           disabled={criar.isPending}
@@ -213,7 +213,7 @@ export function ComentariosPanel({
         <Button
           type="submit"
           size="icon-sm"
-          className="rounded-full"
+          className="size-6 shrink-0 rounded-full [&_svg]:size-3.5"
           aria-label="Comentar"
           disabled={criar.isPending || !rascunho.trim()}
         >
