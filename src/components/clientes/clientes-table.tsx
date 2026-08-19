@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { History, IdCard, Mail, Phone, Plus, Search, Trash2, User } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarCpf } from "@/lib/utils/cpf";
 import { formatarTelefone } from "@/lib/utils/telefone";
+import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes, useClientes } from "@/hooks/use-clientes";
 import { ClienteSheet, type ModoSheet } from "@/components/clientes/cliente-sheet";
 import { Button } from "@/components/ui/button";
@@ -169,17 +170,43 @@ export function ClientesTable({ atorUsuarioId, atorNome, atorRole }: ClientesTab
                     onCheckedChange={alternarTodos}
                   />
                 </TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>E-mail</TableHead>
+                <TableHead>
+                  <span className="flex items-center gap-1.5">
+                    <User aria-hidden className="size-3.5 text-muted-foreground" />
+                    Nome
+                  </span>
+                </TableHead>
+                <TableHead>
+                  <span className="flex items-center gap-1.5">
+                    <IdCard aria-hidden className="size-3.5 text-muted-foreground" />
+                    CPF
+                  </span>
+                </TableHead>
+                <TableHead>
+                  <span className="flex items-center gap-1.5">
+                    <Phone aria-hidden className="size-3.5 text-muted-foreground" />
+                    Telefone
+                  </span>
+                </TableHead>
+                <TableHead>
+                  <span className="flex items-center gap-1.5">
+                    <Mail aria-hidden className="size-3.5 text-muted-foreground" />
+                    E-mail
+                  </span>
+                </TableHead>
+                <TableHead>
+                  <span className="flex items-center gap-1.5">
+                    <History aria-hidden className="size-3.5 text-muted-foreground" />
+                    Atualizado em
+                  </span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading
                 ? Array.from({ length: 3 }).map((_, indice) => (
                     <TableRow key={indice}>
-                      <TableCell colSpan={5} className="px-4 py-3">
+                      <TableCell colSpan={6} className="px-4 py-3">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
@@ -188,7 +215,7 @@ export function ClientesTable({ atorUsuarioId, atorNome, atorRole }: ClientesTab
 
               {isError ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="px-4 py-6 text-center text-sm text-destructive">
+                  <TableCell colSpan={6} className="px-4 py-6 text-center text-sm text-destructive">
                     Não foi possível carregar os clientes.
                   </TableCell>
                 </TableRow>
@@ -197,7 +224,7 @@ export function ClientesTable({ atorUsuarioId, atorNome, atorRole }: ClientesTab
               {!isLoading && !isError && clientes.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-sm text-muted-foreground"
                   >
                     {busca
@@ -244,6 +271,9 @@ export function ClientesTable({ atorUsuarioId, atorNome, atorRole }: ClientesTab
                     <TableCell>{formatarCpf(cliente.cpf)}</TableCell>
                     <TableCell>{cliente.telefone ? formatarTelefone(cliente.telefone) : "–"}</TableCell>
                     <TableCell>{cliente.email ?? "–"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatarDataHoraCurta(cliente.updatedAt)}
+                    </TableCell>
                   </TableRow>
                 );
               })}

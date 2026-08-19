@@ -48,6 +48,16 @@ describe("ClientesTable", () => {
     expect(screen.getByText("529.982.247-25")).toBeInTheDocument();
   });
 
+  it("mostra quando o cadastro foi atualizado pela última vez", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      respostaListagem([clienteFake({ updatedAt: "2026-08-15T18:30:00.000Z" })])
+    );
+    renderTabela();
+
+    expect(await screen.findByRole("columnheader", { name: "Atualizado em" })).toBeInTheDocument();
+    expect(await screen.findByRole("cell", { name: /15\/08\/2026\s+15:30/ })).toBeInTheDocument();
+  });
+
   it("não mostra a barra de ações em lote enquanto nada está selecionado", async () => {
     renderTabela();
     await screen.findByText("Maria Silva");
