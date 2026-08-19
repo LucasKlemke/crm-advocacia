@@ -21,7 +21,13 @@ export const usuarioRepository = {
   },
 
   async update(id: string, data: Prisma.UsuarioUpdateInput, db: Db = prisma): Promise<Usuario> {
-    return db.usuario.update({ where: { id }, data });
+    return db.usuario.update({
+      where: { id },
+      data: {
+        ...data,
+        ...(typeof data.email === "string" ? { email: normalizeEmail(data.email) } : {}),
+      },
+    });
   },
 
   async updateSenhaHash(id: string, senhaHash: string, db: Db = prisma): Promise<Usuario> {

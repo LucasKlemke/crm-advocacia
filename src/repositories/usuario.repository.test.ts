@@ -93,6 +93,20 @@ describe("usuarioRepository", () => {
     expect(atualizado.nome).toBe("Nome Novo");
   });
 
+  it("normaliza o e-mail para minúsculo/trim ao atualizar", async () => {
+    const criado = await usuarioRepository.create({
+      nome: "Email Update",
+      email: `email-update-${Date.now()}@teste.com`,
+      senhaHash: "hash",
+    });
+    usuariosCriados.push(criado.id);
+
+    const novoEmail = `  Novo-Maiuscula-${Date.now()}@Teste.COM  `;
+    const atualizado = await usuarioRepository.update(criado.id, { email: novoEmail });
+
+    expect(atualizado.email).toBe(novoEmail.trim().toLowerCase());
+  });
+
   it("atualiza o hash de senha do usuário", async () => {
     const criado = await usuarioRepository.create({
       nome: "Senha Teste",
