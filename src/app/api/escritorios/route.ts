@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { escritorioService, EmailJaCadastradoError } from "@/services/escritorio.service";
+import { auth, unstable_update } from "@/lib/auth/config";
+import { escritorioService } from "@/services/escritorio.service";
 
-const cadastroSchema = z.object({
-  nomeEscritorio: z.string().min(1, "Informe o nome do escritório"),
+const criarEscritorioSchema = z.object({
+  nome: z.string().min(1, "Informe o nome do escritório"),
   oabResponsavel: z.string().optional(),
   telefoneWhatsapp: z.string().optional(),
-  nomeTitular: z.string().min(1, "Informe seu nome"),
-  email: z.string().email("E-mail inválido"),
-  senha: z.string().min(8, "A senha deve ter no mínimo 8 caracteres"),
-  oabTitular: z.string().optional(),
-  telefoneTitular: z.string().optional(),
 });
 
+// Sessão exigida (onboarding do primeiro escritório ou criação de outro pelo switcher),
+// mas NÃO passa por getTenantContext() — o usuário pode não ter nenhum escritório ainda.
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -21,8 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
   }
 
-  const parsed = cadastroSchema.safeParse(body);
-
+  const parsed = criarEscritorioSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Dados inválidos", detalhes: parsed.error.flatten().fieldErrors },
@@ -31,21 +33,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { escritorio, titular } = await escritorioService.cadastrarEscritorio(parsed.data);
+    const { escritorio, membro } = await escritorioService.criarEscritorio(
+      session.user.id,
+      parsed.data
+    );
+
+    // Escritório recém-criado vira o ativo da sessão.
+    await unstable_update({ user: { escritorioId: escritorio.id } });
+
     return NextResponse.json(
-      {
-        escritorio: { id: escritorio.id, nome: escritorio.nome },
-        usuario: { id: titular.id, email: titular.email, role: titular.role },
-      },
+      { escritorio: { id: escritorio.id, nome: escritorio.nome }, role: membro.role },
       { status: 201 }
     );
   } catch (error) {
-    if (error instanceof EmailJaCadastradoError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    console.error("Erro ao cadastrar escritório", error);
+    console.error("Erro ao criar escritório", error);
     return NextResponse.json(
-      { error: "Não foi possível concluir o cadastro. Tente novamente." },
+      { error: "Não foi possível criar o escritório. Tente novamente." },
       { status: 500 }
     );
   }

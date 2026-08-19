@@ -8,8 +8,13 @@ export const NIVEL_ROLE: Record<RoleMembro, number> = {
   padrao: 1,
 };
 
-// Um ator só altera/remove um alvo de nível estritamente menor que o seu.
+// Um ator só altera/remove um alvo de nível estritamente menor que o seu — exceto
+// owner, que também pode gerenciar outro owner (a proteção do último owner é feita à
+// parte por violaUltimoOwner).
 export function podeGerenciarMembro(atorRole: RoleMembro, alvoRole: RoleMembro): boolean {
+  if (atorRole === "owner") {
+    return true;
+  }
   return NIVEL_ROLE[atorRole] > NIVEL_ROLE[alvoRole];
 }
 

@@ -14,7 +14,7 @@ describe("permissoes", () => {
       ["admin", "padrao", true],
       ["admin", "owner", false],
       ["padrao", "admin", false],
-      ["owner", "owner", false],
+      ["owner", "owner", true],
       ["admin", "admin", false],
       ["padrao", "padrao", false],
     ] as const)("ator=%s alvo=%s -> %s", (ator, alvo, esperado) => {

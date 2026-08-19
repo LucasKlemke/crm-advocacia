@@ -11,4 +11,12 @@ export const escritorioRepository = {
   async findById(id: string, db: Db = prisma): Promise<Escritorio | null> {
     return db.escritorio.findUnique({ where: { id } });
   },
+
+  async update(
+    id: string,
+    data: Prisma.EscritorioUpdateInput,
+    db: Db = prisma
+  ): Promise<Escritorio> {
+    return db.escritorio.update({ where: { id }, data });
+  },
 };

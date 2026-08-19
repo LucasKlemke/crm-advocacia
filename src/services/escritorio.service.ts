@@ -1,82 +1,82 @@
-import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { escritorioRepository } from "@/repositories/escritorio.repository";
-import { usuarioRepository } from "@/repositories/usuario.repository";
-import type { Escritorio, Usuario } from "@prisma/client";
+import { membroRepository } from "@/repositories/membro.repository";
+import { PermissaoNegadaError } from "@/services/membro.service";
+import type { TenantContext } from "@/lib/auth/tenant-context";
+import type { Escritorio, Membro } from "@prisma/client";
 
-const SALT_ROUNDS = 10;
-
-export class EmailJaCadastradoError extends Error {
+export class EscritorioNaoEncontradoError extends Error {
   constructor() {
-    super("Este e-mail já está cadastrado em outro escritório.");
-    this.name = "EmailJaCadastradoError";
+    super("Escritório não encontrado.");
+    this.name = "EscritorioNaoEncontradoError";
   }
 }
 
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
-}
+export { PermissaoNegadaError };
 
-export interface CadastrarEscritorioInput {
-  nomeEscritorio: string;
+export interface CriarEscritorioInput {
+  nome: string;
   oabResponsavel?: string;
   telefoneWhatsapp?: string;
-  nomeTitular: string;
-  email: string;
-  senha: string;
-  oabTitular?: string;
-  telefoneTitular?: string;
 }
 
-export interface CadastrarEscritorioResult {
+export interface CriarEscritorioResult {
   escritorio: Escritorio;
-  titular: Usuario;
+  membro: Membro;
+}
+
+export interface AtualizarEscritorioInput {
+  nome?: string;
+  oabResponsavel?: string;
+  telefoneWhatsapp?: string;
 }
 
 export const escritorioService = {
-  // Cria escritório + usuário titular numa única operação (RN02); todo usuário
-  // criado por este fluxo é sempre titular.
-  async cadastrarEscritorio(
-    input: CadastrarEscritorioInput
-  ): Promise<CadastrarEscritorioResult> {
-    const emailExistente = await usuarioRepository.findByEmail(input.email);
-    if (emailExistente) {
-      throw new EmailJaCadastradoError();
+  // Onboarding (primeiro escritório) ou "criar outro escritório": quem cria vira owner
+  // na mesma transação (RN02).
+  async criarEscritorio(
+    usuarioId: string,
+    dados: CriarEscritorioInput
+  ): Promise<CriarEscritorioResult> {
+    return prisma.$transaction(async (tx) => {
+      const escritorio = await escritorioRepository.create(
+        {
+          nome: dados.nome,
+          oabResponsavel: dados.oabResponsavel,
+          telefoneWhatsapp: dados.telefoneWhatsapp,
+        },
+        tx
+      );
+
+      const membro = await membroRepository.create(
+        {
+          usuario: { connect: { id: usuarioId } },
+          escritorio: { connect: { id: escritorio.id } },
+          role: "owner",
+        },
+        tx
+      );
+
+      return { escritorio, membro };
+    });
+  },
+
+  async obterEscritorioAtivo(ctx: TenantContext): Promise<Escritorio> {
+    const escritorio = await escritorioRepository.findById(ctx.escritorioId);
+    if (!escritorio) {
+      throw new EscritorioNaoEncontradoError();
     }
+    return escritorio;
+  },
 
-    const senhaHash = await bcrypt.hash(input.senha, SALT_ROUNDS);
-
-    try {
-      return await prisma.$transaction(async (tx) => {
-        const escritorio = await escritorioRepository.create(
-          {
-            nome: input.nomeEscritorio,
-            oabResponsavel: input.oabResponsavel,
-            telefoneWhatsapp: input.telefoneWhatsapp,
-          },
-          tx
-        );
-
-        const titular = await usuarioRepository.create(
-          {
-            nome: input.nomeTitular,
-            email: input.email,
-            senhaHash,
-            oab: input.oabTitular,
-            telefone: input.telefoneTitular,
-            role: "titular",
-            escritorio: { connect: { id: escritorio.id } },
-          },
-          tx
-        );
-
-        return { escritorio, titular };
-      });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new EmailJaCadastradoError();
-      }
-      throw error;
+  // Somente owner/admin editam os dados do escritório (padrao só lê).
+  async atualizarEscritorio(
+    ctx: TenantContext,
+    dados: AtualizarEscritorioInput
+  ): Promise<Escritorio> {
+    if (ctx.role === "padrao") {
+      throw new PermissaoNegadaError();
     }
+    return escritorioRepository.update(ctx.escritorioId, dados);
   },
 };
