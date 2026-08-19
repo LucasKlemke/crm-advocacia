@@ -4,15 +4,17 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { useAtualizarCaso, useCasosKanban } from "@/hooks/use-casos";
-import { CasoCard } from "@/components/casos/caso-card";
+import { CasoCard, CasoCardOverlay } from "@/components/casos/caso-card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +57,7 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const [colunas, setColunas] = useState<EstadoColuna[]>([]);
+  const [casoArrastado, setCasoArrastado] = useState<CasoDTO | null>(null);
   // Referência do último payload já espelhado em `colunas`, para recriar o estado
   // local durante a renderização (em vez de um useEffect) quando ele muda — padrão
   // "ajustar estado quando uma prop muda" documentado pelo React.
@@ -111,7 +114,13 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
     }
   }
 
+  function handleDragStart(evento: DragStartEvent) {
+    const caso = colunas.flatMap((c) => c.casos).find((item) => item.id === String(evento.active.id));
+    setCasoArrastado(caso ?? null);
+  }
+
   async function handleDragEnd(evento: DragEndEvent) {
+    setCasoArrastado(null);
     const { active, over } = evento;
     if (!over) return;
 
@@ -176,7 +185,7 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {colunas.map((coluna) => (
           <ColunaKanbanView
@@ -187,6 +196,7 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
           />
         ))}
       </div>
+      <DragOverlay>{casoArrastado ? <CasoCardOverlay caso={casoArrastado} /> : null}</DragOverlay>
     </DndContext>
   );
 }
@@ -207,13 +217,18 @@ function ColunaKanbanView({
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-72 shrink-0 flex-col rounded-lg border-t-2 bg-muted/20 transition-colors ${
+      className={`flex w-72 shrink-0 flex-col rounded-lg border-t-2 transition-colors ${
         isOver ? "bg-accent/50" : ""
       }`}
-      style={{ borderTopColor: coluna.status.cor }}
+      style={{
+        borderTopColor: coluna.status.cor,
+        backgroundColor: isOver
+          ? undefined
+          : `color-mix(in oklch, ${coluna.status.cor}, transparent 92%)`,
+      }}
     >
       <div className="flex items-center gap-1.5 px-2 py-2">
-        {Icone ? <Icone className="size-4 text-muted-foreground" /> : null}
+        {Icone ? <Icone className="size-4" style={{ color: coluna.status.cor }} /> : null}
         <span className="text-sm font-medium text-foreground">{coluna.status.nome}</span>
         <span className="ml-auto text-xs text-muted-foreground">{coluna.total}</span>
       </div>
