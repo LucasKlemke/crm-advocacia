@@ -3,9 +3,16 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api-client";
-import { useCasoFiltroOpcoes, useCriarCaso, type DadosCasoForm } from "@/hooks/use-casos";
 import {
+  chaveCasosFiltroOpcoes,
+  useCasoFiltroOpcoes,
+  useCriarCaso,
+  type DadosCasoForm,
+} from "@/hooks/use-casos";
+import {
+  CRIAR_CLIENTE_VALOR,
   ICONE_CLIENTE,
   ICONE_DESCRICAO,
   ICONE_RESPONSAVEL,
@@ -13,6 +20,8 @@ import {
   ICONE_VALOR,
   SEM_RESPONSAVEL_VALOR,
 } from "@/components/casos/campos-caso";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
+import { ClienteForm } from "@/components/clientes/cliente-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +33,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { CasoDTO } from "@/types/caso";
 
 export interface CasoFormProps {
@@ -50,10 +66,12 @@ const VALORES_INICIAIS: Valores = {
 };
 
 export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
+  const queryClient = useQueryClient();
   const { data: opcoes, isLoading: carregandoOpcoes } = useCasoFiltroOpcoes();
   const criar = useCriarCaso();
   const [valores, setValores] = useState<Valores>(VALORES_INICIAIS);
   const [erro, setErro] = useState<string | null>(null);
+  const [criandoCliente, setCriandoCliente] = useState(false);
 
   function alterar<K extends keyof Valores>(campo: K, valor: Valores[K]) {
     setValores((atuais) => ({ ...atuais, [campo]: valor }));
@@ -107,6 +125,7 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
   const statusIdEfetivo = valores.statusId || (status[0]?.id ?? "");
 
   return (
+    <>
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="caso-titulo">
@@ -129,7 +148,13 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
         </Label>
         <Select
           value={valores.clienteId || null}
-          onValueChange={(valor) => alterar("clienteId", (valor as string) ?? "")}
+          onValueChange={(valor) => {
+            if (valor === CRIAR_CLIENTE_VALOR) {
+              setCriandoCliente(true);
+              return;
+            }
+            alterar("clienteId", (valor as string) ?? "");
+          }}
           disabled={salvando || carregandoOpcoes}
         >
           <SelectTrigger id="caso-cliente" className="w-full">
@@ -138,6 +163,10 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={CRIAR_CLIENTE_VALOR}>
+              <Plus className="size-3.5" />
+              Criar cliente
+            </SelectItem>
             {clientes.map((cliente) => (
               <SelectItem key={cliente.id} value={cliente.id}>
                 {cliente.nome}
@@ -183,17 +212,24 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
         >
           <SelectTrigger id="caso-responsavel" className="w-full">
             <SelectValue>
-              {() =>
-                valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR
-                  ? "Sem responsável"
-                  : (membros.find((m) => m.id === valores.responsavelMembroId)?.nome ?? "Selecione")
-              }
+              {() => {
+                if (valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR) return "Sem responsável";
+                const membro = membros.find((m) => m.id === valores.responsavelMembroId);
+                if (!membro) return "Selecione";
+                return (
+                  <span className="flex items-center gap-2">
+                    <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                    {membro.nome}
+                  </span>
+                );
+              }}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
             {membros.map((membro) => (
               <SelectItem key={membro.id} value={membro.id}>
+                <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
                 {membro.nome}
               </SelectItem>
             ))}
@@ -253,5 +289,25 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
         </Button>
       </div>
     </form>
+
+    <Sheet open={criandoCliente} onOpenChange={setCriandoCliente}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Novo cliente</SheetTitle>
+          <SheetDescription>Cadastre um cliente do escritório sem sair do caso.</SheetDescription>
+        </SheetHeader>
+        <div className="px-4">
+          <ClienteForm
+            onSucesso={(cliente) => {
+              queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+              alterar("clienteId", cliente.id);
+              setCriandoCliente(false);
+            }}
+            onCancelar={() => setCriandoCliente(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
+    </>
   );
 }

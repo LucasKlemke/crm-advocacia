@@ -12,3 +12,4 @@ export const ICONE_VALOR: LucideIcon = Banknote;
 export const ICONE_DESCRICAO: LucideIcon = FileText;
 
 export const SEM_RESPONSAVEL_VALOR = "sem-responsavel";
+export const CRIAR_CLIENTE_VALOR = "criar-cliente";

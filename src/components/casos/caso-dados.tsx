@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Plus, Save } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api-client";
-import { useAtualizarCaso, useCasoFiltroOpcoes, type DadosCasoForm } from "@/hooks/use-casos";
 import {
+  chaveCasosFiltroOpcoes,
+  useAtualizarCaso,
+  useCasoFiltroOpcoes,
+  type DadosCasoForm,
+} from "@/hooks/use-casos";
+import {
+  CRIAR_CLIENTE_VALOR,
   ICONE_CLIENTE,
   ICONE_DESCRICAO,
   ICONE_RESPONSAVEL,
@@ -13,6 +20,8 @@ import {
   ICONE_VALOR,
   SEM_RESPONSAVEL_VALOR,
 } from "@/components/casos/campos-caso";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
+import { ClienteForm } from "@/components/clientes/cliente-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +33,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { CasoDTO } from "@/types/caso";
 
 export interface CasoDadosProps {
@@ -55,11 +71,13 @@ function valoresIniciais(caso: CasoDTO): Valores {
 // texto livre e só salvam com o botão explícito, como em ClienteDados — mas montado
 // como formulário completo (não campo-a-campo) porque a maioria dos campos é select.
 export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
+  const queryClient = useQueryClient();
   const { data: opcoes } = useCasoFiltroOpcoes();
   const atualizar = useAtualizarCaso();
   const [valores, setValores] = useState<Valores>(() => valoresIniciais(caso));
   const [original, setOriginal] = useState<Valores>(() => valoresIniciais(caso));
   const [erro, setErro] = useState<string | null>(null);
+  const [criandoCliente, setCriandoCliente] = useState(false);
 
   const clientes = opcoes?.clientes ?? [];
   const membros = opcoes?.membros ?? [];
@@ -129,6 +147,7 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
   }
 
   return (
+    <>
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="caso-dados-titulo">
@@ -150,7 +169,13 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
         </Label>
         <Select
           value={valores.clienteId || null}
-          onValueChange={(valor) => alterarCliente(valor as string)}
+          onValueChange={(valor) => {
+            if (valor === CRIAR_CLIENTE_VALOR) {
+              setCriandoCliente(true);
+              return;
+            }
+            alterarCliente(valor as string);
+          }}
           disabled={atualizar.isPending}
         >
           <SelectTrigger id="caso-dados-cliente" className="w-full">
@@ -159,6 +184,10 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={CRIAR_CLIENTE_VALOR}>
+              <Plus className="size-3.5" />
+              Criar cliente
+            </SelectItem>
             {clientes.map((cliente) => (
               <SelectItem key={cliente.id} value={cliente.id}>
                 {cliente.nome}
@@ -203,19 +232,26 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
         >
           <SelectTrigger id="caso-dados-responsavel" className="w-full">
             <SelectValue>
-              {() =>
-                valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR
-                  ? "Sem responsável"
-                  : (membros.find((m) => m.id === valores.responsavelMembroId)?.nome ??
-                    caso.responsavel?.usuario.nome ??
-                    "Sem responsável")
-              }
+              {() => {
+                if (valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR) return "Sem responsável";
+                const nome =
+                  membros.find((m) => m.id === valores.responsavelMembroId)?.nome ??
+                  caso.responsavel?.usuario.nome;
+                if (!nome) return "Sem responsável";
+                return (
+                  <span className="flex items-center gap-2">
+                    <AvatarIniciais nome={nome} className="size-5 text-[10px]" />
+                    {nome}
+                  </span>
+                );
+              }}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
             {membros.map((membro) => (
               <SelectItem key={membro.id} value={membro.id}>
+                <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
                 {membro.nome}
               </SelectItem>
             ))}
@@ -270,5 +306,25 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
         </div>
       ) : null}
     </div>
+
+    <Sheet open={criandoCliente} onOpenChange={setCriandoCliente}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Novo cliente</SheetTitle>
+          <SheetDescription>Cadastre um cliente do escritório sem sair do caso.</SheetDescription>
+        </SheetHeader>
+        <div className="px-4">
+          <ClienteForm
+            onSucesso={async (cliente) => {
+              queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+              setCriandoCliente(false);
+              await alterarCliente(cliente.id);
+            }}
+            onCancelar={() => setCriandoCliente(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
+    </>
   );
 }

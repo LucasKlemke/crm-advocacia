@@ -94,6 +94,7 @@ export function CasosHeader({
         selecionados={filtros.responsavelIds}
         onChange={(responsavelIds) => onFiltrosChange({ ...filtros, responsavelIds, pagina: 1 })}
         buscaPlaceholder="Buscar responsável..."
+        avatares
       />
 
       <FiltroMultiSelect

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,6 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { SEM_RESPONSAVEL } from "@/types/caso";
 
 export interface OpcaoMultiSelect {
   id: string;
@@ -28,6 +30,9 @@ export interface FiltroMultiSelectProps {
   selecionados: string[];
   onChange: (selecionados: string[]) => void;
   buscaPlaceholder?: string;
+  // Filtro de responsável: mostra o avatar de iniciais ao lado do nome, como no
+  // select de responsável do formulário de caso.
+  avatares?: boolean;
 }
 
 // Popover + Command genérico para os filtros de casos (responsável/cliente/status/tipo):
@@ -40,6 +45,7 @@ export function FiltroMultiSelect({
   selecionados,
   onChange,
   buscaPlaceholder,
+  avatares,
 }: FiltroMultiSelectProps) {
   const [aberto, setAberto] = useState(false);
 
@@ -88,6 +94,9 @@ export function FiltroMultiSelect({
                         className="size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: opcao.cor }}
                       />
+                    ) : null}
+                    {avatares && opcao.id !== SEM_RESPONSAVEL ? (
+                      <AvatarIniciais nome={opcao.nome} className="size-5 text-[10px]" />
                     ) : null}
                     {opcao.nome}
                   </CommandItem>
