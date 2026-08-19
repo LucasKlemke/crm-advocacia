@@ -27,7 +27,7 @@ test.describe("Convite de colaborador", () => {
 
     await cadastrarECriarEscritorio(page, "Advogada Titular", ownerEmail, "Escritório Convite E2E");
 
-    await page.goto("/configuracoes/usuarios");
+    await page.goto("/configuracoes/membros");
     await page.getByLabel("E-mail do colaborador").fill(convidadoEmail);
     await page.getByRole("button", { name: /^convidar$/i }).click();
 
@@ -47,7 +47,7 @@ test.describe("Convite de colaborador", () => {
       "Escritório Convite E2E 2"
     );
 
-    await page.goto("/configuracoes/usuarios");
+    await page.goto("/configuracoes/membros");
     await page.getByLabel("E-mail do colaborador").fill(convidadoEmail);
     await page.getByRole("button", { name: /^convidar$/i }).click();
     await expect(page.getByText(convidadoEmail)).toBeVisible();
@@ -74,7 +74,7 @@ test.describe("Convite de colaborador", () => {
       "Escritório Convite E2E 3"
     );
 
-    await page.goto("/configuracoes/usuarios");
+    await page.goto("/configuracoes/membros");
     await page.getByLabel("E-mail do colaborador").fill(colaboradorEmail);
     await page.getByRole("button", { name: /^convidar$/i }).click();
     await expect(page.getByText(colaboradorEmail)).toBeVisible();
@@ -87,7 +87,7 @@ test.describe("Convite de colaborador", () => {
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/");
 
-    await page.goto("/configuracoes/usuarios");
+    await page.goto("/configuracoes/membros");
     await expect(page.getByLabel("E-mail do colaborador")).not.toBeVisible();
     await expect(page.getByRole("button", { name: /remover/i })).not.toBeVisible();
   });

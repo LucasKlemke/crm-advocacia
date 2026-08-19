@@ -13,8 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LABEL_ROLE } from "@/lib/utils/role";
 
-export function ConviteForm() {
+export interface ConviteFormProps {
+  onSucesso?: () => void;
+}
+
+export function ConviteForm({ onSucesso }: ConviteFormProps = {}) {
   const router = useRouter();
   const [role, setRole] = useState("padrao");
   const [erro, setErro] = useState<string | null>(null);
@@ -45,38 +50,39 @@ export function ConviteForm() {
       toast.success("Convite enviado.");
       form.reset();
       router.refresh();
+      onSucesso?.();
     } finally {
       setCarregando(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:flex-row sm:items-end">
-      <div className="flex flex-1 flex-col gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         <Label htmlFor="email">E-mail do colaborador</Label>
         <Input id="email" name="email" type="email" required />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="role">Papel</Label>
+        <Label htmlFor="role">Cargo</Label>
         <Select value={role} onValueChange={(value) => setRole(value ?? "padrao")}>
-          <SelectTrigger id="role" className="w-32">
+          <SelectTrigger id="role" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="padrao">padrao</SelectItem>
-            <SelectItem value="admin">admin</SelectItem>
-            <SelectItem value="owner">owner</SelectItem>
+            <SelectItem value="padrao">{LABEL_ROLE.padrao}</SelectItem>
+            <SelectItem value="admin">{LABEL_ROLE.admin}</SelectItem>
+            <SelectItem value="owner">{LABEL_ROLE.owner}</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={carregando}>
-        {carregando ? "Convidando..." : "Convidar"}
-      </Button>
       {erro ? (
-        <p role="alert" className="text-sm text-destructive sm:basis-full">
+        <p role="alert" className="text-sm text-destructive">
           {erro}
         </p>
       ) : null}
+      <Button type="submit" disabled={carregando}>
+        {carregando ? "Convidando..." : "Convidar"}
+      </Button>
     </form>
   );
 }

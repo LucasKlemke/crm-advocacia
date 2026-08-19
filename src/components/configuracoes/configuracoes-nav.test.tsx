@@ -8,11 +8,11 @@ const mockedUsePathname = usePathname as jest.Mock;
 
 describe("ConfiguracoesNav", () => {
   it("marca o item da rota atual como ativo", () => {
-    mockedUsePathname.mockReturnValue("/configuracoes/usuarios");
+    mockedUsePathname.mockReturnValue("/configuracoes/membros");
 
     render(<ConfiguracoesNav />);
 
-    expect(screen.getByRole("link", { name: "Usuários" })).toHaveAttribute("data-active");
+    expect(screen.getByRole("link", { name: "Membros" })).toHaveAttribute("data-active");
     expect(screen.getByRole("link", { name: "Escritório" })).not.toHaveAttribute("data-active");
   });
 });

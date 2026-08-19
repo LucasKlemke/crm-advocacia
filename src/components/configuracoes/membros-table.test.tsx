@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
 import { MembrosTable } from "./membros-table";
 
@@ -29,22 +30,38 @@ describe("MembrosTable", () => {
   it("esconde as ações de gestão quando o ator é padrao", () => {
     render(<MembrosTable membros={membros} atorUsuarioId="user-2" atorRole="padrao" />);
 
-    expect(screen.queryByRole("button", { name: /remover/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /ações de/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("esconde as ações de gestão sobre o próprio ator (auto-alvo)", () => {
     render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
 
-    // A própria linha do ator (owner, user-1) não deve ter select nem botão de remover.
+    // A própria linha do ator (owner, user-1) não deve ter select nem menu de ações.
     expect(screen.getAllByRole("combobox")).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: /remover/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /ações de/i })).toHaveLength(1);
   });
 
   it("mostra ações de gestão para owner sobre um membro padrao", () => {
     render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
 
-    expect(screen.getByLabelText("Papel de Fulano Padrao")).toBeInTheDocument();
-    expect(screen.getByLabelText("Remover Fulano Padrao")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cargo de Fulano Padrao")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ações de Fulano Padrao")).toBeInTheDocument();
+  });
+
+  it("remove o membro após confirmar no menu de ações", async () => {
+    (global.fetch as jest.Mock | undefined) = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    const refresh = jest.fn();
+    mockedUseRouter.mockReturnValue({ refresh });
+    const user = userEvent.setup();
+
+    render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
+
+    await user.click(screen.getByLabelText("Ações de Fulano Padrao"));
+    await user.click(await screen.findByRole("menuitem", { name: "Remover" }));
+    await user.click(await screen.findByRole("button", { name: "Remover" }));
+
+    expect(global.fetch).toHaveBeenCalledWith("/api/membros/membro-2", { method: "DELETE" });
+    expect(refresh).toHaveBeenCalled();
   });
 });

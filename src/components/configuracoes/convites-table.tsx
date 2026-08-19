@@ -3,21 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { iniciais } from "@/lib/utils/nome";
+import { labelRole } from "@/lib/utils/role";
+import type { RoleMembro } from "@prisma/client";
 
 export interface ConviteLinha {
   id: string;
   email: string;
-  role: string;
+  role: RoleMembro;
 }
 
 export function ConvitesTable({ convites }: { convites: ConviteLinha[] }) {
@@ -46,21 +43,30 @@ export function ConvitesTable({ convites }: { convites: ConviteLinha[] }) {
 
   return (
     <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>E-mail</TableHead>
-          <TableHead>Papel</TableHead>
-          <TableHead className="w-24" />
-        </TableRow>
-      </TableHeader>
       <TableBody>
         {convites.map((convite) => (
           <TableRow key={convite.id}>
-            <TableCell>{convite.email}</TableCell>
-            <TableCell>
-              <Badge variant="secondary">{convite.role}</Badge>
+            <TableCell className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="size-8 rounded-full">
+                  <AvatarFallback className="rounded-full text-xs">
+                    {iniciais(convite.email)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{convite.email}</span>
+                  <Badge variant="outline" className="border-brand/30 text-brand">
+                    Convidado
+                  </Badge>
+                </div>
+              </div>
             </TableCell>
             <TableCell>
+              <Badge variant="outline" className="font-normal">
+                {labelRole(convite.role)}
+              </Badge>
+            </TableCell>
+            <TableCell className="px-4 text-right">
               <Button
                 variant="ghost"
                 size="sm"
