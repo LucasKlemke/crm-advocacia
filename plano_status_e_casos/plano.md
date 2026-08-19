@@ -1,3 +1,5 @@
+Para implementar as tarefas abaixo, crie uma nova branch e, sempre que necessário, consulte a pasta “referencias_visuais” dentro deste folder para obter as referências visuais.
+
 ### 1. Status e tipo de status
 
 Nas configurações de escritório, quero criar uma nova rota chamada **Status**. Nela, o usuário poderá gerenciar os status do seu pipeline, usando duas tabelas novas:
@@ -54,7 +56,7 @@ No cabeçalho haverá um filtro multi‑select para filtrar por:
 - Tipo de status  
 - Data (período início/fim)
 
-Cada status deverá incluir um campo (R$) que indique o valor do caso – quanto o advogado receberá ao concluí‑‑lo.
+Cada status deverá incluir um campo (R$) que indique o valor do caso – quanto o advogado receberá ao concluí‑lo.
 
 Também serão necessários os seguintes campos:
 
@@ -62,13 +64,11 @@ Também serão necessários os seguintes campos:
 - Data de atualização  
 
 Deve haver botão “Novo caso” para registrar um novo caso.  
-Ao clicar em um card do kanban, deve abrir uma drawer lateral com as informações do caso (semelhante a /clientes). Lá, o usuário deverá conseguir ver todas as informações, editá‑‑‑las e arquivar o caso.
+Ao clicar em um card do kanban, deve abrir uma drawer lateral com as informações do caso (semelhante a /clientes). Lá, o usuário deverá conseguir ver todas as informações, editá‑las e arquivar o caso.
 
 Na visualização de tabela, o acesso a essa drawer será através de um botão de ação (primeira coluna). Na coluna de status da visualização de tabela, deverá ser um select onde o usuário poderá alterar o status do lead.
 
-Lembre‑‑se:  
+Lembre‑se:  
 - visualização de tabela deverá ter paginação no backend  
 - visualização kanban, scroll infinito  
 - em ambas, a filtragem deverá ser aplicada via backend também.
-
-
