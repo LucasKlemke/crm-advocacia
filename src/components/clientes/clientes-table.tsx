@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { MoreHorizontal, Plus, Search } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarCpf } from "@/lib/utils/cpf";
 import { formatarTelefone } from "@/lib/utils/telefone";
@@ -21,12 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -142,27 +136,25 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
             <Plus />
             Criar novo cliente
           </Button>
-        </div>
 
-        {selecionados.length > 0 ? (
-          <div
-            role="region"
-            aria-label="Ações em lote"
-            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2"
-          >
-            <span className="text-sm text-foreground">
-              {selecionados.length} selecionado(s)
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={acaoEmLote.isPending}
-              onClick={() => setConfirmandoDesativacao(true)}
-            >
-              Desativar
-            </Button>
-          </div>
-        ) : null}
+          {/* Some quando não há seleção, mas mora na mesma linha dos demais controles:
+              a barra em linha própria empurrava a tabela para baixo a cada clique. */}
+          {selecionados.length > 0 ? (
+            <div role="region" aria-label="Ações em lote" className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {selecionados.length} selecionado(s)
+              </span>
+              <Button
+                variant="destructive"
+                disabled={acaoEmLote.isPending}
+                onClick={() => setConfirmandoDesativacao(true)}
+              >
+                <Trash2 />
+                Desativar
+              </Button>
+            </div>
+          ) : null}
+        </div>
 
         <div className="rounded-xl border border-border">
           <Table>
@@ -180,14 +172,13 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
                 <TableHead>CPF</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>E-mail</TableHead>
-                <TableHead className="w-10 px-4" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading
                 ? Array.from({ length: 3 }).map((_, indice) => (
                     <TableRow key={indice}>
-                      <TableCell colSpan={6} className="px-4 py-3">
+                      <TableCell colSpan={5} className="px-4 py-3">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
@@ -196,7 +187,7 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
 
               {isError ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="px-4 py-6 text-center text-sm text-destructive">
+                  <TableCell colSpan={5} className="px-4 py-6 text-center text-sm text-destructive">
                     Não foi possível carregar os clientes.
                   </TableCell>
                 </TableRow>
@@ -205,7 +196,7 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
               {!isLoading && !isError && clientes.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={5}
                     className="px-4 py-8 text-center text-sm text-muted-foreground"
                   >
                     {busca
@@ -219,8 +210,19 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
                 const excluido = cliente.softDeletedAt !== null;
 
                 return (
-                  <TableRow key={cliente.id} className={excluido ? "text-muted-foreground" : ""}>
-                    <TableCell className="px-4">
+                  <TableRow
+                    key={cliente.id}
+                    tabIndex={0}
+                    aria-label={`Abrir ${cliente.nome}`}
+                    onClick={() => setSheet({ modo: "ver", cliente })}
+                    onKeyDown={(evento) => {
+                      if (evento.key === "Enter") setSheet({ modo: "ver", cliente });
+                    }}
+                    className={`cursor-pointer ${excluido ? "text-muted-foreground" : ""}`}
+                  >
+                    {/* A seleção em lote convive com a linha clicável: marcar o checkbox
+                        não pode abrir o drawer. */}
+                    <TableCell className="px-4" onClick={(evento) => evento.stopPropagation()}>
                       <Checkbox
                         aria-label={`Selecionar ${cliente.nome}`}
                         checked={selecionados.includes(cliente.id)}
@@ -241,43 +243,6 @@ export function ClientesTable({ atorUsuarioId, atorRole }: ClientesTableProps) {
                     <TableCell>{formatarCpf(cliente.cpf)}</TableCell>
                     <TableCell>{cliente.telefone ? formatarTelefone(cliente.telefone) : "–"}</TableCell>
                     <TableCell>{cliente.email ?? "–"}</TableCell>
-                    <TableCell className="px-4">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`Ações de ${cliente.nome}`}
-                            />
-                          }
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSheet({ modo: "ver", cliente })}>
-                            Visualizar
-                          </DropdownMenuItem>
-                          {excluido ? (
-                            <DropdownMenuItem
-                              onClick={() => executarAcao([cliente.id], "restaurar")}
-                            >
-                              Restaurar
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => {
-                                setSelecionados([cliente.id]);
-                                setConfirmandoDesativacao(true);
-                              }}
-                            >
-                              Desativar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
                 );
               })}

@@ -43,18 +43,19 @@ test.describe("CRUD de clientes", () => {
     await criarCliente(page, "João Souza", CPF_JOAO);
     await expect(page.getByText("529.982.247-25")).toBeVisible();
 
-    // Editar pelo drawer
-    await page.getByRole("button", { name: "Ações de Maria Silva" }).click();
-    await page.getByRole("menuitem", { name: "Visualizar" }).click();
-    await page.getByRole("button", { name: "Editar dados" }).click();
+    // Editar pelo drawer: a linha inteira abre o cadastro e cada dado vira input ao
+    // ser clicado — não há mais um modo "editar tudo".
+    await page.getByRole("cell", { name: "Maria Silva", exact: true }).click();
+    await page.getByRole("button", { name: "Editar Telefone" }).click();
     // O campo mascara enquanto digita; a leitura mostra o número já formatado.
-    await page.getByLabel(/Telefone/).fill("5548988887777");
-    await expect(page.getByLabel(/Telefone/)).toHaveValue("+55 (48) 98888-7777");
+    await page.getByLabel("Telefone").fill("5548988887777");
+    await expect(page.getByLabel("Telefone")).toHaveValue("+55 (48) 98888-7777");
     await page.getByRole("button", { name: "Salvar alterações" }).click();
-    await expect(page.getByText("+55 (48) 98888-7777")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Editar Telefone" })).toHaveText(
+      "+55 (48) 98888-7777"
+    );
 
-    // Comentar no cliente aberto
-    await page.getByRole("tab", { name: "Comentários" }).click();
+    // Comentar no cliente aberto: os comentários ficam no cabeçalho do drawer.
     await expect(page.getByText(/Nenhum comentário ainda/)).toBeVisible();
     await page.getByRole("textbox", { name: "Novo comentário" }).fill("Primeiro contato feito.");
     await page.getByRole("button", { name: "Comentar" }).click();
@@ -124,14 +125,14 @@ test.describe("CRUD de clientes", () => {
 
     await criarCliente(page, "Maria Silva", CPF_MARIA);
 
-    await page.getByRole("button", { name: "Ações de Maria Silva" }).click();
-    await page.getByRole("menuitem", { name: "Desativar" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Desativar" }).click();
+    // A ação individual mora no drawer; a confirmação em lote continua na tabela.
+    await page.getByRole("cell", { name: "Maria Silva", exact: true }).click();
+    await page.getByRole("button", { name: "Desativar cliente" }).click();
     await expect(page.getByRole("cell", { name: "Maria Silva", exact: true })).toBeHidden();
 
     await page.getByRole("checkbox", { name: "Mostrar excluídos" }).click();
-    await page.getByRole("button", { name: "Ações de Maria Silva" }).click();
-    await page.getByRole("menuitem", { name: "Restaurar" }).click();
+    await page.getByRole("cell", { name: "Maria Silva Excluído" }).click();
+    await page.getByRole("button", { name: "Restaurar cliente" }).click();
 
     await page.getByRole("checkbox", { name: "Mostrar excluídos" }).click();
     await expect(page.getByRole("cell", { name: "Maria Silva", exact: true })).toBeVisible();

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import userEvent from "@testing-library/user-event";
-import { renderComQuery, screen } from "@/lib/test-utils";
+import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { ClienteSheet } from "./cliente-sheet";
 import type { ClienteDTO } from "@/types/cliente";
 
@@ -49,30 +49,21 @@ describe("ClienteSheet", () => {
     expect(screen.getByText("maria@ex.com")).toBeInTheDocument();
   });
 
-  it("mostra travessão nos campos opcionais em branco", async () => {
+  // Sem abas: os comentários ficam no cabeçalho e os dados logo abaixo, tudo à vista.
+  it("mostra os comentários no cabeçalho, sem abas", async () => {
     renderSheet();
-    await screen.findByText("529.982.247-25");
-
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
-  });
-
-  it('"Editar dados" troca a leitura pelo formulário', async () => {
-    const usuario = userEvent.setup();
-    renderSheet();
-
-    await usuario.click(await screen.findByRole("button", { name: "Editar dados" }));
-
-    expect(screen.getByLabelText(/Nome completo/)).toHaveValue("Maria Silva");
-    expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeInTheDocument();
-  });
-
-  it("a aba Comentários carrega a timeline do cliente", async () => {
-    const usuario = userEvent.setup();
-    renderSheet();
-
-    await usuario.click(await screen.findByRole("tab", { name: "Comentários" }));
 
     expect(await screen.findByRole("textbox", { name: "Novo comentário" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  it("clicar em um dado abre aquele campo para edição", async () => {
+    const usuario = userEvent.setup();
+    renderSheet();
+
+    await usuario.click(await screen.findByRole("button", { name: "Editar Nome completo" }));
+
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria Silva");
   });
 
   it("sinaliza visualmente um cliente excluído", async () => {
@@ -81,11 +72,42 @@ describe("ClienteSheet", () => {
     expect(await screen.findByText("Excluído")).toBeInTheDocument();
   });
 
-  // No modo criar não há cliente ainda: comentários não teriam onde ser ancorados.
-  it("no modo criar mostra só o formulário, sem abas", async () => {
+  // No modo criar não há cliente ainda: comentários não teriam onde ser ancorados,
+  // e desativar um cadastro que não existe também não faz sentido.
+  it("no modo criar mostra só o formulário", async () => {
     renderSheet({ modo: "criar", cliente: null });
 
     expect(await screen.findByRole("button", { name: "Criar cliente" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Comentários" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Novo comentário" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desativar cliente" })).not.toBeInTheDocument();
+  });
+
+  // A ação individual saiu da tabela: quem abre o cadastro é quem decide desativá-lo.
+  it("desativa o cliente pelo próprio drawer", async () => {
+    const usuario = userEvent.setup();
+    const onOpenChange = jest.fn();
+    renderSheet({ onOpenChange });
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ desativados: 1, ignorados: 0 }),
+    } as Response);
+    await usuario.click(await screen.findByRole("button", { name: "Desativar cliente" }));
+
+    await waitFor(() => {
+      const chamada = (global.fetch as jest.Mock).mock.calls.find(
+        ([url]) => url === "/api/clientes/lote"
+      );
+      expect(JSON.parse(chamada[1].body)).toEqual({ ids: ["cli-1"], acao: "desativar" });
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("oferece restaurar quando o cliente está excluído", async () => {
+    renderSheet({ cliente: { ...CLIENTE, softDeletedAt: "2026-08-10T12:00:00.000Z" } });
+
+    expect(await screen.findByRole("button", { name: "Restaurar cliente" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desativar cliente" })).not.toBeInTheDocument();
   });
 });

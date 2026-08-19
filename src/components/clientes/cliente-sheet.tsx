@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { formatarCpf } from "@/lib/utils/cpf";
-import { formatarTelefone } from "@/lib/utils/telefone";
-import { formatarDataHora } from "@/lib/utils/data";
+import { toast } from "sonner";
+import { MessageSquare, RotateCcw, Trash2 } from "lucide-react";
+import { ApiError } from "@/lib/api-client";
+import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
+import { ClienteDados } from "@/components/clientes/cliente-dados";
 import { ClienteForm } from "@/components/clientes/cliente-form";
 import { ComentariosPanel } from "@/components/clientes/comentarios-panel";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,10 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RoleMembro } from "@prisma/client";
 import type { ClienteDTO } from "@/types/cliente";
 
@@ -30,17 +31,9 @@ export interface ClienteSheetProps {
   atorRole: RoleMembro;
 }
 
-function LinhaDado({ rotulo, valor }: { rotulo: string; valor: string | null }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{rotulo}</dt>
-      <dd className="text-sm text-foreground">{valor?.trim() ? valor : "—"}</dd>
-    </div>
-  );
-}
-
-// Um único drawer serve criação, visualização e edição: o mesmo formulário muda de
-// papel conforme `cliente`, evitando duas telas divergentes para os mesmos campos.
+// Um único drawer serve criação e consulta/edição: no modo criar mostra o formulário
+// completo; com um cliente carregado, os comentários ficam no topo (como no Notion) e
+// os dados abaixo, editáveis campo a campo.
 export function ClienteSheet({
   modo,
   cliente,
@@ -49,80 +42,81 @@ export function ClienteSheet({
   atorUsuarioId,
   atorRole,
 }: ClienteSheetProps) {
-  const [editando, setEditando] = useState(false);
-
-  function fechar(proximo: boolean) {
-    if (!proximo) setEditando(false);
-    onOpenChange(proximo);
-  }
-
+  const acaoEmLote = useAcaoEmLoteClientes();
   const excluido = cliente?.softDeletedAt != null;
 
+  async function alternarAtivacao() {
+    if (!cliente) return;
+    const acao = excluido ? "restaurar" : "desativar";
+    try {
+      await acaoEmLote.mutateAsync({ ids: [cliente.id], acao });
+      toast.success(excluido ? "Cliente restaurado." : "Cliente desativado.");
+      onOpenChange(false);
+    } catch (erro) {
+      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível concluir a ação.");
+    }
+  }
+
   return (
-    <Sheet open={aberto} onOpenChange={fechar}>
-      <SheetContent className="w-full sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            {modo === "criar" ? "Novo cliente" : (cliente?.nome ?? "Cliente")}
-            {excluido ? <Badge variant="outline">Excluído</Badge> : null}
-          </SheetTitle>
-          <SheetDescription>
-            {modo === "criar"
-              ? "Cadastre um cliente do escritório."
-              : "Consulte os dados e o histórico de comentários."}
-          </SheetDescription>
-        </SheetHeader>
+    <Sheet open={aberto} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full gap-0 sm:max-w-xl">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SheetHeader className="gap-3 border-b border-border">
+            <div className="flex flex-col gap-0.5">
+              <SheetTitle className="flex items-center gap-2">
+                {modo === "criar" ? "Novo cliente" : (cliente?.nome ?? "Cliente")}
+                {excluido ? <Badge variant="outline">Excluído</Badge> : null}
+              </SheetTitle>
+              <SheetDescription>
+                {modo === "criar"
+                  ? "Cadastre um cliente do escritório."
+                  : "Comente o histórico de contato e edite os dados clicando neles."}
+              </SheetDescription>
+            </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-          {modo === "criar" ? (
-            <ClienteForm onSucesso={() => fechar(false)} onCancelar={() => fechar(false)} />
-          ) : cliente ? (
-            <Tabs defaultValue="dados">
-              <TabsList className="mb-4">
-                <TabsTrigger value="dados">Dados</TabsTrigger>
-                <TabsTrigger value="comentarios">Comentários</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="dados">
-                {editando ? (
-                  <ClienteForm
-                    cliente={cliente}
-                    onSucesso={() => setEditando(false)}
-                    onCancelar={() => setEditando(false)}
-                  />
-                ) : (
-                  <div className="flex flex-col gap-6">
-                    <dl className="grid grid-cols-2 gap-4">
-                      <LinhaDado rotulo="Nome completo" valor={cliente.nome} />
-                      <LinhaDado rotulo="CPF" valor={formatarCpf(cliente.cpf)} />
-                      <LinhaDado
-                        rotulo="Telefone"
-                        valor={cliente.telefone ? formatarTelefone(cliente.telefone) : null}
-                      />
-                      <LinhaDado rotulo="E-mail" valor={cliente.email} />
-                      <LinhaDado rotulo="Endereço" valor={cliente.endereco} />
-                      <LinhaDado
-                        rotulo="Cadastrado em"
-                        valor={formatarDataHora(cliente.createdAt)}
-                      />
-                    </dl>
-                    <div className="flex justify-end">
-                      <Button onClick={() => setEditando(true)}>Editar dados</Button>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="comentarios">
+            {/* Comentários no cabeçalho, no lugar de uma aba: o histórico de contato é o
+                que se lê primeiro ao abrir um cliente; os dados mudam bem menos. */}
+            {cliente ? (
+              <section aria-label="Comentários" className="flex flex-col gap-2">
+                <h3 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <MessageSquare aria-hidden className="size-3.5" />
+                  Comentários
+                </h3>
                 <ComentariosPanel
                   clienteId={cliente.id}
                   atorUsuarioId={atorUsuarioId}
                   atorRole={atorRole}
                 />
-              </TabsContent>
-            </Tabs>
-          ) : null}
+              </section>
+            ) : null}
+          </SheetHeader>
+
+          <div className="px-4 py-4">
+            {modo === "criar" ? (
+              <ClienteForm
+                onSucesso={() => onOpenChange(false)}
+                onCancelar={() => onOpenChange(false)}
+              />
+            ) : cliente ? (
+              <ClienteDados key={cliente.id} cliente={cliente} />
+            ) : null}
+          </div>
         </div>
+
+        {cliente ? (
+          <SheetFooter className="border-t border-border">
+            <Button
+              variant={excluido ? "outline" : "destructive"}
+              size="sm"
+              className="self-start"
+              disabled={acaoEmLote.isPending}
+              onClick={alternarAtivacao}
+            >
+              {excluido ? <RotateCcw /> : <Trash2 />}
+              {excluido ? "Restaurar cliente" : "Desativar cliente"}
+            </Button>
+          </SheetFooter>
+        ) : null}
       </SheetContent>
     </Sheet>
   );

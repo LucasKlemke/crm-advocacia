@@ -123,6 +123,28 @@ describe("ClientesTable", () => {
     expect(screen.getByText("Excluído")).toBeInTheDocument();
   });
 
+  // A coluna de ações saiu: a linha inteira é o gatilho para abrir o cadastro.
+  it("clicar na linha abre o drawer do cliente", async () => {
+    const usuario = userEvent.setup();
+    renderTabela();
+
+    await usuario.click(await screen.findByText("Maria Silva"));
+
+    expect(await screen.findByRole("button", { name: "Desativar cliente" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar CPF" })).toHaveTextContent("529.982.247-25");
+  });
+
+  it("marcar o checkbox seleciona sem abrir o drawer", async () => {
+    const usuario = userEvent.setup();
+    renderTabela();
+    await screen.findByText("Maria Silva");
+
+    await usuario.click(screen.getByRole("checkbox", { name: "Selecionar Maria Silva" }));
+
+    expect(await screen.findByRole("region", { name: "Ações em lote" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desativar cliente" })).not.toBeInTheDocument();
+  });
+
   it("mostra estado vazio quando não há clientes", async () => {
     (global.fetch as jest.Mock).mockResolvedValue(respostaListagem([]));
     renderTabela();
