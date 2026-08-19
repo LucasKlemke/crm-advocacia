@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { DndContext, useDroppable, type DragEndEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { useAtualizarCaso, useCasosKanban } from "@/hooks/use-casos";
 import { CasoCard } from "@/components/casos/caso-card";
@@ -42,6 +49,10 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
   const filtrosKanban = useMemo(() => filtrosSemPaginaEStatus(filtros), [filtros]);
   const { data, isLoading, isError } = useCasosKanban(filtrosKanban);
   const atualizar = useAtualizarCaso();
+  // Sem essa distância mínima, o próprio pointerdown do clique em um card já é lido
+  // como início de arraste e o onClick do card nunca dispara — um clique real precisa
+  // andar 8px antes de virar drag.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const [colunas, setColunas] = useState<EstadoColuna[]>([]);
   // Referência do último payload já espelhado em `colunas`, para recriar o estado
@@ -165,7 +176,7 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {colunas.map((coluna) => (
           <ColunaKanbanView
