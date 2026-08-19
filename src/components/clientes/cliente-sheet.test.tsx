@@ -71,8 +71,8 @@ describe("ClienteSheet", () => {
   it("mostra as datas de cadastro e de última atualização", async () => {
     renderSheet({ cliente: { ...CLIENTE, updatedAt: "2026-08-15T18:30:00.000Z" } });
 
-    expect(await screen.findByText(/Cadastrado em 01 de ago\. de 2026/)).toBeInTheDocument();
-    expect(screen.getByText(/Atualizado em 15 de ago\. de 2026/)).toBeInTheDocument();
+    expect(await screen.findByText(/Criado 01\/08\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Atualizado 15\/08\/2026/)).toBeInTheDocument();
   });
 
   it("a data de atualização acompanha o que acabou de ser salvo", async () => {
@@ -91,7 +91,7 @@ describe("ClienteSheet", () => {
     await usuario.type(screen.getByLabelText("Endereço"), "Rua 7");
     await usuario.click(screen.getByRole("button", { name: /Salvar/ }));
 
-    expect(await screen.findByText(/Atualizado em 19 de ago\. de 2026/)).toBeInTheDocument();
+    expect(await screen.findByText(/Atualizado 19\/08\/2026/)).toBeInTheDocument();
   });
 
   it("sinaliza visualmente um cliente excluído", async () => {

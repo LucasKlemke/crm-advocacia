@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { CalendarPlus, History, RotateCcw, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { formatarDataHora } from "@/lib/utils/data";
+import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
 import { ClienteDados } from "@/components/clientes/cliente-dados";
 import { ClienteForm } from "@/components/clientes/cliente-form";
@@ -79,14 +79,17 @@ export function ClienteSheet({
                 {modo === "criar" ? (
                   "Cadastre um cliente do escritório."
                 ) : exibido ? (
-                  <>
-                    <span className="block">
-                      Cadastrado em {formatarDataHora(exibido.createdAt)}
+                  // Datas de contexto: uma linha discreta, não duas frases.
+                  <span className="flex flex-wrap items-center gap-x-3 text-[11px]">
+                    <span className="flex items-center gap-1">
+                      <CalendarPlus aria-hidden className="size-3" />
+                      Criado {formatarDataHoraCurta(exibido.createdAt)}
                     </span>
-                    <span className="block">
-                      Atualizado em {formatarDataHora(exibido.updatedAt)}
+                    <span className="flex items-center gap-1">
+                      <History aria-hidden className="size-3" />
+                      Atualizado {formatarDataHoraCurta(exibido.updatedAt)}
                     </span>
-                  </>
+                  </span>
                 ) : null}
               </SheetDescription>
             </div>
