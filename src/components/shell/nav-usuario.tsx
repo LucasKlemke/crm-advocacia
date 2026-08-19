@@ -14,18 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { iniciais } from "@/lib/utils/nome";
 
 export interface NavUsuarioProps {
   usuario: { nome: string; email: string };
-}
-
-function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return "?";
-  return partes
-    .slice(0, 2)
-    .map((parte) => parte[0]?.toUpperCase())
-    .join("");
 }
 
 // Card de usuário no rodapé da sidebar: "Configurações" leva a /perfil, "Sair" desloga.
