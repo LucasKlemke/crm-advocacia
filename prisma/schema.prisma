@@ -10,9 +10,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum RoleUsuario {
-  titular
-  colaborador
+enum RoleMembro {
+  owner
+  admin
+  padrao
 }
 
 model Escritorio {
@@ -24,26 +25,66 @@ model Escritorio {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  usuarios Usuario[]
+  membros  Membro[]
+  convites Convite[]
 
   @@map("escritorio")
 }
 
+// Perfil global do usuário — não pertence a um único escritório; a associação
+// N:N com papel por tenant vive em Membro.
 model Usuario {
-  id           String      @id @default(uuid())
-  escritorioId String      @map("escritorio_id")
-  nome         String      @db.VarChar(140)
-  email        String      @unique @db.VarChar(255)
-  senhaHash    String      @map("senha_hash") @db.VarChar(255)
-  oab          String?     @db.VarChar(20)
-  telefone     String?     @db.VarChar(20)
-  role         RoleUsuario @default(titular)
-  ativo        Boolean     @default(true)
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  nome      String   @db.VarChar(140)
+  email     String   @unique @db.VarChar(255)
+  senhaHash String   @map("senha_hash") @db.VarChar(255)
+  avatarUrl String?  @map("avatar_url") @db.VarChar(500)
+  oab       String?  @db.VarChar(20)
+  telefone  String?  @db.VarChar(20)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  escritorio Escritorio @relation(fields: [escritorioId], references: [id])
+  membros           Membro[]
+  convitesEnviados  Convite[] @relation("ConviteCriadoPor")
 
-  @@index([escritorioId])
   @@map("usuario")
+}
+
+// Tabela híbrida: associação de um usuário a um escritório com um papel (RN02a).
+model Membro {
+  id           String     @id @default(uuid())
+  usuarioId    String     @map("usuario_id")
+  escritorioId String     @map("escritorio_id")
+  role         RoleMembro @default(padrao)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, escritorioId])
+  @@index([escritorioId])
+  @@index([usuarioId])
+  @@map("membro")
+}
+
+// Convite pendente para um e-mail entrar num escritório com um papel. Linha existe =
+// convite pendente; aceitar/cancelar remove a linha (evita índice parcial — RFC).
+model Convite {
+  id                  String     @id @default(uuid())
+  escritorioId        String     @map("escritorio_id")
+  email               String     @db.VarChar(255)
+  role                RoleMembro @default(padrao)
+  criadoPorUsuarioId  String     @map("criado_por_usuario_id")
+  expiraEm            DateTime   @map("expira_em")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  criadoPor  Usuario    @relation("ConviteCriadoPor", fields: [criadoPorUsuarioId], references: [id])
+
+  @@unique([escritorioId, email])
+  @@index([email])
+  @@map("convite")
 }

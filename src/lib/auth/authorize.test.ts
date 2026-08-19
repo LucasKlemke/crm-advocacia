@@ -1,11 +1,14 @@
 import { authorizeCredentials } from "./authorize";
 import { usuarioRepository } from "@/repositories/usuario.repository";
+import { resolverEscritorioAtivo } from "@/lib/auth/escritorio-ativo";
 import bcrypt from "bcrypt";
 
 jest.mock("@/repositories/usuario.repository");
+jest.mock("@/lib/auth/escritorio-ativo");
 jest.mock("bcrypt");
 
 const mockedUsuarioRepo = usuarioRepository as jest.Mocked<typeof usuarioRepository>;
+const mockedResolver = resolverEscritorioAtivo as jest.Mock;
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
 describe("authorizeCredentials", () => {
@@ -51,17 +54,39 @@ describe("authorizeCredentials", () => {
     expect(resultado).toBeNull();
   });
 
-  it("retorna os dados do usuário quando as credenciais são válidas", async () => {
+  it("retorna os dados do usuário com o escritório ativo resolvido (usuário com membership)", async () => {
     mockedUsuarioRepo.findByEmail.mockResolvedValue({
       id: "user-1",
       ativo: true,
       senhaHash: "hash",
       email: "email@teste.com",
       nome: "Fulano",
-      escritorioId: "esc-1",
-      role: "titular",
     } as never);
     mockedBcrypt.compare.mockResolvedValue(true as never);
+    mockedResolver.mockResolvedValue({ escritorioId: "esc-1", role: "owner" });
+
+    const resultado = await authorizeCredentials("email@teste.com", "senha-correta");
+
+    expect(mockedResolver).toHaveBeenCalledWith("user-1", null);
+    expect(resultado).toEqual({
+      id: "user-1",
+      email: "email@teste.com",
+      name: "Fulano",
+      escritorioId: "esc-1",
+      role: "owner",
+    });
+  });
+
+  it("retorna escritorioId/role null quando o usuário não tem nenhuma membership", async () => {
+    mockedUsuarioRepo.findByEmail.mockResolvedValue({
+      id: "user-1",
+      ativo: true,
+      senhaHash: "hash",
+      email: "email@teste.com",
+      nome: "Fulano",
+    } as never);
+    mockedBcrypt.compare.mockResolvedValue(true as never);
+    mockedResolver.mockResolvedValue({ escritorioId: null, role: null });
 
     const resultado = await authorizeCredentials("email@teste.com", "senha-correta");
 
@@ -69,8 +94,8 @@ describe("authorizeCredentials", () => {
       id: "user-1",
       email: "email@teste.com",
       name: "Fulano",
-      escritorioId: "esc-1",
-      role: "titular",
+      escritorioId: null,
+      role: null,
     });
   });
 });

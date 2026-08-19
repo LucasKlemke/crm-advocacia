@@ -43,4 +43,13 @@ describe("escritorioRepository", () => {
 
     expect(encontrado).toBeNull();
   });
+
+  it("atualiza dados do escritório", async () => {
+    const criado = await escritorioRepository.create({ nome: "Nome Antigo" });
+    criados.push(criado.id);
+
+    const atualizado = await escritorioRepository.update(criado.id, { nome: "Nome Novo" });
+
+    expect(atualizado.nome).toBe("Nome Novo");
+  });
 });

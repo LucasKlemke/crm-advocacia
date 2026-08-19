@@ -7,39 +7,64 @@ Mapeia as camadas definidas em [../arquitetura/visao-geral.md](../arquitetura/vi
 ```
 src/
 ├── app/                          # App Router — páginas e route handlers
-│   ├── (auth)/                   # rotas públicas: login, cadastro de escritório
+│   ├── (auth)/                   # rotas públicas: login, cadastro (nome/e-mail/senha)
 │   │   ├── login/page.tsx
 │   │   └── cadastro/page.tsx
-│   ├── (dashboard)/               # rotas autenticadas
+│   ├── (onboarding)/
+│   │   └── onboarding/page.tsx   # cria o primeiro escritório (ou mais um, pelo switcher)
+│   ├── (dashboard)/              # rotas autenticadas, com escritório ativo obrigatório
+│   │   ├── layout.tsx            # shell: SidebarProvider + AppSidebar + EscritorioSwitcher
+│   │   ├── page.tsx
 │   │   ├── clientes/page.tsx
 │   │   ├── casos/page.tsx          # kanban
 │   │   ├── prazos/page.tsx
-│   │   ├── whatsapp/page.tsx
-│   │   └── configuracoes/page.tsx
+│   │   ├── mensagens/page.tsx
+│   │   ├── perfil/page.tsx       # dados do próprio usuário + senha
+│   │   └── configuracoes/
+│   │       ├── layout.tsx        # nav lateral própria (sem aninhar outro SidebarProvider)
+│   │       ├── page.tsx          # redireciona para /configuracoes/escritorio
+│   │       ├── escritorio/page.tsx
+│   │       └── usuarios/page.tsx # membros + convites
 │   └── api/                      # Controllers — Route Handlers
-│       ├── clientes/route.ts
-│       ├── clientes/[id]/route.ts
-│       ├── casos/route.ts
-│       ├── usuarios/route.ts
+│       ├── cadastro/route.ts
+│       ├── escritorios/route.ts
+│       ├── escritorios/atual/route.ts
+│       ├── sessao/escritorio-ativo/route.ts
+│       ├── membros/route.ts
+│       ├── membros/[id]/route.ts
+│       ├── convites/route.ts
+│       ├── convites/[id]/route.ts
+│       ├── perfil/route.ts
+│       ├── perfil/senha/route.ts
 │       └── ...
 ├── services/                     # regras de negócio (RN01–RN19)
-│   ├── cliente.service.ts
-│   ├── caso.service.ts
-│   ├── usuario.service.ts
-│   ├── escritorio.service.ts
+│   ├── usuario.service.ts        # cadastro, perfil, senha
+│   ├── escritorio.service.ts     # criar/ler/atualizar o tenant
+│   ├── membro.service.ts         # troca de escritório ativo, gestão de membros
+│   ├── convite.service.ts        # convidar, listar pendentes, cancelar
 │   └── ...
 ├── repositories/                 # único ponto de acesso ao Prisma
-│   ├── cliente.repository.ts
-│   ├── caso.repository.ts
+│   ├── usuario.repository.ts
+│   ├── escritorio.repository.ts
+│   ├── membro.repository.ts
+│   ├── convite.repository.ts
 │   └── ...
 ├── lib/
-│   ├── auth/                     # config do NextAuth.js, Tenant Context
+│   ├── auth/
+│   │   ├── config.ts             # NextAuth.js — providers, callbacks jwt/session
+│   │   ├── authorize.ts          # credenciais → resolve escritório ativo inicial
+│   │   ├── escritorio-ativo.ts   # resolverEscritorioAtivo (sempre valida no banco)
+│   │   ├── permissoes.ts         # hierarquia de papéis, puro/sem I/O
+│   │   └── tenant-context.ts     # getTenantContext() — RN19
 │   ├── external/                 # UazapiClient, S3Client, EmailClient
 │   ├── prisma.ts                 # instância única do PrismaClient
 │   └── utils/                    # funções puras compartilhadas (ver modularizacao.md)
 ├── hooks/                        # hooks de TanStack Query (client-side)
 ├── components/
 │   ├── ui/                       # componentes shadcn/ui (gerados via CLI)
+│   ├── shell/                    # AppSidebar, NavUsuario, EscritorioSwitcher
+│   ├── perfil/                   # PerfilForm, SenhaForm
+│   ├── configuracoes/            # EscritorioForm, MembrosTable, ConviteForm, ConvitesTable
 │   └── shared/                   # composições reutilizáveis entre módulos
 └── types/                        # tipos compartilhados front/back
 ```

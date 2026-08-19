@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function CadastroPage() {
-  const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -20,21 +18,21 @@ export default function CadastroPage() {
 
     const formData = new FormData(event.currentTarget);
     const payload = {
-      nomeEscritorio: formData.get("nomeEscritorio"),
-      nomeTitular: formData.get("nomeTitular"),
+      nome: formData.get("nome"),
       email: formData.get("email"),
       senha: formData.get("senha"),
     };
 
     try {
-      const response = await fetch("/api/escritorios", {
+      const response = await fetch("/api/cadastro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
         setErro(data?.error ?? "Não foi possível concluir o cadastro.");
         return;
       }
@@ -46,11 +44,14 @@ export default function CadastroPage() {
       });
 
       if (loginResult?.error) {
-        router.push("/login");
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = "/login";
         return;
       }
 
-      router.push("/");
+      // Navegação forçada (não router.push): evita reusar uma entrada stale do Router
+      // Cache pré-fetchada enquanto ainda deslogado (mesmo problema do /login).
+      window.location.href = data?.temEscritorio ? "/" : "/onboarding";
     } finally {
       setCarregando(false);
     }
@@ -59,20 +60,16 @@ export default function CadastroPage() {
   return (
     <Card className="w-full ring-foreground/5 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Cadastre seu escritório</CardTitle>
+        <CardTitle className="text-xl">Crie sua conta</CardTitle>
         <CardDescription>
-          Crie sua conta para começar a usar o CRM. Você será o usuário titular.
+          Cadastre-se com seu nome, e-mail e senha para começar a usar o CRM.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="nomeEscritorio">Nome do escritório</Label>
-            <Input id="nomeEscritorio" name="nomeEscritorio" required />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nomeTitular">Seu nome</Label>
-            <Input id="nomeTitular" name="nomeTitular" required />
+            <Label htmlFor="nome">Seu nome</Label>
+            <Input id="nome" name="nome" required />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">E-mail</Label>

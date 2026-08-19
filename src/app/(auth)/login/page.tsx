@@ -1,15 +1,22 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+// Só aceita path relativo interno ("/rota"), nunca URL absoluta/protocol-relative
+// ("//host" ou "https://host") — evita open redirect via callbackUrl manipulado.
+function destinoSeguro(callbackUrl: string | null): string {
+  if (!callbackUrl || !callbackUrl.startsWith("/") || callbackUrl.startsWith("//")) {
+    return "/";
+  }
+  return callbackUrl;
+}
+
 export default function LoginPage() {
-  const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -32,7 +39,14 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      // Navegação forçada (não router.push): o Router Cache do Next pode ter uma
+      // entrada de "/" com o redirect para /login pré-fetchada enquanto ainda
+      // deslogado (via o Link da marca no layout de auth) — só um reload garante que
+      // o middleware releia a sessão recém-criada em vez de reusar esse cache stale.
+      const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+      window.location.href = destinoSeguro(callbackUrl);
+    } catch {
+      setErro("Não foi possível entrar. Tente novamente.");
     } finally {
       setCarregando(false);
     }
