@@ -1,5 +1,5 @@
 ---
-name: pr
+name: create-pr
 description: Abre um Pull Request no GitHub da branch atual para a branch dev deste repositório, usando gh CLI, com descrição em português breve e direta sobre o que foi alterado. Use sempre que o usuário pedir para "abrir um PR", "criar PR", "subir PR", "mandar pra dev", "abre um pull request", "faz o PR dessa branch" ou variações — mesmo que não mencione explicitamente "dev" como destino, já que dev é sempre a branch de base neste projeto. Não use para merge direto, push simples sem PR, ou PRs para main (isso é feito separadamente e exige confirmação extra).
 ---
 
