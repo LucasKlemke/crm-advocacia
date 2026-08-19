@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import type { RoleMembro } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,15 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LABEL_ROLE } from "@/lib/utils/role";
+import { ROLES_MEMBRO, labelRole } from "@/lib/utils/role";
 
 export interface ConviteFormProps {
   onSucesso?: () => void;
 }
 
+const CARGO_PADRAO: RoleMembro = "padrao";
+
 export function ConviteForm({ onSucesso }: ConviteFormProps = {}) {
   const router = useRouter();
-  const [role, setRole] = useState("padrao");
+  const [role, setRole] = useState<RoleMembro>(CARGO_PADRAO);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -49,6 +52,7 @@ export function ConviteForm({ onSucesso }: ConviteFormProps = {}) {
 
       toast.success("Convite enviado.");
       form.reset();
+      setRole(CARGO_PADRAO);
       router.refresh();
       onSucesso?.();
     } finally {
@@ -64,14 +68,19 @@ export function ConviteForm({ onSucesso }: ConviteFormProps = {}) {
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="role">Cargo</Label>
-        <Select value={role} onValueChange={(value) => setRole(value ?? "padrao")}>
+        <Select
+          value={role}
+          onValueChange={(value) => setRole((value as RoleMembro) ?? CARGO_PADRAO)}
+        >
           <SelectTrigger id="role" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="padrao">{LABEL_ROLE.padrao}</SelectItem>
-            <SelectItem value="admin">{LABEL_ROLE.admin}</SelectItem>
-            <SelectItem value="owner">{LABEL_ROLE.owner}</SelectItem>
+            {ROLES_MEMBRO.map((opcao) => (
+              <SelectItem key={opcao} value={opcao}>
+                {labelRole(opcao)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

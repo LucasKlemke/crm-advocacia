@@ -49,4 +49,33 @@ describe("ConviteForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/já existe um convite/i);
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it("volta o cargo para padrao após um envio bem-sucedido, mesmo tendo escolhido outro cargo antes", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({}) });
+    const user = userEvent.setup();
+
+    render(<ConviteForm />);
+    await user.click(screen.getByLabelText("Cargo"));
+    await user.click(await screen.findByRole("option", { name: "Administrador" }));
+    await user.type(screen.getByLabelText("E-mail do colaborador"), "primeiro@teste.com");
+    await user.click(screen.getByRole("button", { name: /convidar/i }));
+
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      "/api/convites",
+      expect.objectContaining({
+        body: JSON.stringify({ email: "primeiro@teste.com", role: "admin" }),
+      })
+    );
+
+    await user.clear(screen.getByLabelText("E-mail do colaborador"));
+    await user.type(screen.getByLabelText("E-mail do colaborador"), "segundo@teste.com");
+    await user.click(screen.getByRole("button", { name: /convidar/i }));
+
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      "/api/convites",
+      expect.objectContaining({
+        body: JSON.stringify({ email: "segundo@teste.com", role: "padrao" }),
+      })
+    );
+  });
 });
