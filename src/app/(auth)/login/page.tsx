@@ -36,6 +36,8 @@ export default function LoginPage() {
       // o middleware releia a sessão recém-criada em vez de reusar esse cache stale.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/";
+    } catch {
+      setErro("Não foi possível entrar. Tente novamente.");
     } finally {
       setCarregando(false);
     }

@@ -50,4 +50,18 @@ describe("LoginPage", () => {
 
     expect(window.location.href).toBe("/");
   });
+
+  it("exibe erro genérico quando signIn lança uma exceção (ex.: falha de rede)", async () => {
+    mockedSignIn.mockRejectedValue(new Error("network error"));
+    const user = userEvent.setup();
+
+    render(<LoginPage />);
+
+    await user.type(screen.getByLabelText("E-mail"), "fulano@teste.com");
+    await user.type(screen.getByLabelText("Senha"), "senha-correta");
+    await user.click(screen.getByRole("button", { name: /entrar/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível entrar/i);
+    expect(window.location.href).toBe("");
+  });
 });
