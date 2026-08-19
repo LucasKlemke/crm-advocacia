@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { OnboardingForm } from "./onboarding-form";
+import { NovoEscritorioForm } from "./novo-escritorio-form";
 
-describe("OnboardingForm", () => {
+describe("NovoEscritorioForm", () => {
   const originalLocation = window.location;
 
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe("OnboardingForm", () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({}) });
     const user = userEvent.setup();
 
-    render(<OnboardingForm />);
+    render(<NovoEscritorioForm />);
     await user.type(screen.getByLabelText("Nome do escritório"), "Escritório Teste");
     await user.click(screen.getByRole("button", { name: /criar escritório/i }));
 
@@ -39,7 +39,7 @@ describe("OnboardingForm", () => {
     });
     const user = userEvent.setup();
 
-    render(<OnboardingForm />);
+    render(<NovoEscritorioForm />);
     await user.type(screen.getByLabelText("Nome do escritório"), "Escritório Teste");
     await user.click(screen.getByRole("button", { name: /criar escritório/i }));
 

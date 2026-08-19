@@ -52,13 +52,15 @@ describe("EscritorioSwitcher", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("leva para /onboarding ao clicar em Criar escritório", async () => {
+  it("abre a dialog de criar escritório em vez de navegar", async () => {
     const user = userEvent.setup();
 
     render(<EscritorioSwitcher escritorios={escritorios} ativoId="esc-1" />);
     await user.click(screen.getByRole("button", { name: /selecionar escritório/i }));
     await user.click(await screen.findByRole("menuitem", { name: /criar escritório/i }));
 
-    expect(push).toHaveBeenCalledWith("/onboarding");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome do escritório")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 });

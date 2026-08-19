@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
-import { OnboardingForm } from "./onboarding-form";
+import { NovoEscritorioForm } from "@/components/shell/novo-escritorio-form";
 
-// Alcançável tanto pelo cadastro sem convite pendente quanto pelo switcher
-// ("Criar escritório") — em ambos os casos exige apenas sessão válida.
+// Alcançável pelo cadastro sem convite pendente — exige apenas sessão válida.
+// Criar um escritório adicional a partir do shell autenticado usa o dialog do
+// switcher (ver EscritorioSwitcher), não esta página.
 export default async function OnboardingPage() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -17,7 +18,7 @@ export default async function OnboardingPage() {
         <p className="mb-6 text-sm text-muted-foreground">
           Você poderá convidar colegas e criar outros escritórios depois.
         </p>
-        <OnboardingForm />
+        <NovoEscritorioForm />
       </div>
     </div>
   );
