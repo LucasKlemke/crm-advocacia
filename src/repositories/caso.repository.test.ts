@@ -95,6 +95,7 @@ describe("casoRepository", () => {
       status: string;
       responsavel?: string;
       arquivado?: boolean;
+      valor?: number;
     }
   ) {
     return casoRepository.create({
@@ -104,6 +105,7 @@ describe("casoRepository", () => {
       cliente: { connect: { id: dados.cliente } },
       status: { connect: { id: dados.status } },
       ...(dados.responsavel ? { responsavel: { connect: { id: dados.responsavel } } } : {}),
+      ...(dados.valor !== undefined ? { valor: dados.valor } : {}),
     });
   }
 
@@ -240,5 +242,240 @@ describe("casoRepository", () => {
     const caso = await criar(escritorioId, { titulo: "Original", cliente: clienteId, status: statusId });
     const atualizado = await casoRepository.update(caso.id, { titulo: "Atualizado" });
     expect(atualizado.titulo).toBe("Atualizado");
+  });
+
+  describe("contarPorStatus", () => {
+    it("agrupa a contagem de casos por statusId", async () => {
+      await criar(escritorioId, { titulo: "Um", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { titulo: "Dois", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { titulo: "Três", cliente: clienteId, status: outroStatusId });
+
+      const contagens = await casoRepository.contarPorStatus(escritorioId);
+
+      expect(
+        contagens
+          .map(({ statusId: sid, total }) => ({ statusId: sid, total }))
+          .sort((a, b) => a.statusId.localeCompare(b.statusId))
+      ).toEqual(
+        [
+          { statusId: statusId, total: 2 },
+          { statusId: outroStatusId, total: 1 },
+        ].sort((a, b) => a.statusId.localeCompare(b.statusId))
+      );
+    });
+
+    it("por padrão ignora casos arquivados", async () => {
+      await criar(escritorioId, { titulo: "Ativo", cliente: clienteId, status: statusId });
+      await criar(escritorioId, {
+        titulo: "Arquivado",
+        cliente: clienteId,
+        status: statusId,
+        arquivado: true,
+      });
+
+      const contagens = await casoRepository.contarPorStatus(escritorioId);
+      expect(contagens).toEqual([{ statusId, total: 1, valorTotal: 0 }]);
+    });
+
+    it("não devolve contagens de outro escritório (RN19)", async () => {
+      await criar(escritorioId, { titulo: "Do Tenant", cliente: clienteId, status: statusId });
+
+      const outroCliente = await clienteRepository.create({
+        nome: "Cliente Outro Tenant Contagem",
+        cpf: "70706433004",
+        escritorio: { connect: { id: outroEscritorioId } },
+      });
+      const outroTipo = await tipoStatusRepository.findByChave("nova_conversa");
+      const outroStatusOutroTenant = await statusRepository.create({
+        nome: "Status Outro Tenant Contagem",
+        icone: "MessageCircle",
+        cor: "#64748b",
+        ordem: 1,
+        escritorio: { connect: { id: outroEscritorioId } },
+        tipo: { connect: { id: outroTipo!.id } },
+      });
+      await criar(outroEscritorioId, {
+        titulo: "De Outro Tenant",
+        cliente: outroCliente.id,
+        status: outroStatusOutroTenant.id,
+      });
+
+      const contagens = await casoRepository.contarPorStatus(escritorioId);
+      expect(contagens).toEqual([{ statusId, total: 1, valorTotal: 0 }]);
+
+      await prisma.caso.deleteMany({ where: { escritorioId: outroEscritorioId } });
+      await prisma.status.delete({ where: { id: outroStatusOutroTenant.id } });
+      await prisma.cliente.delete({ where: { id: outroCliente.id } });
+    });
+
+    it("soma o valor dos casos por statusId", async () => {
+      await criar(escritorioId, {
+        titulo: "Um",
+        cliente: clienteId,
+        status: statusId,
+        valor: 1000,
+      });
+      await criar(escritorioId, {
+        titulo: "Dois",
+        cliente: clienteId,
+        status: statusId,
+        valor: 500.5,
+      });
+      await criar(escritorioId, {
+        titulo: "Três",
+        cliente: clienteId,
+        status: outroStatusId,
+        valor: 200,
+      });
+
+      const contagens = await casoRepository.contarPorStatus(escritorioId);
+
+      const doStatus = contagens.find((c) => c.statusId === statusId);
+      const doOutroStatus = contagens.find((c) => c.statusId === outroStatusId);
+      expect(doStatus).toEqual({ statusId, total: 2, valorTotal: 1500.5 });
+      expect(doOutroStatus).toEqual({ statusId: outroStatusId, total: 1, valorTotal: 200 });
+    });
+
+    it("valorTotal é 0 quando não há casos para o status", async () => {
+      const contagens = await casoRepository.contarPorStatus(escritorioId);
+      expect(contagens).toEqual([]);
+    });
+  });
+
+  describe("listarDatasCriacao", () => {
+    it("devolve as datas de criação dos casos a partir de uma data", async () => {
+      await criar(escritorioId, { titulo: "Um", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { titulo: "Dois", cliente: clienteId, status: statusId });
+
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const datas = await casoRepository.listarDatasCriacao(escritorioId, { dataInicio: desde });
+
+      expect(datas).toHaveLength(2);
+      datas.forEach((d) => expect(d).toBeInstanceOf(Date));
+    });
+
+    it("por padrão ignora casos arquivados", async () => {
+      await criar(escritorioId, { titulo: "Ativo", cliente: clienteId, status: statusId });
+      await criar(escritorioId, {
+        titulo: "Arquivado",
+        cliente: clienteId,
+        status: statusId,
+        arquivado: true,
+      });
+
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const datas = await casoRepository.listarDatasCriacao(escritorioId, { dataInicio: desde });
+      expect(datas).toHaveLength(1);
+    });
+
+    it("não devolve datas de casos de outro escritório (RN19)", async () => {
+      await criar(escritorioId, { titulo: "Do Tenant", cliente: clienteId, status: statusId });
+
+      const outroCliente = await clienteRepository.create({
+        nome: "Cliente Outro Tenant Datas",
+        cpf: "05865146050",
+        escritorio: { connect: { id: outroEscritorioId } },
+      });
+      const outroTipo = await tipoStatusRepository.findByChave("nova_conversa");
+      const outroStatusOutroTenant = await statusRepository.create({
+        nome: "Status Outro Tenant Datas",
+        icone: "MessageCircle",
+        cor: "#64748b",
+        ordem: 1,
+        escritorio: { connect: { id: outroEscritorioId } },
+        tipo: { connect: { id: outroTipo!.id } },
+      });
+      await criar(outroEscritorioId, {
+        titulo: "De Outro Tenant",
+        cliente: outroCliente.id,
+        status: outroStatusOutroTenant.id,
+      });
+
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const datas = await casoRepository.listarDatasCriacao(escritorioId, { dataInicio: desde });
+      expect(datas).toHaveLength(1);
+
+      await prisma.caso.deleteMany({ where: { escritorioId: outroEscritorioId } });
+      await prisma.status.delete({ where: { id: outroStatusOutroTenant.id } });
+      await prisma.cliente.delete({ where: { id: outroCliente.id } });
+    });
+  });
+
+  describe("somarValorAberto", () => {
+    it("soma o valor dos casos não arquivados", async () => {
+      await casoRepository.create({
+        titulo: "Com valor 1",
+        valor: 1000,
+        arquivado: false,
+        escritorio: { connect: { id: escritorioId } },
+        cliente: { connect: { id: clienteId } },
+        status: { connect: { id: statusId } },
+      });
+      await casoRepository.create({
+        titulo: "Com valor 2",
+        valor: 500.5,
+        arquivado: false,
+        escritorio: { connect: { id: escritorioId } },
+        cliente: { connect: { id: clienteId } },
+        status: { connect: { id: statusId } },
+      });
+      await casoRepository.create({
+        titulo: "Arquivado com valor",
+        valor: 9999,
+        arquivado: true,
+        escritorio: { connect: { id: escritorioId } },
+        cliente: { connect: { id: clienteId } },
+        status: { connect: { id: statusId } },
+      });
+
+      const total = await casoRepository.somarValorAberto(escritorioId);
+      expect(total).toBe(1500.5);
+    });
+
+    it("devolve 0 quando não há casos com valor", async () => {
+      const total = await casoRepository.somarValorAberto(escritorioId);
+      expect(total).toBe(0);
+    });
+
+    it("não soma valor de casos de outro escritório (RN19)", async () => {
+      await casoRepository.create({
+        titulo: "Do Tenant",
+        valor: 100,
+        arquivado: false,
+        escritorio: { connect: { id: escritorioId } },
+        cliente: { connect: { id: clienteId } },
+        status: { connect: { id: statusId } },
+      });
+
+      const outroCliente = await clienteRepository.create({
+        nome: "Cliente Outro Tenant Valor",
+        cpf: "88568935050",
+        escritorio: { connect: { id: outroEscritorioId } },
+      });
+      const outroTipo = await tipoStatusRepository.findByChave("nova_conversa");
+      const outroStatusOutroTenant = await statusRepository.create({
+        nome: "Status Outro Tenant Valor",
+        icone: "MessageCircle",
+        cor: "#64748b",
+        ordem: 1,
+        escritorio: { connect: { id: outroEscritorioId } },
+        tipo: { connect: { id: outroTipo!.id } },
+      });
+      await casoRepository.create({
+        titulo: "De Outro Tenant",
+        valor: 99999,
+        arquivado: false,
+        escritorio: { connect: { id: outroEscritorioId } },
+        cliente: { connect: { id: outroCliente.id } },
+        status: { connect: { id: outroStatusOutroTenant.id } },
+      });
+
+      const total = await casoRepository.somarValorAberto(escritorioId);
+      expect(total).toBe(100);
+
+      await prisma.caso.deleteMany({ where: { escritorioId: outroEscritorioId } });
+      await prisma.status.delete({ where: { id: outroStatusOutroTenant.id } });
+      await prisma.cliente.delete({ where: { id: outroCliente.id } });
+    });
   });
 });

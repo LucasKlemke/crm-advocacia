@@ -109,4 +109,46 @@ export const casoRepository = {
   async update(id: string, data: Prisma.CasoUpdateInput, db: Db = prisma): Promise<Caso> {
     return db.caso.update({ where: { id }, data });
   },
+
+  async contarPorStatus(
+    escritorioId: string,
+    filtros: FiltrosCaso = {},
+    db: Db = prisma
+  ): Promise<{ statusId: string; total: number; valorTotal: number }[]> {
+    const grupos = await db.caso.groupBy({
+      by: ["statusId"],
+      where: where(escritorioId, filtros),
+      _count: { _all: true },
+      _sum: { valor: true },
+    });
+    return grupos.map((g) => ({
+      statusId: g.statusId,
+      total: g._count._all,
+      valorTotal: g._sum.valor ? Number(g._sum.valor) : 0,
+    }));
+  },
+
+  async listarDatasCriacao(
+    escritorioId: string,
+    filtros: FiltrosCaso,
+    db: Db = prisma
+  ): Promise<Date[]> {
+    const casos = await db.caso.findMany({
+      where: where(escritorioId, filtros),
+      select: { createdAt: true },
+    });
+    return casos.map((c) => c.createdAt);
+  },
+
+  async somarValorAberto(
+    escritorioId: string,
+    filtros: FiltrosCaso = {},
+    db: Db = prisma
+  ): Promise<number> {
+    const resultado = await db.caso.aggregate({
+      where: where(escritorioId, filtros),
+      _sum: { valor: true },
+    });
+    return resultado._sum.valor ? Number(resultado._sum.valor) : 0;
+  },
 };

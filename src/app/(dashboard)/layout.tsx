@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { EscritorioSwitcher } from "@/components/shell/escritorio-switcher";
+import { formatarDataExtensa } from "@/lib/utils/data";
 
 // Sem SessionProvider — sessão é lida só no server via auth(); mutações do client
 // (ex. EscritorioSwitcher) chamam a API e disparam router.refresh().
@@ -40,6 +41,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           }))}
           ativoId={session.user.escritorioId}
         />
+        <span className="ml-auto text-sm text-muted-foreground">
+          {formatarDataExtensa(new Date())}
+        </span>
       </header>
       <SidebarProvider className="min-h-0 flex-1">
         <AppSidebar
