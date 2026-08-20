@@ -3,7 +3,7 @@
  */
 import { GET } from "./route";
 import { getTenantContext } from "@/lib/auth/tenant-context";
-import { documentoService } from "@/services/documento.service";
+import { documentoService, DocumentoNaoEncontradoError } from "@/services/documento.service";
 
 jest.mock("@/lib/auth/tenant-context", () => {
   class NaoAutenticadoError extends Error {}
@@ -20,11 +20,15 @@ jest.mock("@/services/documento.service", () => {
   class DocumentoNaoEncontradoError extends Error {}
   class TipoDocumentoInvalidoError extends Error {}
   class TamanhoDocumentoExcedidoError extends Error {}
+  class PermissaoDocumentoError extends Error {}
+  class TamanhoInvalidoError extends Error {}
   return {
     documentoService: { listarPorEscopo: jest.fn() },
     DocumentoNaoEncontradoError,
     TipoDocumentoInvalidoError,
     TamanhoDocumentoExcedidoError,
+    PermissaoDocumentoError,
+    TamanhoInvalidoError,
   };
 });
 jest.mock("@/services/cliente.service", () => {
@@ -45,10 +49,14 @@ jest.mock("@/services/caso.service", () => {
   class CasoNaoEncontradoError extends Error {}
   class StatusInvalidoError extends Error {}
   class ClienteNaoAtualError extends Error {}
+  class ClienteInativoError extends Error {}
+  class ResponsavelInvalidoError extends Error {}
   return {
     CasoNaoEncontradoError,
     StatusInvalidoError,
     ClienteNaoAtualError,
+    ClienteInativoError,
+    ResponsavelInvalidoError,
   };
 });
 
@@ -81,5 +89,31 @@ describe("GET /api/documentos", () => {
     const resposta = await GET(new Request("http://localhost/api/documentos?escopo=cliente"));
     expect(resposta.status).toBe(400);
     expect(service.listarPorEscopo).not.toHaveBeenCalled();
+  });
+
+  it("mapeia erro de documento não encontrado para 404", async () => {
+    service.listarPorEscopo.mockRejectedValue(
+      new DocumentoNaoEncontradoError("Documento não encontrado")
+    );
+
+    const resposta = await GET(
+      new Request(`http://localhost/api/documentos?escopo=cliente&escopoId=${ESCOPO_ID}`)
+    );
+
+    expect(resposta.status).toBe(404);
+    const corpo = await resposta.json();
+    expect(corpo.error).toBe("Documento não encontrado");
+  });
+
+  it("retorna 500 para erro não mapeado", async () => {
+    service.listarPorEscopo.mockRejectedValue(new Error("falha inesperada"));
+
+    const resposta = await GET(
+      new Request(`http://localhost/api/documentos?escopo=cliente&escopoId=${ESCOPO_ID}`)
+    );
+
+    expect(resposta.status).toBe(500);
+    const corpo = await resposta.json();
+    expect(corpo.error).toBe("Não foi possível listar os documentos.");
   });
 });

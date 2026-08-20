@@ -3,7 +3,7 @@
  */
 import { POST } from "./route";
 import { getTenantContext } from "@/lib/auth/tenant-context";
-import { documentoService } from "@/services/documento.service";
+import { documentoService, DocumentoNaoEncontradoError } from "@/services/documento.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Documento } from "@prisma/client";
 
@@ -22,11 +22,15 @@ jest.mock("@/services/documento.service", () => {
   class DocumentoNaoEncontradoError extends Error {}
   class PermissaoDocumentoError extends Error {}
   class TamanhoInvalidoError extends Error {}
+  class TipoDocumentoInvalidoError extends Error {}
+  class TamanhoDocumentoExcedidoError extends Error {}
   return {
     documentoService: { confirmarUpload: jest.fn() },
     DocumentoNaoEncontradoError,
     PermissaoDocumentoError,
     TamanhoInvalidoError,
+    TipoDocumentoInvalidoError,
+    TamanhoDocumentoExcedidoError,
   };
 });
 jest.mock("@/services/cliente.service", () => {
@@ -46,9 +50,13 @@ jest.mock("@/services/cliente.service", () => {
 jest.mock("@/services/caso.service", () => {
   class CasoNaoEncontradoError extends Error {}
   class CasoPertenceAOutroClienteError extends Error {}
+  class ClienteInativoError extends Error {}
+  class ResponsavelInvalidoError extends Error {}
   return {
     CasoNaoEncontradoError,
     CasoPertenceAOutroClienteError,
+    ClienteInativoError,
+    ResponsavelInvalidoError,
   };
 });
 
@@ -113,5 +121,49 @@ describe("POST /api/documentos/[id]/confirmar", () => {
     });
     expect(resposta.status).toBe(400);
     expect(documentoService.confirmarUpload).not.toHaveBeenCalled();
+  });
+
+  it("mapeia erro de documento não encontrado para 404", async () => {
+    (documentoService.confirmarUpload as jest.Mock).mockRejectedValue(
+      new DocumentoNaoEncontradoError("Documento não encontrado")
+    );
+
+    const resposta = await POST(
+      request({
+        escopo: "cliente",
+        escopoId: "550e8400-e29b-41d4-a716-446655440000",
+        nomeArquivo: "contrato.pdf",
+        tipoArquivo: "pdf",
+        tamanhoKb: 100,
+        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
+      }),
+      { params: Promise.resolve({ id: "doc-1" }) }
+    );
+
+    expect(resposta.status).toBe(404);
+    const corpo = await resposta.json();
+    expect(corpo.error).toBe("Documento não encontrado");
+  });
+
+  it("retorna 500 para erro não mapeado", async () => {
+    (documentoService.confirmarUpload as jest.Mock).mockRejectedValue(
+      new Error("falha inesperada")
+    );
+
+    const resposta = await POST(
+      request({
+        escopo: "cliente",
+        escopoId: "550e8400-e29b-41d4-a716-446655440000",
+        nomeArquivo: "contrato.pdf",
+        tipoArquivo: "pdf",
+        tamanhoKb: 100,
+        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
+      }),
+      { params: Promise.resolve({ id: "doc-1" }) }
+    );
+
+    expect(resposta.status).toBe(500);
+    const corpo = await resposta.json();
+    expect(corpo.error).toBe("Não foi possível confirmar o upload.");
   });
 });
