@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { usuarioRepository } from "@/repositories/usuario.repository";
 import { conviteRepository } from "@/repositories/convite.repository";
 import { membroRepository } from "@/repositories/membro.repository";
+import { s3Client } from "@/lib/external/s3-client";
 import type { Usuario } from "@prisma/client";
 
 const SALT_ROUNDS = 10;
@@ -20,6 +21,21 @@ export class SenhaAtualIncorretaError extends Error {
     this.name = "SenhaAtualIncorretaError";
   }
 }
+
+export class TamanhoAvatarInvalidoError extends Error {
+  constructor() {
+    super("A imagem excede o tamanho máximo permitido (5MB).");
+    this.name = "TamanhoAvatarInvalidoError";
+  }
+}
+
+const TAMANHO_MAXIMO_AVATAR_KB = 5 * 1024;
+
+const MIME_POR_TIPO_AVATAR: Record<"jpeg" | "png" | "webp", string> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
 
 function isUniqueConstraintError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
@@ -39,6 +55,17 @@ export interface CadastrarUsuarioResult {
 export interface AtualizarPerfilInput {
   nome?: string;
   email?: string;
+}
+
+export interface UploadUrlAvatarInput {
+  nomeArquivo: string;
+  tipoArquivo: "jpeg" | "png" | "webp";
+  tamanhoKb: number;
+}
+
+export interface UploadUrlAvatarResult {
+  uploadUrl: string;
+  storageKey: string;
 }
 
 export const usuarioService = {
@@ -129,5 +156,35 @@ export const usuarioService = {
 
     const novaSenhaHash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
     await usuarioRepository.updateSenhaHash(usuarioId, novaSenhaHash);
+  },
+
+  async gerarUrlUploadAvatar(
+    usuarioId: string,
+    input: UploadUrlAvatarInput
+  ): Promise<UploadUrlAvatarResult> {
+    if (input.tamanhoKb > TAMANHO_MAXIMO_AVATAR_KB) {
+      throw new TamanhoAvatarInvalidoError();
+    }
+
+    const storageKey = `${process.env.AWS_S3_PREFIX}/avatares/${usuarioId}/${Date.now()}-${input.nomeArquivo}`;
+    const uploadUrl = await s3Client.gerarUrlUpload(
+      storageKey,
+      MIME_POR_TIPO_AVATAR[input.tipoArquivo],
+      input.tamanhoKb * 1024
+    );
+
+    return { uploadUrl, storageKey };
+  },
+
+  // Avatar não gera log de auditoria (é dado de perfil, não de domínio jurídico) nem
+  // tabela própria — só sobrescreve usuario.avatar_url e libera a key antiga no S3.
+  async confirmarUploadAvatar(usuarioId: string, storageKey: string): Promise<Usuario> {
+    const atual = await usuarioRepository.findById(usuarioId);
+
+    if (atual?.avatarUrl) {
+      await s3Client.excluirArquivo(atual.avatarUrl);
+    }
+
+    return usuarioRepository.update(usuarioId, { avatarUrl: storageKey });
   },
 };

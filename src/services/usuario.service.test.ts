@@ -1,12 +1,17 @@
+/**
+ * @jest-environment node
+ */
 import {
   usuarioService,
   EmailJaCadastradoError,
   SenhaAtualIncorretaError,
+  TamanhoAvatarInvalidoError,
 } from "./usuario.service";
 import { usuarioRepository } from "@/repositories/usuario.repository";
 import { conviteRepository } from "@/repositories/convite.repository";
 import { membroRepository } from "@/repositories/membro.repository";
 import { prisma } from "@/lib/prisma";
+import { s3Client } from "@/lib/external/s3-client";
 import bcrypt from "bcrypt";
 
 jest.mock("@/repositories/usuario.repository");
@@ -15,6 +20,7 @@ jest.mock("@/repositories/membro.repository");
 jest.mock("@/lib/prisma", () => ({
   prisma: { $transaction: jest.fn() },
 }));
+jest.mock("@/lib/external/s3-client");
 jest.mock("bcrypt");
 
 const mockedUsuarioRepo = usuarioRepository as jest.Mocked<typeof usuarioRepository>;
@@ -22,6 +28,8 @@ const mockedConviteRepo = conviteRepository as jest.Mocked<typeof conviteReposit
 const mockedMembroRepo = membroRepository as jest.Mocked<typeof membroRepository>;
 const mockedPrisma = prisma as unknown as { $transaction: jest.Mock };
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
+const s3 = s3Client as jest.Mocked<typeof s3Client>;
+const repo = mockedUsuarioRepo;
 
 describe("usuarioService.cadastrarUsuario", () => {
   const input = { nome: "Fulano de Tal", email: "fulano@teste.com", senha: "senha-forte-123" };
@@ -233,5 +241,76 @@ describe("usuarioService.alterarSenha", () => {
     await usuarioService.alterarSenha("user-1", "atual", "nova-senha-123");
 
     expect(mockedUsuarioRepo.updateSenhaHash).toHaveBeenCalledWith("user-1", "novo-hash");
+  });
+});
+
+describe("usuarioService.gerarUrlUploadAvatar", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    s3.gerarUrlUpload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-put-avatar");
+  });
+
+  it("monta a key sob avatares/{usuarioId} e devolve a URL assinada de PUT", async () => {
+    const resultado = await usuarioService.gerarUrlUploadAvatar("user-1", {
+      nomeArquivo: "foto.png",
+      tipoArquivo: "png",
+      tamanhoKb: 200,
+    });
+
+    expect(resultado.storageKey).toContain("avatares/user-1/");
+    expect(resultado.storageKey).toContain("foto.png");
+    expect(resultado.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put-avatar");
+    expect(s3.gerarUrlUpload).toHaveBeenCalledWith(resultado.storageKey, "image/png", 200 * 1024);
+  });
+
+  // Avatar é mais restrito que documento: 5MB, não 10MB (spec: "mais restrito porque
+  // avatar é sempre exibido pequeno").
+  it("recusa avatar maior que 5MB antes de chamar o S3", async () => {
+    await expect(
+      usuarioService.gerarUrlUploadAvatar("user-1", {
+        nomeArquivo: "grande.png",
+        tipoArquivo: "png",
+        tamanhoKb: 5121,
+      })
+    ).rejects.toThrow(TamanhoAvatarInvalidoError);
+    expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe("usuarioService.confirmarUploadAvatar", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("sobrescreve avatarUrl e apaga a key antiga do S3", async () => {
+    repo.findById.mockResolvedValue({
+      id: "user-1",
+      nome: "Fulano",
+      email: "fulano@teste.com",
+      senhaHash: "hash",
+      avatarUrl: "development/avatares/user-1/111-antiga.png",
+      oab: null,
+      telefone: null,
+      ativo: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never);
+    repo.update.mockResolvedValue({ id: "user-1", avatarUrl: "development/avatares/user-1/222-nova.png" } as never);
+
+    await usuarioService.confirmarUploadAvatar("user-1", "development/avatares/user-1/222-nova.png");
+
+    expect(s3.excluirArquivo).toHaveBeenCalledWith("development/avatares/user-1/111-antiga.png");
+    expect(repo.update).toHaveBeenCalledWith("user-1", {
+      avatarUrl: "development/avatares/user-1/222-nova.png",
+    });
+  });
+
+  it("não tenta apagar do S3 quando não havia avatar anterior", async () => {
+    repo.findById.mockResolvedValue({ id: "user-1", avatarUrl: null } as never);
+    repo.update.mockResolvedValue({ id: "user-1", avatarUrl: "development/avatares/user-1/222-nova.png" } as never);
+
+    await usuarioService.confirmarUploadAvatar("user-1", "development/avatares/user-1/222-nova.png");
+
+    expect(s3.excluirArquivo).not.toHaveBeenCalled();
   });
 });
