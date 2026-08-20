@@ -17,7 +17,11 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
-  class DocumentoNaoEncontradoError extends Error {}
+  class DocumentoNaoEncontradoError extends Error {
+    constructor() {
+      super("Documento não encontrado.");
+    }
+  }
   class TipoDocumentoInvalidoError extends Error {}
   class TamanhoDocumentoExcedidoError extends Error {}
   class PermissaoDocumentoError extends Error {}
@@ -92,9 +96,7 @@ describe("GET /api/documentos", () => {
   });
 
   it("mapeia erro de documento não encontrado para 404", async () => {
-    service.listarPorEscopo.mockRejectedValue(
-      new DocumentoNaoEncontradoError("Documento não encontrado")
-    );
+    service.listarPorEscopo.mockRejectedValue(new DocumentoNaoEncontradoError());
 
     const resposta = await GET(
       new Request(`http://localhost/api/documentos?escopo=cliente&escopoId=${ESCOPO_ID}`)
@@ -102,7 +104,7 @@ describe("GET /api/documentos", () => {
 
     expect(resposta.status).toBe(404);
     const corpo = await resposta.json();
-    expect(corpo.error).toBe("Documento não encontrado");
+    expect(corpo.error).toBe("Documento não encontrado.");
   });
 
   it("retorna 500 para erro não mapeado", async () => {

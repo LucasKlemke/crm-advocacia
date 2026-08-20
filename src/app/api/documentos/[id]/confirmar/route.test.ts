@@ -19,7 +19,11 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
-  class DocumentoNaoEncontradoError extends Error {}
+  class DocumentoNaoEncontradoError extends Error {
+    constructor() {
+      super("Documento não encontrado.");
+    }
+  }
   class PermissaoDocumentoError extends Error {}
   class TamanhoInvalidoError extends Error {}
   class TipoDocumentoInvalidoError extends Error {}
@@ -125,7 +129,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
 
   it("mapeia erro de documento não encontrado para 404", async () => {
     (documentoService.confirmarUpload as jest.Mock).mockRejectedValue(
-      new DocumentoNaoEncontradoError("Documento não encontrado")
+      new DocumentoNaoEncontradoError()
     );
 
     const resposta = await POST(
@@ -142,7 +146,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
 
     expect(resposta.status).toBe(404);
     const corpo = await resposta.json();
-    expect(corpo.error).toBe("Documento não encontrado");
+    expect(corpo.error).toBe("Documento não encontrado.");
   });
 
   it("retorna 500 para erro não mapeado", async () => {

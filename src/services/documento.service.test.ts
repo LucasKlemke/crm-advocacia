@@ -10,7 +10,7 @@ import {
 import { documentoRepository } from "@/repositories/documento.repository";
 import { membroRepository } from "@/repositories/membro.repository";
 import { clienteService, ClienteNaoEncontradoError } from "@/services/cliente.service";
-import { casoService, CasoNaoEncontradoError } from "@/services/caso.service";
+import { casoService } from "@/services/caso.service";
 import { logService } from "@/services/log.service";
 import { s3Client } from "@/lib/external/s3-client";
 import type { TenantContext } from "@/lib/auth/tenant-context";

@@ -63,6 +63,7 @@ describe("s3Client.gerarUrlDownload", () => {
 describe("s3Client.buscarArquivo", () => {
   it("devolve o stream do objeto", async () => {
     const stream = Readable.from([Buffer.from("conteudo do arquivo")]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     s3Mock.on(GetObjectCommand).resolves({ Body: stream as any });
 
     const resultado = await s3Client.buscarArquivo("development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf");

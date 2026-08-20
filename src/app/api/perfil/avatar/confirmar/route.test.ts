@@ -33,7 +33,7 @@ describe("POST /api/perfil/avatar/confirmar", () => {
       nome: "Fulano",
       email: "fulano@teste.com",
       avatarUrl: "development/avatares/user-1/123-foto.png",
-    });
+    } as never);
 
     const resposta = await POST(request({ storageKey: "development/avatares/user-1/123-foto.png" }));
 
