@@ -29,7 +29,31 @@ export class TamanhoAvatarInvalidoError extends Error {
   }
 }
 
+// A key do avatar carrega um timestamp gerado no passo de upload, então a confirmação não
+// pode re-derivá-la inteira — o que ela pode (e precisa) garantir é que a key confirmada
+// está sob o diretório do próprio usuário autenticado.
+export class StorageKeyInvalidoError extends Error {
+  constructor() {
+    super("A referência do arquivo enviado é inválida.");
+    this.name = "StorageKeyInvalidoError";
+  }
+}
+
 const TAMANHO_MAXIMO_AVATAR_KB = 5 * 1024;
+
+// Env ausente/errado produziria keys começando com a string literal "undefined/" sem
+// nenhum sinal de erro — falha explícita é preferível a lixo silencioso no bucket.
+function obterPrefixoS3(): string {
+  const prefixo = process.env.AWS_S3_PREFIX;
+  if (!prefixo) {
+    throw new Error("AWS_S3_PREFIX não configurado.");
+  }
+  return prefixo;
+}
+
+function prefixoAvatarDe(usuarioId: string): string {
+  return `${obterPrefixoS3()}/avatares/${usuarioId}/`;
+}
 
 const MIME_POR_TIPO_AVATAR: Record<"jpeg" | "png" | "webp", string> = {
   jpeg: "image/jpeg",
@@ -166,7 +190,7 @@ export const usuarioService = {
       throw new TamanhoAvatarInvalidoError();
     }
 
-    const storageKey = `${process.env.AWS_S3_PREFIX}/avatares/${usuarioId}/${Date.now()}-${input.nomeArquivo}`;
+    const storageKey = `${prefixoAvatarDe(usuarioId)}${Date.now()}-${input.nomeArquivo}`;
     const uploadUrl = await s3Client.gerarUrlUpload(
       storageKey,
       MIME_POR_TIPO_AVATAR[input.tipoArquivo],
@@ -179,6 +203,13 @@ export const usuarioService = {
   // Avatar não gera log de auditoria (é dado de perfil, não de domínio jurídico) nem
   // tabela própria — só sobrescreve usuario.avatar_url e libera a key antiga no S3.
   async confirmarUploadAvatar(usuarioId: string, storageKey: string): Promise<Usuario> {
+    // Sem esta checagem, um `storageKey` arbitrário no body gravaria em avatar_url a key
+    // de qualquer objeto do bucket (inclusive documento de outro escritório) — e a key
+    // antiga apagada do S3 seria a de outra pessoa.
+    if (!storageKey.startsWith(prefixoAvatarDe(usuarioId))) {
+      throw new StorageKeyInvalidoError();
+    }
+
     const atual = await usuarioRepository.findById(usuarioId);
 
     if (atual?.avatarUrl) {

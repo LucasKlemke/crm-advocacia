@@ -76,6 +76,18 @@ describe("s3Client.buscarArquivo", () => {
   });
 });
 
+describe("bucket não configurado", () => {
+  // Sem a checagem, o SDK montaria requests para um bucket "undefined" em silêncio.
+  it("falha explicitamente quando AWS_S3_BUCKET não está definido", async () => {
+    delete process.env.AWS_S3_BUCKET;
+
+    await expect(s3Client.gerarUrlDownload("development/qualquer/key")).rejects.toThrow(
+      "AWS_S3_BUCKET não configurado."
+    );
+    expect(getSignedUrl as jest.Mock).not.toHaveBeenCalled();
+  });
+});
+
 describe("s3Client.excluirArquivo", () => {
   it("chama DeleteObject com bucket e key corretos", async () => {
     s3Mock.on(DeleteObjectCommand).resolves({});

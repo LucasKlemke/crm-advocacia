@@ -54,6 +54,16 @@ describe("POST /api/perfil/avatar/upload-url", () => {
     expect(resposta.status).toBe(400);
   });
 
+  it.each([["../../../etc/passwd"], ["a/b.png"], ["..\\windows\\system32"], [".oculto.png"]])(
+    "recusa nome de arquivo com travessia de caminho (%s) com 400",
+    async (nomeArquivo) => {
+      const resposta = await POST(request({ nomeArquivo, tipoArquivo: "png", tamanhoKb: 200 }));
+
+      expect(resposta.status).toBe(400);
+      expect(mockedService.gerarUrlUploadAvatar).not.toHaveBeenCalled();
+    }
+  );
+
   it("mapeia TamanhoAvatarInvalidoError para 400", async () => {
     mockedService.gerarUrlUploadAvatar.mockRejectedValue(new TamanhoAvatarInvalidoError());
     const resposta = await POST(request({ nomeArquivo: "grande.png", tipoArquivo: "png", tamanhoKb: 9999 }));

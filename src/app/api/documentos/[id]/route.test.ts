@@ -16,10 +16,14 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
+  class TipoInvalidoError extends Error {}
+  class DocumentoConflitanteError extends Error {}
   class DocumentoNaoEncontradoError extends Error {}
   class PermissaoDocumentoError extends Error {}
   class TamanhoInvalidoError extends Error {}
   return {
+    TipoInvalidoError,
+    DocumentoConflitanteError,
     documentoService: { excluir: jest.fn() },
     DocumentoNaoEncontradoError,
     PermissaoDocumentoError,

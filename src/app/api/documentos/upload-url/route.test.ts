@@ -19,10 +19,14 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
+  class TipoInvalidoError extends Error {}
+  class DocumentoConflitanteError extends Error {}
   class DocumentoNaoEncontradoError extends Error {}
   class PermissaoDocumentoError extends Error {}
   class TamanhoInvalidoError extends Error {}
   return {
+    TipoInvalidoError,
+    DocumentoConflitanteError,
     documentoService: { gerarUrlUpload: jest.fn() },
     DocumentoNaoEncontradoError,
     PermissaoDocumentoError,
@@ -90,6 +94,26 @@ describe("POST /api/documentos/upload-url", () => {
     expect(resposta.status).toBe(400);
     expect(documentoService.gerarUrlUpload).not.toHaveBeenCalled();
   });
+
+  // Nome de arquivo entra na key do S3 e no nome da entrada do zip de "baixar todos":
+  // separador de caminho ou ponto inicial abriria path traversal na extração.
+  it.each([["../../../etc/passwd"], ["a/b.pdf"], ["..\\windows\\system32"], [".oculto.pdf"]])(
+    "recusa nome de arquivo com travessia de caminho (%s) com 400",
+    async (nomeArquivo) => {
+      const resposta = await POST(
+        request({
+          escopo: "cliente",
+          escopoId: "550e8400-e29b-41d4-a716-446655440000",
+          nomeArquivo,
+          tipoArquivo: "pdf",
+          tamanhoKb: 100,
+        })
+      );
+
+      expect(resposta.status).toBe(400);
+      expect(documentoService.gerarUrlUpload).not.toHaveBeenCalled();
+    }
+  );
 
   it("mapeia TamanhoInvalidoError para 400", async () => {
     (documentoService.gerarUrlUpload as jest.Mock).mockRejectedValue(new TamanhoInvalidoError());

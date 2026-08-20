@@ -17,8 +17,12 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
+  class TipoInvalidoError extends Error {}
+  class DocumentoConflitanteError extends Error {}
   class DocumentoNaoEncontradoError extends Error {}
   return {
+    TipoInvalidoError,
+    DocumentoConflitanteError,
     documentoService: { gerarUrlDownload: jest.fn() },
     DocumentoNaoEncontradoError,
   };

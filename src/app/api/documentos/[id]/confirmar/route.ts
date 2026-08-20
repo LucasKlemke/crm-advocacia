@@ -5,15 +5,18 @@ import { tratarErroDeContexto, respostaDadosInvalidos, lerJson } from "@/lib/api
 import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
 import { tratarErroDeDocumento } from "@/lib/api/erros-documento";
+import { nomeArquivoSchema } from "@/lib/api/schemas-comuns";
+import { documentoParaPublico } from "@/lib/documentos/publico";
 import { documentoService } from "@/services/documento.service";
 
+// Sem `storageKey`: a key é derivada pela Service a partir do id da URL, nunca enviada
+// pelo cliente (senão a linha poderia apontar para um objeto arbitrário do bucket).
 const confirmarUploadSchema = z.object({
   escopo: z.enum(["cliente", "caso"]),
   escopoId: z.uuid(),
-  nomeArquivo: z.string().trim().min(1).max(255),
+  nomeArquivo: nomeArquivoSchema,
   tipoArquivo: z.enum(["pdf", "docx", "jpg", "png", "jpeg"]),
   tamanhoKb: z.number().int().positive(),
-  storageKey: z.string().min(1).max(500),
 });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -28,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!parsed.success) return respostaDadosInvalidos(parsed.error);
 
     const documento = await documentoService.confirmarUpload(ctx, id, parsed.data);
-    return NextResponse.json({ documento }, { status: 201 });
+    return NextResponse.json({ documento: documentoParaPublico(documento) }, { status: 201 });
   } catch (error) {
     const resposta =
       tratarErroDeContexto(error) ??

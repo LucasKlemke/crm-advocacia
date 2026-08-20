@@ -4,8 +4,10 @@
 import { tratarErroDeDocumento } from "./erros-documento";
 import {
   DocumentoNaoEncontradoError,
+  DocumentoConflitanteError,
   PermissaoDocumentoError,
   TamanhoInvalidoError,
+  TipoInvalidoError,
 } from "@/services/documento.service";
 
 describe("tratarErroDeDocumento", () => {
@@ -22,6 +24,16 @@ describe("tratarErroDeDocumento", () => {
   it("mapeia TamanhoInvalidoError para 400", () => {
     const resposta = tratarErroDeDocumento(new TamanhoInvalidoError());
     expect(resposta?.status).toBe(400);
+  });
+
+  it("mapeia TipoInvalidoError para 400", () => {
+    const resposta = tratarErroDeDocumento(new TipoInvalidoError());
+    expect(resposta?.status).toBe(400);
+  });
+
+  it("mapeia DocumentoConflitanteError para 409", () => {
+    const resposta = tratarErroDeDocumento(new DocumentoConflitanteError());
+    expect(resposta?.status).toBe(409);
   });
 
   it("devolve null para erro desconhecido", () => {

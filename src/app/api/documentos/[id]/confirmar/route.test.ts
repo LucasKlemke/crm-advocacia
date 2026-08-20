@@ -19,6 +19,8 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
+  class TipoInvalidoError extends Error {}
+  class DocumentoConflitanteError extends Error {}
   class DocumentoNaoEncontradoError extends Error {
     constructor() {
       super("Documento não encontrado.");
@@ -29,6 +31,8 @@ jest.mock("@/services/documento.service", () => {
   class TipoDocumentoInvalidoError extends Error {}
   class TamanhoDocumentoExcedidoError extends Error {}
   return {
+    TipoInvalidoError,
+    DocumentoConflitanteError,
     documentoService: { confirmarUpload: jest.fn() },
     DocumentoNaoEncontradoError,
     PermissaoDocumentoError,
@@ -73,6 +77,8 @@ function request(body: unknown) {
   });
 }
 
+const CRIADO_EM = new Date("2026-08-20T12:00:00.000Z");
+
 function documentoFake(): Documento {
   return {
     id: "doc-1",
@@ -85,8 +91,8 @@ function documentoFake(): Documento {
     tamanhoKb: 100,
     storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
     softDeletedAt: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: CRIADO_EM,
+    updatedAt: CRIADO_EM,
   };
 }
 
@@ -96,7 +102,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/documentos/[id]/confirmar", () => {
-  it("confirma o upload e devolve o documento criado", async () => {
+  it("confirma o upload sem receber storageKey e devolve só os campos públicos", async () => {
     (documentoService.confirmarUpload as jest.Mock).mockResolvedValue(documentoFake());
 
     const resposta = await POST(
@@ -106,18 +112,71 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
         tamanhoKb: 100,
-        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
     );
 
     expect(resposta.status).toBe(201);
+    const corpo = await resposta.json();
+    expect(corpo.documento).toEqual({
+      id: "doc-1",
+      escopo: "cliente",
+      escopoId: "cli-1",
+      nomeOriginal: "contrato.pdf",
+      tipoArquivo: "pdf",
+      tamanhoKb: 100,
+      createdAt: CRIADO_EM.toISOString(),
+    });
+    // A key é derivada pela Service a partir do id da URL; a rota não repassa nada disso.
+    expect(documentoService.confirmarUpload).toHaveBeenCalledWith(ctx, "doc-1", {
+      escopo: "cliente",
+      escopoId: "550e8400-e29b-41d4-a716-446655440000",
+      nomeArquivo: "contrato.pdf",
+      tipoArquivo: "pdf",
+      tamanhoKb: 100,
+    });
+  });
+
+  it("ignora storageKey enviado pelo cliente", async () => {
+    (documentoService.confirmarUpload as jest.Mock).mockResolvedValue(documentoFake());
+
+    await POST(
+      request({
+        escopo: "cliente",
+        escopoId: "550e8400-e29b-41d4-a716-446655440000",
+        nomeArquivo: "contrato.pdf",
+        tipoArquivo: "pdf",
+        tamanhoKb: 100,
+        storageKey: "development/esc-alheio/documentos/cliente/cli-9/doc-9-segredo.pdf",
+      }),
+      { params: Promise.resolve({ id: "doc-1" }) }
+    );
+
     expect(documentoService.confirmarUpload).toHaveBeenCalledWith(
       ctx,
       "doc-1",
-      expect.objectContaining({ storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf" })
+      expect.not.objectContaining({ storageKey: expect.anything() })
     );
   });
+
+  it.each([["../../../etc/passwd"], ["a/b.pdf"], ["..\\windows\\system32"], [".oculto.pdf"]])(
+    "recusa nome de arquivo com travessia de caminho (%s) com 400",
+    async (nomeArquivo) => {
+      const resposta = await POST(
+        request({
+          escopo: "cliente",
+          escopoId: "550e8400-e29b-41d4-a716-446655440000",
+          nomeArquivo,
+          tipoArquivo: "pdf",
+          tamanhoKb: 100,
+        }),
+        { params: Promise.resolve({ id: "doc-1" }) }
+      );
+
+      expect(resposta.status).toBe(400);
+      expect(documentoService.confirmarUpload).not.toHaveBeenCalled();
+    }
+  );
 
   it("recusa payload inválido com 400", async () => {
     const resposta = await POST(request({ escopo: "cliente" }), {
@@ -139,7 +198,6 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
         tamanhoKb: 100,
-        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
     );
@@ -161,7 +219,6 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
         tamanhoKb: 100,
-        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
     );

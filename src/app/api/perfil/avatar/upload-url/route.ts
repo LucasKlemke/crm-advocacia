@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/config";
+import { nomeArquivoSchema } from "@/lib/api/schemas-comuns";
 import { usuarioService, TamanhoAvatarInvalidoError } from "@/services/usuario.service";
 
 const uploadUrlAvatarSchema = z.object({
-  nomeArquivo: z.string().trim().min(1).max(255),
+  nomeArquivo: nomeArquivoSchema,
   tipoArquivo: z.enum(["jpeg", "png", "webp"]),
   tamanhoKb: z.number().int().positive(),
 });

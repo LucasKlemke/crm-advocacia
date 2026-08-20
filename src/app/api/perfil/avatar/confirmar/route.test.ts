@@ -3,7 +3,7 @@
  */
 import { POST } from "./route";
 import { auth } from "@/lib/auth/config";
-import { usuarioService } from "@/services/usuario.service";
+import { usuarioService, StorageKeyInvalidoError } from "@/services/usuario.service";
 
 jest.mock("@/lib/auth/config", () => ({ auth: jest.fn() }));
 jest.mock("@/services/usuario.service", () => {
@@ -61,6 +61,17 @@ describe("POST /api/perfil/avatar/confirmar", () => {
 
   it("recusa payload inválido com 400", async () => {
     const resposta = await POST(request({}));
+    expect(resposta.status).toBe(400);
+  });
+
+  // Key fora de avatares/{proprio-usuario}/ é erro do cliente, não falha do servidor.
+  it("mapeia StorageKeyInvalidoError para 400", async () => {
+    mockedService.confirmarUploadAvatar.mockRejectedValue(new StorageKeyInvalidoError());
+
+    const resposta = await POST(
+      request({ storageKey: "development/avatares/user-2/222-nova.png" })
+    );
+
     expect(resposta.status).toBe(400);
   });
 });

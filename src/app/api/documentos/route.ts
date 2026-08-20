@@ -5,6 +5,7 @@ import { tratarErroDeContexto, respostaDadosInvalidos } from "@/lib/api/erros";
 import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
 import { tratarErroDeDocumento } from "@/lib/api/erros-documento";
+import { documentoParaPublico } from "@/lib/documentos/publico";
 import { documentoService } from "@/services/documento.service";
 
 const escopoSchema = z.object({
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
       parsed.data.escopo,
       parsed.data.escopoId
     );
-    return NextResponse.json({ documentos });
+    return NextResponse.json({ documentos: documentos.map(documentoParaPublico) });
   } catch (error) {
     const resposta =
       tratarErroDeContexto(error) ??

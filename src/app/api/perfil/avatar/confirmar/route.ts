@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/config";
-import { usuarioService } from "@/services/usuario.service";
+import { usuarioService, StorageKeyInvalidoError } from "@/services/usuario.service";
 
 const confirmarAvatarSchema = z.object({
   storageKey: z.string().min(1).max(500),
@@ -39,6 +39,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof StorageKeyInvalidoError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Erro ao confirmar upload de avatar", error);
     return NextResponse.json({ error: "Não foi possível confirmar o avatar." }, { status: 500 });
   }

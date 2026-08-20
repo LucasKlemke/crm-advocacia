@@ -5,12 +5,13 @@ import { tratarErroDeContexto, respostaDadosInvalidos, lerJson } from "@/lib/api
 import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
 import { tratarErroDeDocumento } from "@/lib/api/erros-documento";
+import { nomeArquivoSchema } from "@/lib/api/schemas-comuns";
 import { documentoService } from "@/services/documento.service";
 
 const uploadUrlSchema = z.object({
   escopo: z.enum(["cliente", "caso"]),
   escopoId: z.uuid(),
-  nomeArquivo: z.string().trim().min(1).max(255),
+  nomeArquivo: nomeArquivoSchema,
   tipoArquivo: z.enum(["pdf", "docx", "jpg", "png", "jpeg"]),
   tamanhoKb: z.number().int().positive(),
 });

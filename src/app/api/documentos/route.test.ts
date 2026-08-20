@@ -4,6 +4,7 @@
 import { GET } from "./route";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { documentoService, DocumentoNaoEncontradoError } from "@/services/documento.service";
+import type { Documento } from "@prisma/client";
 
 jest.mock("@/lib/auth/tenant-context", () => {
   class NaoAutenticadoError extends Error {}
@@ -17,6 +18,8 @@ jest.mock("@/lib/auth/tenant-context", () => {
   };
 });
 jest.mock("@/services/documento.service", () => {
+  class TipoInvalidoError extends Error {}
+  class DocumentoConflitanteError extends Error {}
   class DocumentoNaoEncontradoError extends Error {
     constructor() {
       super("Documento não encontrado.");
@@ -27,6 +30,8 @@ jest.mock("@/services/documento.service", () => {
   class PermissaoDocumentoError extends Error {}
   class TamanhoInvalidoError extends Error {}
   return {
+    TipoInvalidoError,
+    DocumentoConflitanteError,
     documentoService: { listarPorEscopo: jest.fn() },
     DocumentoNaoEncontradoError,
     TipoDocumentoInvalidoError,
@@ -75,9 +80,28 @@ beforeEach(() => {
   mockedGetTenantContext.mockResolvedValue(ctx);
 });
 
+const CRIADO_EM = new Date("2026-08-20T12:00:00.000Z");
+
+function documentoFake(): Documento {
+  return {
+    id: "doc-1",
+    escritorioId: "esc-1",
+    escopo: "cliente",
+    escopoId: ESCOPO_ID,
+    autorMembroId: "membro-1",
+    nomeOriginal: "contrato.pdf",
+    tipoArquivo: "pdf",
+    tamanhoKb: 100,
+    storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
+    softDeletedAt: null,
+    createdAt: CRIADO_EM,
+    updatedAt: CRIADO_EM,
+  };
+}
+
 describe("GET /api/documentos", () => {
-  it("lista os documentos do escopo informado", async () => {
-    service.listarPorEscopo.mockResolvedValue([{ id: "doc-1" }] as never);
+  it("lista os documentos do escopo informado sem expor campos internos", async () => {
+    service.listarPorEscopo.mockResolvedValue([documentoFake()] as never);
 
     const resposta = await GET(
       new Request(`http://localhost/api/documentos?escopo=cliente&escopoId=${ESCOPO_ID}`)
@@ -85,7 +109,19 @@ describe("GET /api/documentos", () => {
 
     expect(resposta.status).toBe(200);
     const corpo = await resposta.json();
-    expect(corpo.documentos).toEqual([{ id: "doc-1" }]);
+    // `storageKey` e `autorMembroId` não saem na resposta (expõem o layout do bucket e um
+    // id interno de membro, e facilitam abuso do fluxo de confirmação).
+    expect(corpo.documentos).toEqual([
+      {
+        id: "doc-1",
+        escopo: "cliente",
+        escopoId: ESCOPO_ID,
+        nomeOriginal: "contrato.pdf",
+        tipoArquivo: "pdf",
+        tamanhoKb: 100,
+        createdAt: CRIADO_EM.toISOString(),
+      },
+    ]);
     expect(service.listarPorEscopo).toHaveBeenCalledWith(ctx, "cliente", ESCOPO_ID);
   });
 

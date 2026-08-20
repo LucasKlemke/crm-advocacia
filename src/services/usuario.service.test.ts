@@ -6,6 +6,7 @@ import {
   EmailJaCadastradoError,
   SenhaAtualIncorretaError,
   TamanhoAvatarInvalidoError,
+  StorageKeyInvalidoError,
 } from "./usuario.service";
 import { usuarioRepository } from "@/repositories/usuario.repository";
 import { conviteRepository } from "@/repositories/convite.repository";
@@ -257,10 +258,28 @@ describe("usuarioService.gerarUrlUploadAvatar", () => {
       tamanhoKb: 200,
     });
 
-    expect(resultado.storageKey).toContain("avatares/user-1/");
-    expect(resultado.storageKey).toContain("foto.png");
+    // Key completa (só o timestamp é variável): uma regressão que perdesse o prefixo e
+    // gerasse "undefined/avatares/..." precisa quebrar aqui.
+    expect(resultado.storageKey).toMatch(/^development\/avatares\/user-1\/\d+-foto\.png$/);
     expect(resultado.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put-avatar");
     expect(s3.gerarUrlUpload).toHaveBeenCalledWith(resultado.storageKey, "image/png", 200 * 1024);
+  });
+
+  it("falha explicitamente quando AWS_S3_PREFIX não está configurado", async () => {
+    const original = process.env.AWS_S3_PREFIX;
+    delete process.env.AWS_S3_PREFIX;
+    try {
+      await expect(
+        usuarioService.gerarUrlUploadAvatar("user-1", {
+          nomeArquivo: "foto.png",
+          tipoArquivo: "png",
+          tamanhoKb: 200,
+        })
+      ).rejects.toThrow("AWS_S3_PREFIX não configurado.");
+      expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
+    } finally {
+      process.env.AWS_S3_PREFIX = original;
+    }
   });
 
   // Avatar é mais restrito que documento: 5MB, não 10MB (spec: "mais restrito porque
@@ -312,5 +331,39 @@ describe("usuarioService.confirmarUploadAvatar", () => {
     await usuarioService.confirmarUploadAvatar("user-1", "development/avatares/user-1/222-nova.png");
 
     expect(s3.excluirArquivo).not.toHaveBeenCalled();
+  });
+
+  // A key não é re-derivável (carrega timestamp), então a garantia é de escopo: só key
+  // sob avatares/{proprio-usuario}/ é aceita.
+  it("recusa storageKey do diretório de avatar de outro usuário", async () => {
+    await expect(
+      usuarioService.confirmarUploadAvatar("user-1", "development/avatares/user-2/222-nova.png")
+    ).rejects.toThrow(StorageKeyInvalidoError);
+    expect(repo.findById).not.toHaveBeenCalled();
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(s3.excluirArquivo).not.toHaveBeenCalled();
+  });
+
+  it("recusa storageKey apontando para fora do diretório de avatares", async () => {
+    await expect(
+      usuarioService.confirmarUploadAvatar(
+        "user-1",
+        "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf"
+      )
+    ).rejects.toThrow(StorageKeyInvalidoError);
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("falha explicitamente quando AWS_S3_PREFIX não está configurado", async () => {
+    const original = process.env.AWS_S3_PREFIX;
+    delete process.env.AWS_S3_PREFIX;
+    try {
+      await expect(
+        usuarioService.confirmarUploadAvatar("user-1", "development/avatares/user-1/222-nova.png")
+      ).rejects.toThrow("AWS_S3_PREFIX não configurado.");
+      expect(repo.update).not.toHaveBeenCalled();
+    } finally {
+      process.env.AWS_S3_PREFIX = original;
+    }
   });
 });

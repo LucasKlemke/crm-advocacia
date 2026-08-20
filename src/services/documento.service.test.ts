@@ -4,8 +4,10 @@
 import {
   documentoService,
   DocumentoNaoEncontradoError,
+  DocumentoConflitanteError,
   PermissaoDocumentoError,
   TamanhoInvalidoError,
+  TipoInvalidoError,
 } from "./documento.service";
 import { documentoRepository } from "@/repositories/documento.repository";
 import { membroRepository } from "@/repositories/membro.repository";
@@ -92,8 +94,11 @@ describe("documentoService.gerarUrlUpload", () => {
 
     expect(clientes.obter).toHaveBeenCalledWith(ctx, "cli-1");
     expect(resultado.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
-    expect(resultado.storageKey).toContain("esc-1/documentos/cliente/cli-1/");
-    expect(resultado.storageKey).toContain("contrato.pdf");
+    // Key completa (não só `toContain`): uma regressão que perdesse o prefixo e gerasse
+    // "undefined/..." precisa quebrar aqui.
+    expect(resultado.storageKey).toBe(
+      `development/esc-1/documentos/cliente/cli-1/${resultado.documentoId}-contrato.pdf`
+    );
     expect(s3.gerarUrlUpload).toHaveBeenCalledWith(
       resultado.storageKey,
       "application/pdf",
@@ -130,6 +135,53 @@ describe("documentoService.gerarUrlUpload", () => {
     expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
   });
 
+  // RN18 na Service, não só no zod da rota: extensão precisa casar com o tipo declarado.
+  it("recusa nome de arquivo cuja extensão não casa com o tipo declarado", async () => {
+    await expect(
+      documentoService.gerarUrlUpload(ctx, {
+        escopo: "cliente",
+        escopoId: "cli-1",
+        nomeArquivo: "malware.exe",
+        tipoArquivo: "pdf",
+        tamanhoKb: 100,
+      })
+    ).rejects.toThrow(TipoInvalidoError);
+    expect(clientes.obter).not.toHaveBeenCalled();
+    expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
+  });
+
+  it("recusa tipo fora da lista aceita (RN18)", async () => {
+    await expect(
+      documentoService.gerarUrlUpload(ctx, {
+        escopo: "cliente",
+        escopoId: "cli-1",
+        nomeArquivo: "planilha.xlsx",
+        tipoArquivo: "xlsx" as never,
+        tamanhoKb: 100,
+      })
+    ).rejects.toThrow(TipoInvalidoError);
+    expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
+  });
+
+  it("falha explicitamente quando AWS_S3_PREFIX não está configurado", async () => {
+    const original = process.env.AWS_S3_PREFIX;
+    delete process.env.AWS_S3_PREFIX;
+    try {
+      await expect(
+        documentoService.gerarUrlUpload(ctx, {
+          escopo: "cliente",
+          escopoId: "cli-1",
+          nomeArquivo: "contrato.pdf",
+          tipoArquivo: "pdf",
+          tamanhoKb: 100,
+        })
+      ).rejects.toThrow("AWS_S3_PREFIX não configurado.");
+      expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
+    } finally {
+      process.env.AWS_S3_PREFIX = original;
+    }
+  });
+
   it("valida o caso quando o escopo é caso", async () => {
     await documentoService.gerarUrlUpload(ctx, {
       escopo: "caso",
@@ -149,8 +201,11 @@ describe("documentoService.confirmarUpload", () => {
     nomeArquivo: "contrato.pdf",
     tipoArquivo: "pdf" as const,
     tamanhoKb: 100,
-    storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
   };
+
+  beforeEach(() => {
+    repo.findById.mockResolvedValue(null);
+  });
 
   it("cria a linha do documento ancorada no membro autor e registra log", async () => {
     repo.create.mockResolvedValue(documentoFake());
@@ -165,7 +220,9 @@ describe("documentoService.confirmarUpload", () => {
         nomeOriginal: "contrato.pdf",
         tipoArquivo: "pdf",
         tamanhoKb: 100,
-        storageKey: input.storageKey,
+        // Key derivada no servidor a partir do id da URL, com a mesma fórmula de
+        // gerarUrlUpload — nada aqui veio do body do request.
+        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
         escritorio: { connect: { id: "esc-1" } },
         autor: { connect: { id: "membro-1" } },
       }),
@@ -188,6 +245,68 @@ describe("documentoService.confirmarUpload", () => {
       documentoService.confirmarUpload(ctx, "doc-1", { ...input, tamanhoKb: 99999 })
     ).rejects.toThrow(TamanhoInvalidoError);
     expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("recusa nome de arquivo cuja extensão não casa com o tipo declarado", async () => {
+    await expect(
+      documentoService.confirmarUpload(ctx, "doc-1", { ...input, nomeArquivo: "malware.exe" })
+    ).rejects.toThrow(TipoInvalidoError);
+    expect(repo.findById).not.toHaveBeenCalled();
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("falha explicitamente quando AWS_S3_PREFIX não está configurado", async () => {
+    const original = process.env.AWS_S3_PREFIX;
+    delete process.env.AWS_S3_PREFIX;
+    try {
+      await expect(documentoService.confirmarUpload(ctx, "doc-1", input)).rejects.toThrow(
+        "AWS_S3_PREFIX não configurado."
+      );
+      expect(repo.create).not.toHaveBeenCalled();
+    } finally {
+      process.env.AWS_S3_PREFIX = original;
+    }
+  });
+
+  // Duplo clique / retry do cliente: a segunda confirmação devolve a linha já criada, sem
+  // segundo create (que estouraria a unique do id como 500) e sem segundo log.
+  it("é idempotente em confirmação repetida do mesmo documento", async () => {
+    repo.create.mockResolvedValue(documentoFake());
+
+    const primeiro = await documentoService.confirmarUpload(ctx, "doc-1", input);
+
+    repo.findById.mockResolvedValue(documentoFake());
+    const segundo = await documentoService.confirmarUpload(ctx, "doc-1", input);
+
+    expect(segundo).toEqual(primeiro);
+    expect(repo.create).toHaveBeenCalledTimes(1);
+    expect(logs.registrar).toHaveBeenCalledTimes(1);
+  });
+
+  it("trata id já usado por outro escritório como não encontrado (RN19)", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ escritorioId: "esc-2" }));
+
+    await expect(documentoService.confirmarUpload(ctx, "doc-1", input)).rejects.toThrow(
+      DocumentoNaoEncontradoError
+    );
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("recusa confirmar o mesmo id apontando para outro alvo", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ escopoId: "cli-outro" }));
+
+    await expect(documentoService.confirmarUpload(ctx, "doc-1", input)).rejects.toThrow(
+      DocumentoConflitanteError
+    );
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("converte violação de unique concorrente em conflito, não em 500", async () => {
+    repo.create.mockRejectedValue(Object.assign(new Error("unique"), { code: "P2002" }));
+
+    await expect(documentoService.confirmarUpload(ctx, "doc-1", input)).rejects.toThrow(
+      DocumentoConflitanteError
+    );
   });
 });
 
