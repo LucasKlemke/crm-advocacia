@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Briefcase,
-  CalendarClock,
   LayoutDashboard,
   MessageCircle,
   Settings,
@@ -27,10 +26,9 @@ const NAV_GROUPS = [
   {
     label: "CRM",
     items: [
-      { href: "/", label: "Início", icon: LayoutDashboard },
+      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/casos", label: "Processos", icon: Briefcase },
       { href: "/clientes", label: "Clientes", icon: Users },
-      { href: "/casos", label: "Casos", icon: Briefcase },
-      { href: "/prazos", label: "Prazos", icon: CalendarClock },
     ],
   },
   {
