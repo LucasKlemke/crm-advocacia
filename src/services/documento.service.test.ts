@@ -4,6 +4,7 @@
 import {
   documentoService,
   DocumentoNaoEncontradoError,
+  PermissaoDocumentoError,
   TamanhoInvalidoError,
 } from "./documento.service";
 import { documentoRepository } from "@/repositories/documento.repository";
@@ -215,5 +216,68 @@ describe("documentoService.listarPorEscopo", () => {
 
     expect(clientes.obter).toHaveBeenCalledWith(ctx, "cli-1");
     expect(repo.listarPorEscopo).toHaveBeenCalledWith("esc-1", "cliente", "cli-1");
+  });
+});
+
+describe("documentoService.excluir", () => {
+  it("o autor exclui o próprio documento (soft delete + log)", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ autorMembroId: "membro-1" }));
+    repo.marcarExcluido.mockResolvedValue(documentoFake());
+    membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake({ id: "membro-1" }));
+
+    await documentoService.excluir(ctx, "doc-1");
+
+    expect(repo.marcarExcluido).toHaveBeenCalledWith("doc-1", expect.any(Date), expect.anything());
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({ acao: "excluir", entidade: "documento", entidadeId: "doc-1" }),
+      expect.anything()
+    );
+  });
+
+  it("owner exclui documento de qualquer membro", async () => {
+    const owner: TenantContext = { usuarioId: "user-9", escritorioId: "esc-1", role: "owner" };
+    repo.findById.mockResolvedValue(documentoFake({ autorMembroId: "membro-1" }));
+    repo.marcarExcluido.mockResolvedValue(documentoFake());
+    membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake({ id: "membro-9", usuarioId: "user-9" }));
+
+    await expect(documentoService.excluir(owner, "doc-1")).resolves.toBeUndefined();
+  });
+
+  it("membro padrão não exclui documento alheio", async () => {
+    const outroPadrao: TenantContext = { usuarioId: "user-2", escritorioId: "esc-1", role: "padrao" };
+    repo.findById.mockResolvedValue(documentoFake({ autorMembroId: "membro-1" }));
+    membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake({ id: "membro-2", usuarioId: "user-2" }));
+
+    await expect(documentoService.excluir(outroPadrao, "doc-1")).rejects.toThrow(
+      PermissaoDocumentoError
+    );
+    expect(repo.marcarExcluido).not.toHaveBeenCalled();
+  });
+
+  it("trata documento de outro escritório como não encontrado (RN19)", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ escritorioId: "esc-2" }));
+    await expect(documentoService.excluir(ctx, "doc-1")).rejects.toThrow(DocumentoNaoEncontradoError);
+  });
+});
+
+describe("documentoService.gerarUrlDownload", () => {
+  it("valida o tenant e devolve a URL assinada de GET", async () => {
+    repo.findById.mockResolvedValue(documentoFake());
+    s3.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+
+    const url = await documentoService.gerarUrlDownload(ctx, "doc-1");
+
+    expect(s3.gerarUrlDownload).toHaveBeenCalledWith(
+      "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf"
+    );
+    expect(url).toBe("https://bucket.s3.amazonaws.com/signed-get");
+  });
+
+  it("trata documento de outro escritório como não encontrado (RN19)", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ escritorioId: "esc-2" }));
+    await expect(documentoService.gerarUrlDownload(ctx, "doc-1")).rejects.toThrow(
+      DocumentoNaoEncontradoError
+    );
   });
 });

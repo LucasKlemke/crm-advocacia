@@ -5,6 +5,7 @@ import { clienteService } from "@/services/cliente.service";
 import { casoService } from "@/services/caso.service";
 import { logService } from "@/services/log.service";
 import { s3Client } from "@/lib/external/s3-client";
+import { podeExcluirDocumento } from "@/lib/auth/permissoes";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Documento, EscopoDocumento, TipoArquivo } from "@prisma/client";
 
@@ -166,12 +167,32 @@ export const documentoService = {
     return documento;
   },
 
-  // Implementado na Task 8.
-  async excluir(_ctx: TenantContext, _id: string): Promise<void> {
-    throw new Error("não implementado");
+  async gerarUrlDownload(ctx: TenantContext, id: string): Promise<string> {
+    const documento = await this.obter(ctx, id);
+    return s3Client.gerarUrlDownload(documento.storageKey);
   },
 
-  async gerarUrlDownload(_ctx: TenantContext, _id: string): Promise<string> {
-    throw new Error("não implementado");
+  async excluir(ctx: TenantContext, id: string): Promise<void> {
+    const documento = await this.obter(ctx, id);
+    const membro = await membroRepository.findByUsuarioEEscritorio(ctx.usuarioId, ctx.escritorioId);
+    const ehAutor = membro?.id === documento.autorMembroId;
+
+    if (!podeExcluirDocumento(ctx.role, ehAutor)) {
+      throw new PermissaoDocumentoError();
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await documentoRepository.marcarExcluido(id, new Date(), tx);
+      await logService.registrar(
+        ctx,
+        {
+          acao: "excluir",
+          entidade: "documento",
+          entidadeId: id,
+          resumo: `Documento "${documento.nomeOriginal}" excluído`,
+        },
+        tx
+      );
+    });
   },
 };

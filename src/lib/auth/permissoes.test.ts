@@ -6,6 +6,7 @@ import {
   ehAutoAlvo,
   podeEditarComentario,
   podeModerarComentario,
+  podeExcluirDocumento,
 } from "./permissoes";
 
 describe("permissoes", () => {
@@ -95,5 +96,23 @@ describe("permissoes", () => {
   it("mantém a hierarquia owner > admin > padrao", () => {
     expect(NIVEL_ROLE.owner).toBeGreaterThan(NIVEL_ROLE.admin);
     expect(NIVEL_ROLE.admin).toBeGreaterThan(NIVEL_ROLE.padrao);
+  });
+
+  describe("podeExcluirDocumento", () => {
+    it("o autor do upload pode excluir o próprio documento", () => {
+      expect(podeExcluirDocumento("padrao", true)).toBe(true);
+    });
+
+    it("owner exclui documento de qualquer membro", () => {
+      expect(podeExcluirDocumento("owner", false)).toBe(true);
+    });
+
+    it("admin exclui documento de qualquer membro", () => {
+      expect(podeExcluirDocumento("admin", false)).toBe(true);
+    });
+
+    it("membro padrão não exclui documento alheio", () => {
+      expect(podeExcluirDocumento("padrao", false)).toBe(false);
+    });
   });
 });

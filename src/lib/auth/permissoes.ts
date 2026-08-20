@@ -46,3 +46,9 @@ export function podeEditarComentario(ehAutor: boolean): boolean {
 export function podeModerarComentario(atorRole: RoleMembro, ehAutor: boolean): boolean {
   return ehAutor || atorRole === "owner" || atorRole === "admin";
 }
+
+// Excluir documento é a mesma regra de moderação de comentário (RN21): o autor do
+// upload remove o que enviou, e owner/admin removem documento de qualquer membro.
+export function podeExcluirDocumento(atorRole: RoleMembro, ehAutor: boolean): boolean {
+  return ehAutor || atorRole === "owner" || atorRole === "admin";
+}
