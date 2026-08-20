@@ -14,7 +14,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ClienteDTO } from "@/types/cliente";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { ClienteDTO, EstadoCivilClienteDTO, SexoClienteDTO } from "@/types/cliente";
 
 export interface ClienteFormProps {
   cliente?: ClienteDTO;
@@ -54,6 +61,13 @@ export function ClienteForm({ cliente, onSucesso, onCancelar }: ClienteFormProps
       telefone: valores.telefone || null,
       email: valores.email || null,
       endereco: valores.endereco || null,
+      sexo: (valores.sexo || null) as SexoClienteDTO | null,
+      estadoCivil: (valores.estadoCivil || null) as EstadoCivilClienteDTO | null,
+      nomeMae: valores.nomeMae || null,
+      nomePai: valores.nomePai || null,
+      nacionalidade: valores.nacionalidade || null,
+      nascimento: valores.nascimento || null,
+      profissao: valores.profissao || null,
     };
 
     try {
@@ -85,17 +99,41 @@ export function ClienteForm({ cliente, onSucesso, onCancelar }: ClienteFormProps
                 <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
               )}
             </Label>
-            <Input
-              id={`cliente-${campo.nome}`}
-              name={campo.nome}
-              type={campo.tipo}
-              placeholder={campo.placeholder}
-              value={valores[campo.nome]}
-              onChange={(evento) => alterar(campo, evento.target.value)}
-              aria-invalid={erro ? true : undefined}
-              aria-describedby={erro ? `erro-${campo.nome}` : undefined}
-              disabled={salvando}
-            />
+            {campo.tipo === "select" ? (
+              <Select
+                value={valores[campo.nome] || null}
+                onValueChange={(valor) => alterar(campo, (valor as string) ?? "")}
+                disabled={salvando}
+              >
+                <SelectTrigger id={`cliente-${campo.nome}`} className="w-full">
+                  <SelectValue>
+                    {() =>
+                      campo.opcoes?.find((opcao) => opcao.valor === valores[campo.nome])?.label ??
+                      "Selecione"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {campo.opcoes?.map((opcao) => (
+                    <SelectItem key={opcao.valor} value={opcao.valor}>
+                      {opcao.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id={`cliente-${campo.nome}`}
+                name={campo.nome}
+                type={campo.tipo}
+                placeholder={campo.placeholder}
+                value={valores[campo.nome]}
+                onChange={(evento) => alterar(campo, evento.target.value)}
+                aria-invalid={erro ? true : undefined}
+                aria-describedby={erro ? `erro-${campo.nome}` : undefined}
+                disabled={salvando}
+              />
+            )}
             {erro ? (
               <p id={`erro-${campo.nome}`} role="alert" className="text-sm text-destructive">
                 {erro}

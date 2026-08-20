@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import { podeGerenciarMembro, ehAutoAlvo } from "@/lib/auth/permissoes";
 import type { RoleMembro } from "@prisma/client";
-import { ROLES_MEMBRO, labelRole } from "@/lib/utils/role";
+import { ROLES_MEMBRO, corRole, labelRole } from "@/lib/utils/role";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import {
   Table,
@@ -52,6 +52,24 @@ export interface MembrosTableProps {
   membros: MembroLinha[];
   atorUsuarioId: string;
   atorRole: RoleMembro;
+}
+
+function CargoBadge({ role }: { role: RoleMembro }) {
+  const cor = corRole(role);
+  return (
+    <Badge
+      variant="outline"
+      className="gap-1.5 font-normal"
+      style={{
+        borderColor: `color-mix(in oklch, ${cor}, transparent 50%)`,
+        color: cor,
+        backgroundColor: `color-mix(in oklch, ${cor}, transparent 92%)`,
+      }}
+    >
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: cor }} />
+      {labelRole(role)}
+    </Badge>
+  );
 }
 
 export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableProps) {
@@ -126,7 +144,14 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
                   <div className="flex items-center gap-3">
                     <AvatarIniciais nome={membro.usuario.nome} />
                     <div className="flex flex-col">
-                      <span className="font-medium text-foreground">{membro.usuario.nome}</span>
+                      <span className="flex items-center gap-2 font-medium text-foreground">
+                        {membro.usuario.nome}
+                        {ehAutoAlvo(atorUsuarioId, membro.usuario.id) ? (
+                          <Badge variant="secondary" className="font-normal">
+                            Você
+                          </Badge>
+                        ) : null}
+                      </span>
                       <span className="text-sm text-muted-foreground">{membro.usuario.email}</span>
                     </div>
                   </div>
@@ -139,24 +164,27 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
                     >
                       <SelectTrigger
                         aria-label={`Cargo de ${membro.usuario.nome}`}
-                        className="w-36 rounded-full"
+                        className="h-auto w-fit gap-1 border-none bg-transparent p-0 shadow-none hover:bg-transparent focus-visible:ring-0 data-[size=default]:h-auto dark:bg-transparent dark:hover:bg-transparent"
                       >
                         <SelectValue>
-                          {(valor: RoleMembro | null) => (valor ? labelRole(valor) : "")}
+                          {(valor: RoleMembro | null) => (valor ? <CargoBadge role={valor} /> : null)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {ROLES_MEMBRO.map((role) => (
                           <SelectItem key={role} value={role}>
+                            <span
+                              aria-hidden
+                              className="size-1.5 rounded-full"
+                              style={{ backgroundColor: corRole(role) }}
+                            />
                             {labelRole(role)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   ) : (
-                    <Badge variant="outline" className="font-normal">
-                      {labelRole(membro.role)}
-                    </Badge>
+                    <CargoBadge role={membro.role} />
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">

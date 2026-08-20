@@ -8,7 +8,7 @@ import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
 import { ClienteDados } from "@/components/clientes/cliente-dados";
 import { ClienteForm } from "@/components/clientes/cliente-form";
-import { ComentariosPanel } from "@/components/clientes/comentarios-panel";
+import { ComentariosPanel } from "@/components/shared/comentarios-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -99,7 +99,8 @@ export function ClienteSheet({
             {cliente ? (
               <section aria-label="Comentários">
                 <ComentariosPanel
-                  clienteId={cliente.id}
+                  escopo="cliente"
+                  escopoId={cliente.id}
                   atorUsuarioId={atorUsuarioId}
                   atorNome={atorNome}
                   atorRole={atorRole}

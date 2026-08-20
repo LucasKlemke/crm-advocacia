@@ -27,3 +27,24 @@ export function formatarDataHoraCurta(valor: string | Date): string {
   if (Number.isNaN(data.getTime())) return "—";
   return FORMATO_CURTO.format(data).replace(",", "");
 }
+
+const FORMATO_EXTENSO = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+function capitalizar(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+// Ex.: "Quinta-feira, 20 de Agosto de 2026" — usado no header do dashboard.
+export function formatarDataExtensa(valor: string | Date): string {
+  const data = typeof valor === "string" ? new Date(valor) : valor;
+  if (Number.isNaN(data.getTime())) return "—";
+  return FORMATO_EXTENSO.format(data)
+    .split(" de ")
+    .map(capitalizar)
+    .join(" de ");
+}

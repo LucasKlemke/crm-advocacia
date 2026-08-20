@@ -15,6 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ClienteDTO } from "@/types/cliente";
 
 export interface ClienteDadosProps {
@@ -61,7 +68,7 @@ export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
     setErrosPorCampo({});
 
     // PATCH parcial: só o que mudou viaja, então o diff do log (RN20) fica limpo.
-    const dados: Partial<DadosClienteForm> = {};
+    const dados: Record<string, string | null> = {};
     for (const campo of CAMPOS) {
       const valor = valores[campo.nome];
       if (valor === original[campo.nome]) continue;
@@ -71,7 +78,10 @@ export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
     }
 
     try {
-      const { cliente: atualizado } = await atualizar.mutateAsync({ id: cliente.id, dados });
+      const { cliente: atualizado } = await atualizar.mutateAsync({
+        id: cliente.id,
+        dados: dados as Partial<DadosClienteForm>,
+      });
       const novos = valoresIniciais(atualizado);
       setValores(novos);
       setOriginal(novos);
@@ -94,6 +104,9 @@ export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
         const editando = aberto === campo.nome || Boolean(erro);
         const valor = valores[campo.nome];
         const alteradoAqui = valor !== original[campo.nome];
+        const valorExibido = campo.opcoes
+          ? (campo.opcoes.find((opcao) => opcao.valor === valor)?.label ?? "")
+          : valor;
 
         return (
           <div key={campo.nome} className="flex flex-col gap-1">
@@ -106,7 +119,24 @@ export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
                 {campo.label}
               </Label>
 
-              {editando ? (
+              {editando && campo.tipo === "select" ? (
+                <Select
+                  value={valor || null}
+                  onValueChange={(novoValor) => alterar(campo, (novoValor as string) ?? "")}
+                  disabled={atualizar.isPending}
+                >
+                  <SelectTrigger id={`cliente-${campo.nome}`} size="sm" className="h-8 flex-1">
+                    <SelectValue>{() => valorExibido || "Selecione"}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campo.opcoes?.map((opcao) => (
+                      <SelectItem key={opcao.valor} value={opcao.valor}>
+                        {opcao.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : editando ? (
                 <Input
                   id={`cliente-${campo.nome}`}
                   name={campo.nome}
@@ -128,7 +158,7 @@ export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
                   onClick={() => setAberto(campo.nome)}
                   className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  {valor.trim() ? valor : <span className="text-muted-foreground">Vazio</span>}
+                  {valorExibido.trim() ? valorExibido : <span className="text-muted-foreground">Vazio</span>}
                   {/* Marca a alteração ainda não salva: sem isso, fechar o input faria
                       a edição parecer perdida. */}
                   {alteradoAqui ? (

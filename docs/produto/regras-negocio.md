@@ -12,7 +12,7 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 - **RN02b** — O e-mail de um usuário é único globalmente na plataforma (identidade de login); um mesmo e-mail nunca cria dois perfis `usuario` — pode, porém, ter memberships (via `membro`) em vários escritórios diferentes. *(`UsuarioService`, constraint `@unique` em `usuario.email`)*
 - **RN02c (nova)** — Um escritório nunca fica sem nenhum `owner`: rebaixar ou remover o último `owner` de um escritório é bloqueado. *(`MembroService`)*
 - **RN03** — Sessão expira após inatividade, exigindo novo login. *(`AuthMiddleware` / NextAuth.js)*
-- **RN19 (nova)** — Isolamento de tenant: nenhuma operação de leitura ou escrita pode acessar/alterar dados de um `escritorio_id` diferente do usuário autenticado na sessão. Toda query de Repository é obrigatoriamente escopada por `escritorio_id` (direto ou via join até `cliente`/`estagio_pipeline`). Violação é tratada como bug de segurança crítico, não como validação de negócio comum. *(todos os Repositories — ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade))*
+- **RN19 (nova)** — Isolamento de tenant: nenhuma operação de leitura ou escrita pode acessar/alterar dados de um `escritorio_id` diferente do usuário autenticado na sessão. Toda query de Repository é obrigatoriamente escopada por `escritorio_id` (direto ou via join até `caso`/`cliente`). Violação é tratada como bug de segurança crítico, não como validação de negócio comum. *(todos os Repositories — ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade))*
 
 ## Gestão de Clientes
 
@@ -20,13 +20,13 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 - **RN05 (revisada)** — CPF único **dentro do mesmo escritório**; o mesmo CPF pode existir em escritórios diferentes (são tenants distintos). Bloquear apenas duplicidade dentro do próprio tenant. *(`ClienteService`, constraint composta `@@unique([escritorio_id, cpf])`)*
   - No RFC original, o CPF era único globalmente — fazia sentido em um sistema de usuário único.
 - **RN05a (nova)** — CPF, telefone e e-mail do cliente são validados no cadastro e na edição: CPF pelos dígitos verificadores, telefone como celular brasileiro completo (`+55` + DDD + nono dígito) e e-mail pela forma. Campo opcional em branco continua válido; preenchido, precisa estar correto — um telefone incompleto só apareceria como falha na hora do disparo de WhatsApp (RN13). Armazenados sem máscara; a formatação é de apresentação. *(`ClienteService` + schemas zod das rotas)*
-- **RN06** — Todo caso deve pertencer a um cliente existente, ativo, e do mesmo escritório do usuário logado. *(`CasoService`)*
+- **RN06** — Todo caso deve pertencer a um cliente existente, ativo (não desativado), e do mesmo escritório do usuário logado; um cliente inativo não pode ser vinculado a um caso novo nem a um já existente. *(`CasoService`)*
 
 ## Gestão de Casos
 
-- **RN07** — Caso sempre pertence a uma etapa do pipeline; nunca existe fora do kanban. *(`CasoService`)*
-- **RN08** — Casos arquivados saem do pipeline ativo, mas continuam acessíveis no histórico do cliente. *(`CasoService`)*
-- **RN09** — Exclusão de etapa do pipeline só é permitida se não houver casos ativos nela; qualquer usuário do escritório pode mover/arquivar antes de remover a coluna (não é restrito ao titular). *(`EstagioService`)*
+- **RN07** — Caso sempre pertence a um `status` do escritório; nunca existe fora do kanban. *(`CasoService`)*
+- **RN08** — Casos arquivados saem do pipeline ativo (kanban e tabela mostram só ativos por padrão), mas continuam acessíveis no histórico do cliente/escritório; um caso nunca é excluído de fato. *(`CasoService`)*
+- **RN09** — Exclusão de um `status` só é permitida se não houver casos vinculados a ele (`onDelete: Restrict` no banco garante isso mesmo com bug de aplicação); qualquer usuário do escritório com papel de gestão (`owner`/`admin`) pode mover os casos e então remover a coluna — não é restrito ao titular. *(`StatusService`)*
 
 ## Prazos e Lembretes
 
@@ -50,7 +50,7 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 ## Auditoria e comentários
 
 - **RN20 (nova)** — Toda operação de escrita do sistema gera um registro em `log` respondendo três perguntas: **quem fez** (`usuario_id`), **quando fez** (`created_at`) e **o que fez** (`acao` + `entidade` + `entidade_id` + `resumo`, com o diff dos campos alterados em `dados`). O log é gravado na **mesma transação** da mudança que o originou — uma escrita que falha não deixa log órfão, e um log existente sempre corresponde a uma mudança efetivada. Atualização que não altera nenhum campo não gera log. A tabela é *append-only*: não há update nem delete de registro de auditoria. *(`LogService`, tabela `log`)*
-- **RN21 (nova)** — Comentários substituem o campo livre de observações e são ancorados a uma entidade por `(escopo, escopo_id)` — hoje `cliente`, extensível a casos/prazos sem tabela nova. Como não há FK para o alvo, o Service valida que o alvo pertence ao escritório da sessão antes de ancorar o comentário (RN19). Editar o texto é exclusivo do autor (nem `owner` edita fala alheia); excluir é moderação e cabe ao autor, `owner` ou `admin`. Exclusão é soft delete, e toda operação sobre comentário alimenta o `log` (RN20). *(`ComentarioService`, tabela `comentario`)*
+- **RN21 (nova)** — Comentários substituem o campo livre de observações e são ancorados a uma entidade por `(escopo, escopo_id)` — hoje `cliente` e `caso`, extensível a prazos sem tabela nova. Como não há FK para o alvo, o Service valida que o alvo pertence ao escritório da sessão antes de ancorar o comentário (RN19). Editar o texto é exclusivo do autor (nem `owner` edita fala alheia); excluir é moderação e cabe ao autor, `owner` ou `admin`. Exclusão é soft delete, e toda operação sobre comentário alimenta o `log` (RN20). *(`ComentarioService`, tabela `comentario`)*
 
 ## Requisitos não funcionais que afetam regras de negócio
 

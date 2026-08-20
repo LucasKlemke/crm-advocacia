@@ -20,11 +20,15 @@ enum RoleMembro {
 // domínio (caso, prazo...) sem precisar de uma tabela de comentários por entidade.
 enum EscopoComentario {
   cliente
+  caso
 }
 
 enum EntidadeLog {
   cliente
   comentario
+  caso
+  status
+  membro
 }
 
 enum AcaoLog {
@@ -32,6 +36,20 @@ enum AcaoLog {
   atualizar
   excluir
   restaurar
+}
+
+enum SexoCliente {
+  masculino
+  feminino
+  outro
+}
+
+enum EstadoCivilCliente {
+  solteiro
+  casado
+  divorciado
+  viuvo
+  uniao_estavel
 }
 
 model Escritorio {
@@ -48,6 +66,8 @@ model Escritorio {
   clientes    Cliente[]
   comentarios Comentario[]
   logs        Log[]
+  status      Status[]
+  casos       Caso[]
 
   @@map("escritorio")
 }
@@ -85,6 +105,7 @@ model Membro {
 
   usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  casos      Caso[]
 
   @@unique([usuarioId, escritorioId])
   @@index([escritorioId])
@@ -115,18 +136,26 @@ model Convite {
 // Cliente do escritório. Nunca é apagado (RN04): "desativar" grava soft_deleted_at,
 // e cliente ativo é simplesmente soft_deleted_at = null.
 model Cliente {
-  id            String    @id @default(uuid())
-  escritorioId  String    @map("escritorio_id")
-  nome          String    @db.VarChar(140)
-  cpf           String    @db.VarChar(11)
-  email         String?   @db.VarChar(140)
-  telefone      String?   @db.VarChar(20)
-  endereco      String?   @db.VarChar(255)
-  softDeletedAt DateTime? @map("soft_deleted_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id            String              @id @default(uuid())
+  escritorioId  String              @map("escritorio_id")
+  nome          String              @db.VarChar(140)
+  cpf           String              @db.VarChar(11)
+  email         String?             @db.VarChar(140)
+  telefone      String?             @db.VarChar(20)
+  endereco      String?             @db.VarChar(255)
+  sexo          SexoCliente?
+  estadoCivil   EstadoCivilCliente? @map("estado_civil")
+  nomeMae       String?             @map("nome_mae") @db.VarChar(140)
+  nomePai       String?             @map("nome_pai") @db.VarChar(140)
+  nacionalidade String?             @db.VarChar(60)
+  nascimento    DateTime?           @db.Date
+  profissao     String?             @db.VarChar(100)
+  softDeletedAt DateTime?           @map("soft_deleted_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  casos      Caso[]
 
   @@unique([escritorioId, cpf])
   @@index([escritorioId, softDeletedAt])
@@ -174,4 +203,71 @@ model Log {
   @@index([escritorioId, createdAt])
   @@index([escritorioId, entidade, entidadeId])
   @@map("log")
+}
+
+// Referência global do sistema: os tipos de status padronizam o funil de todos os
+// escritórios. Só o desenvolvedor administrador altera esta tabela (via migration);
+// nenhum endpoint de escrita é exposto para ela.
+model TipoStatus {
+  id        String  @id @default(uuid())
+  chave     String  @unique @db.VarChar(30)
+  nome      String  @db.VarChar(60)
+  icone     String  @db.VarChar(60)
+  cor       String  @db.VarChar(9)
+  descricao String? @db.VarChar(255)
+  ordem     Int
+
+  status Status[]
+
+  @@map("tipo_status")
+}
+
+// Status do funil de um escritório, associado a um TipoStatus para permitir
+// agrupamento/relatórios comparáveis entre escritórios diferentes.
+model Status {
+  id           String   @id @default(uuid())
+  escritorioId String   @map("escritorio_id")
+  tipoStatusId String   @map("tipo_status_id")
+  nome         String   @db.VarChar(60)
+  icone        String   @db.VarChar(60)
+  cor          String   @db.VarChar(9)
+  descricao    String?  @db.VarChar(255)
+  ordem        Int
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  tipo       TipoStatus @relation(fields: [tipoStatusId], references: [id], onDelete: Restrict)
+  casos      Caso[]
+
+  @@unique([escritorioId, nome])
+  @@index([escritorioId, ordem])
+  @@map("status")
+}
+
+// Caso do escritório: sempre vinculado a um cliente ativo e a um status (RN06/RN07).
+// Responsável é opcional ("sem responsável") e vira null se o membro for removido.
+model Caso {
+  id                  String   @id @default(uuid())
+  escritorioId        String   @map("escritorio_id")
+  clienteId           String   @map("cliente_id")
+  statusId            String   @map("status_id")
+  responsavelMembroId String?  @map("responsavel_membro_id")
+  titulo              String   @db.VarChar(140)
+  numeroProcesso      String?  @map("numero_processo") @db.VarChar(25)
+  descricao           String?  @db.Text
+  valor               Decimal? @db.Decimal(12, 2)
+  arquivado           Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  escritorio  Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  cliente     Cliente    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  status      Status     @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  responsavel Membro?    @relation(fields: [responsavelMembroId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId, arquivado, statusId, createdAt])
+  @@index([escritorioId, clienteId])
+  @@index([escritorioId, responsavelMembroId])
+  @@map("caso")
 }

@@ -1,0 +1,337 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api-client";
+import {
+  chaveCasosFiltroOpcoes,
+  useCasoFiltroOpcoes,
+  useCriarCaso,
+  type DadosCasoForm,
+} from "@/hooks/use-casos";
+import {
+  CRIAR_CLIENTE_VALOR,
+  ICONE_CLIENTE,
+  ICONE_DESCRICAO,
+  ICONE_NUMERO_PROCESSO,
+  ICONE_RESPONSAVEL,
+  ICONE_TITULO,
+  ICONE_VALOR,
+  SEM_RESPONSAVEL_VALOR,
+} from "@/components/casos/campos-caso";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
+import { ClienteForm } from "@/components/clientes/cliente-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import type { CasoDTO } from "@/types/caso";
+
+export interface CasoFormProps {
+  onSucesso: (caso: CasoDTO) => void;
+  onCancelar?: () => void;
+}
+
+interface Valores {
+  titulo: string;
+  clienteId: string;
+  statusId: string;
+  responsavelMembroId: string;
+  numeroProcesso: string;
+  valor: string;
+  descricao: string;
+}
+
+const VALORES_INICIAIS: Valores = {
+  titulo: "",
+  clienteId: "",
+  statusId: "",
+  responsavelMembroId: SEM_RESPONSAVEL_VALOR,
+  numeroProcesso: "",
+  valor: "",
+  descricao: "",
+};
+
+export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
+  const queryClient = useQueryClient();
+  const { data: opcoes, isLoading: carregandoOpcoes } = useCasoFiltroOpcoes();
+  const criar = useCriarCaso();
+  const [valores, setValores] = useState<Valores>(VALORES_INICIAIS);
+  const [erro, setErro] = useState<string | null>(null);
+  const [criandoCliente, setCriandoCliente] = useState(false);
+
+  function alterar<K extends keyof Valores>(campo: K, valor: Valores[K]) {
+    setValores((atuais) => ({ ...atuais, [campo]: valor }));
+    setErro(null);
+  }
+
+  async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    setErro(null);
+
+    if (!valores.titulo.trim()) {
+      setErro("Informe o título do processo.");
+      return;
+    }
+    if (!valores.clienteId) {
+      setErro("Selecione o cliente.");
+      return;
+    }
+    if (!statusIdEfetivo) {
+      setErro("Selecione o status.");
+      return;
+    }
+
+    const dados: DadosCasoForm = {
+      titulo: valores.titulo,
+      clienteId: valores.clienteId,
+      statusId: statusIdEfetivo,
+      responsavelMembroId:
+        valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR ? null : valores.responsavelMembroId,
+      numeroProcesso: valores.numeroProcesso.trim() || null,
+      valor: valores.valor.trim() ? Number(valores.valor) : null,
+      descricao: valores.descricao.trim() || null,
+    };
+
+    try {
+      const { caso } = await criar.mutateAsync(dados);
+      toast.success("Processo criado.");
+      onSucesso(caso);
+    } catch (erroCapturado) {
+      const mensagem =
+        erroCapturado instanceof ApiError
+          ? erroCapturado.message
+          : "Não foi possível salvar o processo.";
+      setErro(mensagem);
+      toast.error(mensagem);
+    }
+  }
+
+  const clientes = opcoes?.clientes ?? [];
+  const membros = opcoes?.membros ?? [];
+  const status = opcoes?.status ?? [];
+  const salvando = criar.isPending;
+  // Status default = primeira etapa do funil (menor `ordem`), até o usuário escolher outro.
+  const statusIdEfetivo = valores.statusId || (status[0]?.id ?? "");
+
+  return (
+    <>
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-titulo">
+          <ICONE_TITULO aria-hidden className="size-3.5 text-muted-foreground" />
+          Título
+        </Label>
+        <Input
+          id="caso-titulo"
+          name="titulo"
+          value={valores.titulo}
+          onChange={(evento) => alterar("titulo", evento.target.value)}
+          disabled={salvando}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-numero-processo">
+          <ICONE_NUMERO_PROCESSO aria-hidden className="size-3.5 text-muted-foreground" />
+          Nº do processo
+          <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
+        </Label>
+        <Input
+          id="caso-numero-processo"
+          name="numeroProcesso"
+          placeholder="0000000-00.0000.0.00.0000"
+          value={valores.numeroProcesso}
+          onChange={(evento) => alterar("numeroProcesso", evento.target.value)}
+          disabled={salvando}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-cliente">
+          <ICONE_CLIENTE aria-hidden className="size-3.5 text-muted-foreground" />
+          Cliente
+        </Label>
+        <Select
+          value={valores.clienteId || null}
+          onValueChange={(valor) => {
+            if (valor === CRIAR_CLIENTE_VALOR) {
+              setCriandoCliente(true);
+              return;
+            }
+            alterar("clienteId", (valor as string) ?? "");
+          }}
+          disabled={salvando || carregandoOpcoes}
+        >
+          <SelectTrigger id="caso-cliente" className="w-full">
+            <SelectValue>
+              {() => clientes.find((c) => c.id === valores.clienteId)?.nome ?? "Selecione"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={CRIAR_CLIENTE_VALOR}>
+              <Plus className="size-3.5" />
+              Criar cliente
+            </SelectItem>
+            {clientes.map((cliente) => (
+              <SelectItem key={cliente.id} value={cliente.id}>
+                {cliente.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-status">Status</Label>
+        <Select
+          value={statusIdEfetivo || null}
+          onValueChange={(valor) => alterar("statusId", (valor as string) ?? "")}
+          disabled={salvando || carregandoOpcoes}
+        >
+          <SelectTrigger id="caso-status" className="w-full">
+            <SelectValue>
+              {() => status.find((s) => s.id === statusIdEfetivo)?.nome ?? "Selecione"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {status.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: item.cor }} />
+                {item.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-responsavel">
+          <ICONE_RESPONSAVEL aria-hidden className="size-3.5 text-muted-foreground" />
+          Responsável
+          <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
+        </Label>
+        <Select
+          value={valores.responsavelMembroId}
+          onValueChange={(valor) => alterar("responsavelMembroId", (valor as string) ?? SEM_RESPONSAVEL_VALOR)}
+          disabled={salvando || carregandoOpcoes}
+        >
+          <SelectTrigger id="caso-responsavel" className="w-full">
+            <SelectValue>
+              {() => {
+                if (valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR) return "Sem responsável";
+                const membro = membros.find((m) => m.id === valores.responsavelMembroId);
+                if (!membro) return "Selecione";
+                return (
+                  <span className="flex items-center gap-2">
+                    <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                    {membro.nome}
+                  </span>
+                );
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
+            {membros.map((membro) => (
+              <SelectItem key={membro.id} value={membro.id}>
+                <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                {membro.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-valor">
+          <ICONE_VALOR aria-hidden className="size-3.5 text-muted-foreground" />
+          Valor
+          <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
+        </Label>
+        <Input
+          id="caso-valor"
+          name="valor"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0,00"
+          value={valores.valor}
+          onChange={(evento) => alterar("valor", evento.target.value)}
+          disabled={salvando}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-descricao">
+          <ICONE_DESCRICAO aria-hidden className="size-3.5 text-muted-foreground" />
+          Descrição
+          <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
+        </Label>
+        <Textarea
+          id="caso-descricao"
+          name="descricao"
+          value={valores.descricao}
+          onChange={(evento) => alterar("descricao", evento.target.value)}
+          disabled={salvando}
+        />
+      </div>
+
+      {erro ? (
+        <p role="alert" className="text-sm text-destructive">
+          {erro}
+        </p>
+      ) : null}
+
+      <div className="mt-2 flex justify-end gap-2">
+        {onCancelar ? (
+          <Button type="button" variant="outline" onClick={onCancelar} disabled={salvando}>
+            Cancelar
+          </Button>
+        ) : null}
+        <Button type="submit" disabled={salvando}>
+          <Plus />
+          {salvando ? "Salvando..." : "Criar processo"}
+        </Button>
+      </div>
+    </form>
+
+    <Sheet open={criandoCliente} onOpenChange={setCriandoCliente}>
+      <SheetContent className="w-full gap-0 sm:max-w-xl">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Novo cliente</SheetTitle>
+            <SheetDescription>Cadastre um cliente do escritório sem sair do processo.</SheetDescription>
+          </SheetHeader>
+          <div className="px-4 py-4">
+            <ClienteForm
+              onSucesso={(cliente) => {
+                queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+                alterar("clienteId", cliente.id);
+                setCriandoCliente(false);
+              }}
+              onCancelar={() => setCriandoCliente(false)}
+            />
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+    </>
+  );
+}

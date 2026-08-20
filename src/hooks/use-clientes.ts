@@ -2,7 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { ClienteDTO, FiltrosClientes, ListaClientes } from "@/types/cliente";
+import type {
+  ClienteDTO,
+  EstadoCivilClienteDTO,
+  FiltrosClientes,
+  ListaClientes,
+  SexoClienteDTO,
+} from "@/types/cliente";
 
 export interface DadosClienteForm {
   nome: string;
@@ -10,6 +16,13 @@ export interface DadosClienteForm {
   email: string | null;
   telefone: string | null;
   endereco: string | null;
+  sexo: SexoClienteDTO | null;
+  estadoCivil: EstadoCivilClienteDTO | null;
+  nomeMae: string | null;
+  nomePai: string | null;
+  nacionalidade: string | null;
+  nascimento: string | null;
+  profissao: string | null;
 }
 
 // Key padronizada [entidade, ...filtros] para que qualquer mutation invalide a

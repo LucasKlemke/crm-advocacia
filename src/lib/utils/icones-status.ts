@@ -1,0 +1,37 @@
+// Lista curada de ícones Lucide relevantes para o funil de um escritório de
+// advocacia (contato -> análise -> proposta -> fechamento/perda). Mantida como
+// strings puras (sem importar lucide-react) para servir tanto a validação
+// server-side (zod) quanto o seletor de ícone no client, sem acoplar este
+// módulo a componentes React.
+export const ICONES_STATUS_PERMITIDOS: string[] = [
+  "MessageCircle",
+  "Search",
+  "CircleCheck",
+  "FileText",
+  "Trophy",
+  "CircleX",
+  "Phone",
+  "Mail",
+  "Calendar",
+  "Clock",
+  "Gavel",
+  "Scale",
+  "FileSignature",
+  "Handshake",
+  "AlertCircle",
+  "ThumbsUp",
+  "ThumbsDown",
+  "Star",
+  "Flag",
+  "Archive",
+  "Users",
+  "UserCheck",
+  "Briefcase",
+  "ClipboardCheck",
+  "BadgeCheck",
+  "TrendingUp",
+  "TrendingDown",
+  "Send",
+  "Eye",
+  "Loader",
+];

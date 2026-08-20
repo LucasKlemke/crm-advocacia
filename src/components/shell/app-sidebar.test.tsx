@@ -24,8 +24,7 @@ describe("AppSidebar", () => {
     );
 
     expect(screen.getByRole("link", { name: /clientes/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /casos/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /prazos/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /processos/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /mensagens/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /configurações/i })).toBeInTheDocument();
   });
@@ -39,7 +38,7 @@ describe("AppSidebar", () => {
       </SidebarProvider>
     );
 
-    expect(screen.getByRole("link", { name: /casos/i })).toHaveAttribute("data-active");
+    expect(screen.getByRole("link", { name: /processos/i })).toHaveAttribute("data-active");
     expect(screen.getByRole("link", { name: /clientes/i })).not.toHaveAttribute("data-active");
   });
 });

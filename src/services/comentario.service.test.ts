@@ -6,6 +6,7 @@ import {
 } from "./comentario.service";
 import { comentarioRepository } from "@/repositories/comentario.repository";
 import { clienteService, ClienteNaoEncontradoError } from "@/services/cliente.service";
+import { casoService, CasoNaoEncontradoError } from "@/services/caso.service";
 import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Comentario } from "@prisma/client";
@@ -16,6 +17,10 @@ jest.mock("@/services/cliente.service", () => ({
   clienteService: { obter: jest.fn() },
   ClienteNaoEncontradoError: class ClienteNaoEncontradoError extends Error {},
 }));
+jest.mock("@/services/caso.service", () => ({
+  casoService: { obter: jest.fn() },
+  CasoNaoEncontradoError: class CasoNaoEncontradoError extends Error {},
+}));
 jest.mock("@/lib/prisma", () => ({
   prisma: { $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn({})) },
 }));
@@ -23,6 +28,7 @@ jest.mock("@/lib/prisma", () => ({
 const repo = comentarioRepository as jest.Mocked<typeof comentarioRepository>;
 const logs = logService as jest.Mocked<typeof logService>;
 const clientes = clienteService as jest.Mocked<typeof clienteService>;
+const casos = casoService as jest.Mocked<typeof casoService>;
 
 const autor: TenantContext = { usuarioId: "user-1", escritorioId: "esc-1", role: "padrao" };
 const outroPadrao: TenantContext = { usuarioId: "user-2", escritorioId: "esc-1", role: "padrao" };
@@ -48,6 +54,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   logs.registrar.mockResolvedValue({} as never);
   clientes.obter.mockResolvedValue({ id: "cli-1", nome: "Maria Silva" } as never);
+  casos.obter.mockResolvedValue({ id: "caso-1", titulo: "Ação de Cobrança" } as never);
 });
 
 describe("comentarioService.criar", () => {
@@ -85,6 +92,37 @@ describe("comentarioService.criar", () => {
     clientes.obter.mockRejectedValue(new ClienteNaoEncontradoError());
     await expect(comentarioService.criar(autor, "cliente", "cli-alheio", "oi")).rejects.toThrow(
       ClienteNaoEncontradoError
+    );
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  // RN21: comentário também ancora em caso, não só em cliente.
+  it("ancora o comentário num caso e registra o título dele no log", async () => {
+    repo.create.mockResolvedValue(comentarioFake({ escopo: "caso", escopoId: "caso-1" }));
+
+    await comentarioService.criar(autor, "caso", "caso-1", "Audiência marcada.");
+
+    expect(casos.obter).toHaveBeenCalledWith(autor, "caso-1");
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ escopo: "caso", escopoId: "caso-1" }),
+      expect.anything()
+    );
+    expect(logs.registrar).toHaveBeenCalledWith(
+      autor,
+      expect.objectContaining({
+        acao: "criar",
+        entidade: "comentario",
+        resumo: "Comentário adicionado ao caso Ação de Cobrança",
+      }),
+      expect.anything()
+    );
+  });
+
+  // (escopo, escopo_id) não tem FK: se o alvo não é do tenant, nada pode ser ancorado nele.
+  it("recusa comentar em caso de outro escritório", async () => {
+    casos.obter.mockRejectedValue(new CasoNaoEncontradoError());
+    await expect(comentarioService.criar(autor, "caso", "caso-alheio", "oi")).rejects.toThrow(
+      CasoNaoEncontradoError
     );
     expect(repo.create).not.toHaveBeenCalled();
   });
@@ -187,5 +225,14 @@ describe("comentarioService.listar", () => {
 
     expect(clientes.obter).toHaveBeenCalledWith(autor, "cli-1");
     expect(repo.listarPorEscopo).toHaveBeenCalledWith("esc-1", "cliente", "cli-1");
+  });
+
+  it("valida o caso antes de listar quando o escopo é caso", async () => {
+    repo.listarPorEscopo.mockResolvedValue([]);
+
+    await comentarioService.listar(autor, "caso", "caso-1");
+
+    expect(casos.obter).toHaveBeenCalledWith(autor, "caso-1");
+    expect(repo.listarPorEscopo).toHaveBeenCalledWith("esc-1", "caso", "caso-1");
   });
 });

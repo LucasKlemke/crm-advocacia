@@ -5,11 +5,17 @@ import {
   UltimoOwnerError,
 } from "./membro.service";
 import { membroRepository } from "@/repositories/membro.repository";
+import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 
 jest.mock("@/repositories/membro.repository");
+jest.mock("@/services/log.service");
+jest.mock("@/lib/prisma", () => ({
+  prisma: { $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn({})) },
+}));
 
 const mockedMembroRepo = membroRepository as jest.Mocked<typeof membroRepository>;
+const mockedLogService = logService as jest.Mocked<typeof logService>;
 
 function ctx(role: TenantContext["role"], usuarioId = "user-ator"): TenantContext {
   return { usuarioId, escritorioId: "esc-1", role };
@@ -136,11 +142,33 @@ describe("membroService.alterarRole", () => {
       usuarioId: "user-alvo",
       role: "padrao",
     } as never);
+    mockedMembroRepo.contarOwners.mockResolvedValue(1);
     mockedMembroRepo.atualizarRole.mockResolvedValue({ id: "membro-1", role: "owner" } as never);
 
     const resultado = await membroService.alterarRole(ctx("owner"), "membro-1", "owner");
 
     expect(resultado.role).toBe("owner");
+    expect(mockedLogService.registrar).toHaveBeenCalledWith(
+      ctx("owner"),
+      expect.objectContaining({ acao: "atualizar", entidade: "membro", entidadeId: "membro-1" }),
+      {}
+    );
+  });
+
+  it("não grava log nem consulta owners quando o papel não muda", async () => {
+    mockedMembroRepo.findById.mockResolvedValue({
+      id: "membro-1",
+      escritorioId: "esc-1",
+      usuarioId: "user-alvo",
+      role: "admin",
+    } as never);
+
+    const resultado = await membroService.alterarRole(ctx("owner"), "membro-1", "admin");
+
+    expect(resultado.role).toBe("admin");
+    expect(mockedMembroRepo.contarOwners).not.toHaveBeenCalled();
+    expect(mockedMembroRepo.atualizarRole).not.toHaveBeenCalled();
+    expect(mockedLogService.registrar).not.toHaveBeenCalled();
   });
 
   it("bloqueia rebaixar o último owner", async () => {
@@ -235,6 +263,11 @@ describe("membroService.remover", () => {
 
     await membroService.remover(ctx("owner"), "membro-1");
 
-    expect(mockedMembroRepo.remover).toHaveBeenCalledWith("membro-1");
+    expect(mockedMembroRepo.remover).toHaveBeenCalledWith("membro-1", {});
+    expect(mockedLogService.registrar).toHaveBeenCalledWith(
+      ctx("owner"),
+      expect.objectContaining({ acao: "excluir", entidade: "membro", entidadeId: "membro-1" }),
+      {}
+    );
   });
 });

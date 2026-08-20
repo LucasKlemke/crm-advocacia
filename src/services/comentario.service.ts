@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { comentarioRepository } from "@/repositories/comentario.repository";
 import { clienteService } from "@/services/cliente.service";
+import { casoService } from "@/services/caso.service";
 import { logService } from "@/services/log.service";
 import { podeEditarComentario, podeModerarComentario } from "@/lib/auth/permissoes";
 import type { TenantContext } from "@/lib/auth/tenant-context";
@@ -38,6 +39,10 @@ async function garantirEscopo(
     case "cliente": {
       const cliente = await clienteService.obter(ctx, escopoId);
       return cliente.nome;
+    }
+    case "caso": {
+      const caso = await casoService.obter(ctx, escopoId);
+      return caso.titulo;
     }
   }
 }
@@ -78,7 +83,8 @@ export const comentarioService = {
           acao: "criar",
           entidade: "comentario",
           entidadeId: comentario.id,
-          resumo: `Comentário adicionado ao cliente ${nomeAlvo}`,
+          // "cliente"/"caso" já são a palavra certa em português para a frase.
+          resumo: `Comentário adicionado ao ${escopo} ${nomeAlvo}`,
         },
         tx
       );

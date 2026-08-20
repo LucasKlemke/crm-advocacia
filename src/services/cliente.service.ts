@@ -6,7 +6,7 @@ import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
 import { emailValido, normalizarEmail } from "@/lib/utils/email";
 import { calcularDiff } from "@/lib/utils/diff";
 import type { TenantContext } from "@/lib/auth/tenant-context";
-import type { Cliente } from "@prisma/client";
+import type { Cliente, EstadoCivilCliente, SexoCliente } from "@prisma/client";
 
 export class ClienteNaoEncontradoError extends Error {
   constructor() {
@@ -53,11 +53,31 @@ export interface DadosNovoCliente {
   email?: string | null;
   telefone?: string | null;
   endereco?: string | null;
+  sexo?: SexoCliente | null;
+  estadoCivil?: EstadoCivilCliente | null;
+  nomeMae?: string | null;
+  nomePai?: string | null;
+  nacionalidade?: string | null;
+  nascimento?: Date | null;
+  profissao?: string | null;
 }
 
 export type DadosEdicaoCliente = Partial<DadosNovoCliente>;
 
-const CAMPOS_AUDITADOS = ["nome", "cpf", "email", "telefone", "endereco"] as const;
+const CAMPOS_AUDITADOS = [
+  "nome",
+  "cpf",
+  "email",
+  "telefone",
+  "endereco",
+  "sexo",
+  "estadoCivil",
+  "nomeMae",
+  "nomePai",
+  "nacionalidade",
+  "nascimento",
+  "profissao",
+] as const;
 
 // Telefone e e-mail são opcionais: em branco vira null. Preenchidos, precisam estar
 // corretos — o telefone é a chave do disparo de WhatsApp (RN13) e um número mal
@@ -118,6 +138,13 @@ export const clienteService = {
           email,
           telefone,
           endereco: dados.endereco?.trim() || null,
+          sexo: dados.sexo ?? null,
+          estadoCivil: dados.estadoCivil ?? null,
+          nomeMae: dados.nomeMae?.trim() || null,
+          nomePai: dados.nomePai?.trim() || null,
+          nacionalidade: dados.nacionalidade?.trim() || null,
+          nascimento: dados.nascimento ?? null,
+          profissao: dados.profissao?.trim() || null,
           escritorio: { connect: { id: ctx.escritorioId } },
         },
         tx
@@ -150,6 +177,15 @@ export const clienteService = {
       ...(dados.email !== undefined ? { email: prepararEmail(dados.email) } : {}),
       ...(dados.telefone !== undefined ? { telefone: prepararTelefone(dados.telefone) } : {}),
       ...(dados.endereco !== undefined ? { endereco: dados.endereco?.trim() || null } : {}),
+      ...(dados.sexo !== undefined ? { sexo: dados.sexo ?? null } : {}),
+      ...(dados.estadoCivil !== undefined ? { estadoCivil: dados.estadoCivil ?? null } : {}),
+      ...(dados.nomeMae !== undefined ? { nomeMae: dados.nomeMae?.trim() || null } : {}),
+      ...(dados.nomePai !== undefined ? { nomePai: dados.nomePai?.trim() || null } : {}),
+      ...(dados.nacionalidade !== undefined
+        ? { nacionalidade: dados.nacionalidade?.trim() || null }
+        : {}),
+      ...(dados.nascimento !== undefined ? { nascimento: dados.nascimento ?? null } : {}),
+      ...(dados.profissao !== undefined ? { profissao: dados.profissao?.trim() || null } : {}),
     };
 
     if (dados.cpf !== undefined) {

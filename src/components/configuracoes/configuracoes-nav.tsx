@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Users } from "lucide-react";
+import { Building2, ListTodo, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GRUPOS = [
@@ -12,6 +12,10 @@ const GRUPOS = [
       { href: "/configuracoes/escritorio", label: "Escritório", icon: Building2 },
       { href: "/configuracoes/membros", label: "Membros", icon: Users },
     ],
+  },
+  {
+    label: "Pipeline",
+    items: [{ href: "/configuracoes/status", label: "Status", icon: ListTodo }],
   },
 ];
 

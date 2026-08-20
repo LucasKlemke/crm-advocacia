@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import {
   membroRepository,
   type MembroComUsuarioPublico,
@@ -8,6 +9,8 @@ import {
   violaUltimoOwner,
   ehAutoAlvo,
 } from "@/lib/auth/permissoes";
+import { logService } from "@/services/log.service";
+import { calcularDiff } from "@/lib/utils/diff";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Escritorio, Membro, RoleMembro } from "@prisma/client";
 
@@ -68,13 +71,32 @@ export const membroService = {
     if (!podeGerenciarMembro(ctx.role, alvo.role) || !podeAtribuirRole(ctx.role, novoRole)) {
       throw new PermissaoNegadaError();
     }
-    if (alvo.role !== novoRole) {
-      const totalOwners = await membroRepository.contarOwners(ctx.escritorioId);
-      if (violaUltimoOwner(alvo.role, totalOwners)) {
-        throw new UltimoOwnerError();
-      }
+    if (alvo.role === novoRole) {
+      return alvo;
     }
-    return membroRepository.atualizarRole(membroId, novoRole);
+
+    const totalOwners = await membroRepository.contarOwners(ctx.escritorioId);
+    if (violaUltimoOwner(alvo.role, totalOwners)) {
+      throw new UltimoOwnerError();
+    }
+
+    const diff = calcularDiff(alvo, { role: novoRole }, ["role"] as const);
+
+    return prisma.$transaction(async (tx) => {
+      const membro = await membroRepository.atualizarRole(membroId, novoRole, tx);
+      await logService.registrar(
+        ctx,
+        {
+          acao: "atualizar",
+          entidade: "membro",
+          entidadeId: membro.id,
+          resumo: `Papel do membro alterado para ${novoRole}`,
+          dados: diff,
+        },
+        tx
+      );
+      return membro;
+    });
   },
 
   async remover(ctx: TenantContext, membroId: string): Promise<void> {
@@ -92,6 +114,19 @@ export const membroService = {
     if (violaUltimoOwner(alvo.role, totalOwners)) {
       throw new UltimoOwnerError();
     }
-    await membroRepository.remover(membroId);
+
+    await prisma.$transaction(async (tx) => {
+      await membroRepository.remover(membroId, tx);
+      await logService.registrar(
+        ctx,
+        {
+          acao: "excluir",
+          entidade: "membro",
+          entidadeId: membroId,
+          resumo: "Membro removido do escritório",
+        },
+        tx
+      );
+    });
   },
 };

@@ -3,10 +3,11 @@ import { z } from "zod";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { tratarErroDeContexto, respostaDadosInvalidos, lerJson } from "@/lib/api/erros";
 import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
+import { tratarErroDeCaso } from "@/lib/api/erros-caso";
 import { tratarErroDeComentario } from "@/lib/api/erros-comentario";
 import { comentarioService } from "@/services/comentario.service";
 
-const escopoSchema = z.enum(["cliente"]);
+const escopoSchema = z.enum(["cliente", "caso"]);
 
 const novoComentarioSchema = z.object({
   escopo: escopoSchema,
@@ -32,7 +33,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ comentarios });
   } catch (error) {
     const resposta =
-      tratarErroDeContexto(error) ?? tratarErroDeCliente(error) ?? tratarErroDeComentario(error);
+      tratarErroDeContexto(error) ??
+      tratarErroDeCliente(error) ??
+      tratarErroDeCaso(error) ??
+      tratarErroDeComentario(error);
     if (resposta) return resposta;
     console.error("Erro ao listar comentários", error);
     return NextResponse.json({ error: "Não foi possível listar os comentários." }, { status: 500 });
@@ -58,7 +62,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ comentario }, { status: 201 });
   } catch (error) {
     const resposta =
-      tratarErroDeContexto(error) ?? tratarErroDeCliente(error) ?? tratarErroDeComentario(error);
+      tratarErroDeContexto(error) ??
+      tratarErroDeCliente(error) ??
+      tratarErroDeCaso(error) ??
+      tratarErroDeComentario(error);
     if (resposta) return resposta;
     console.error("Erro ao criar comentário", error);
     return NextResponse.json({ error: "Não foi possível salvar o comentário." }, { status: 500 });

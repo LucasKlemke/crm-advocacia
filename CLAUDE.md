@@ -44,7 +44,7 @@ Serviço assíncrono separado: `NotificacaoScheduler` (Lambda) roda em backgroun
 
 ## Modelo de dados (16 tabelas)
 
-`escritorio` (tenant) · `usuario` (perfil global) · `membro` (N:N usuário↔escritório com papel) · `convite` (pendências por e-mail) · `cliente` (FK escritório; soft delete via `soft_deleted_at`) · `comentario` (ancorado por `escopo`+`escopo_id`, sem FK; hoje `cliente`) · `log` (auditoria append-only: quem/quando/o quê + diff) · `estagio_pipeline` (FK escritório; colunas do kanban, configuráveis) · `caso` (FK cliente + estagio) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso — a ser absorvida por `comentario` com escopo `caso`) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
+`escritorio` (tenant) · `usuario` (perfil global) · `membro` (N:N usuário↔escritório com papel) · `convite` (pendências por e-mail) · `cliente` (FK escritório; soft delete via `soft_deleted_at`) · `comentario` (ancorado por `escopo`+`escopo_id`, sem FK; hoje `cliente` e `caso`) · `log` (auditoria append-only: quem/quando/o quê + diff) · `tipo_status` (referência global, seed fixo de 6 tipos, só o administrador do sistema edita) · `status` (FK escritório + tipo_status; colunas do kanban, configuráveis pelo próprio escritório) · `caso` (FK escritório + cliente + status + responsável opcional; campo `valor`) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso — a ser absorvida por `comentario` com escopo `caso`) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
 
 Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/database/docker-setup.md)); toda alteração de schema é feita via migration do Prisma, nunca `db push`, com histórico auditável em `prisma/migrations/` ([docs/database/migrations-prisma.md](docs/database/migrations-prisma.md)).
 
@@ -53,8 +53,8 @@ Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/databa
 - **RN02 (revisada)**: sistema multi-tenant — cadastro de escritório é self-service pela UI (cria o tenant + o usuário titular); um escritório nunca acessa dados de outro.
 - **RN02a**: usuário titular pode convidar/cadastrar colaboradores dentro do próprio escritório; apenas o titular gerencia usuários (criar, desativar, promover).
 - **RN04/RN05**: cliente nunca é excluído permanentemente — "desativar" grava `cliente.soft_deleted_at` (ativo = `NULL`), operação reversível por "Restaurar"; CPF é armazenado sem máscara e é único **por escritório** (não globalmente).
-- **RN06/RN07**: todo caso precisa de cliente ativo e etapa de pipeline; nunca existe "solto".
-- **RN08/RN09**: casos arquivados saem do kanban mas ficam no histórico; etapa do pipeline só pode ser removida se vazia.
+- **RN06/RN07**: todo caso precisa de cliente ativo e de um `status` do escritório; nunca existe "solto".
+- **RN08/RN09**: casos arquivados saem do kanban mas ficam no histórico; um `status` só pode ser removido se não tiver casos vinculados.
 - **RN10/RN11/RN12**: prazo sempre vinculado a um caso; datas passadas viram "retroativo" com indicação visual; notificações automáticas em 3 dias antes, 1 dia antes e no dia — sem ação manual.
 - **RN13/RN14/RN15/RN16**: disparo de WhatsApp exige telefone cadastrado; processado assíncrono via Lambda; todo envio (sucesso/falha) fica no histórico; até 3 retentativas automáticas em falha.
 - **RN17/RN18**: upload de documento limitado a 10MB, tipos aceitos PDF/DOCX/JPG/PNG/JPEG.
