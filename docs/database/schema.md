@@ -77,6 +77,13 @@ Cadastro dos clientes do escritório.
 | email | varchar(140) | Normalizado em caixa baixa |
 | telefone | varchar(20) | Armazenado **sem máscara**, no formato internacional completo `55 + DDD + 9 dígitos` — é assim que a Uazapi identifica o destinatário no disparo (RN13) |
 | endereco | varchar(255) | |
+| sexo | enum (`SexoCliente`) | `masculino` \| `feminino` \| `outro` — opcional |
+| estado_civil | enum (`EstadoCivilCliente`) | `solteiro` \| `casado` \| `divorciado` \| `viuvo` \| `uniao_estavel` — opcional |
+| nome_mae | varchar(140) | Opcional |
+| nome_pai | varchar(140) | Opcional |
+| nacionalidade | varchar(60) | Opcional |
+| nascimento | date | Opcional |
+| profissao | varchar(100) | Opcional |
 | soft_deleted_at | timestamp | Data da exclusão suave; `NULL` = cliente ativo (RN04) |
 | created_at / updated_at | timestamp | |
 

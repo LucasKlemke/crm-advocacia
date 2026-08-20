@@ -38,6 +38,20 @@ enum AcaoLog {
   restaurar
 }
 
+enum SexoCliente {
+  masculino
+  feminino
+  outro
+}
+
+enum EstadoCivilCliente {
+  solteiro
+  casado
+  divorciado
+  viuvo
+  uniao_estavel
+}
+
 model Escritorio {
   id               String   @id @default(uuid())
   nome             String   @db.VarChar(140)
@@ -122,16 +136,23 @@ model Convite {
 // Cliente do escritório. Nunca é apagado (RN04): "desativar" grava soft_deleted_at,
 // e cliente ativo é simplesmente soft_deleted_at = null.
 model Cliente {
-  id            String    @id @default(uuid())
-  escritorioId  String    @map("escritorio_id")
-  nome          String    @db.VarChar(140)
-  cpf           String    @db.VarChar(11)
-  email         String?   @db.VarChar(140)
-  telefone      String?   @db.VarChar(20)
-  endereco      String?   @db.VarChar(255)
-  softDeletedAt DateTime? @map("soft_deleted_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id            String              @id @default(uuid())
+  escritorioId  String              @map("escritorio_id")
+  nome          String              @db.VarChar(140)
+  cpf           String              @db.VarChar(11)
+  email         String?             @db.VarChar(140)
+  telefone      String?             @db.VarChar(20)
+  endereco      String?             @db.VarChar(255)
+  sexo          SexoCliente?
+  estadoCivil   EstadoCivilCliente? @map("estado_civil")
+  nomeMae       String?             @map("nome_mae") @db.VarChar(140)
+  nomePai       String?             @map("nome_pai") @db.VarChar(140)
+  nacionalidade String?             @db.VarChar(60)
+  nascimento    DateTime?           @db.Date
+  profissao     String?             @db.VarChar(100)
+  softDeletedAt DateTime?           @map("soft_deleted_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   casos      Caso[]
