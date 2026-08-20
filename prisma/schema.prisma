@@ -23,12 +23,26 @@ enum EscopoComentario {
   caso
 }
 
+enum EscopoDocumento {
+  cliente
+  caso
+}
+
+enum TipoArquivo {
+  pdf
+  docx
+  jpg
+  png
+  jpeg
+}
+
 enum EntidadeLog {
   cliente
   comentario
   caso
   status
   membro
+  documento
 }
 
 enum AcaoLog {
@@ -68,6 +82,7 @@ model Escritorio {
   logs        Log[]
   status      Status[]
   casos       Caso[]
+  documentos  Documento[]
 
   @@map("escritorio")
 }
@@ -106,6 +121,7 @@ model Membro {
   usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   casos      Caso[]
+  documentos Documento[]
 
   @@unique([usuarioId, escritorioId])
   @@index([escritorioId])
@@ -181,6 +197,29 @@ model Comentario {
 
   @@index([escritorioId, escopo, escopoId, createdAt])
   @@map("comentario")
+}
+
+// Documento anexado a um cliente ou caso (escopo, escopo_id — mesmo padrão de
+// Comentario), armazenado no S3 via storage_key (RN17/RN18).
+model Documento {
+  id             String          @id @default(uuid())
+  escritorioId   String          @map("escritorio_id")
+  escopo         EscopoDocumento
+  escopoId       String          @map("escopo_id")
+  autorMembroId  String          @map("autor_membro_id")
+  nomeOriginal   String          @map("nome_original") @db.VarChar(255)
+  tipoArquivo    TipoArquivo     @map("tipo_arquivo")
+  tamanhoKb      Int             @map("tamanho_kb")
+  storageKey     String          @map("storage_key") @db.VarChar(500)
+  softDeletedAt  DateTime?       @map("soft_deleted_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  autor      Membro     @relation(fields: [autorMembroId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, escopo, escopoId, softDeletedAt])
+  @@map("documento")
 }
 
 // Trilha de auditoria transversal (RN20): quem fez (usuario_id), quando fez (created_at)
