@@ -37,6 +37,10 @@ async function coletar(stream: NodeJS.ReadableStream): Promise<Buffer> {
 }
 
 describe("montarZipDocumentos", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("monta um zip válido com um arquivo por documento", async () => {
     s3.buscarArquivo.mockImplementation(async (key: string) =>
       Readable.from([Buffer.from(`conteudo de ${key}`)])
@@ -54,11 +58,37 @@ describe("montarZipDocumentos", () => {
     expect(s3.buscarArquivo).toHaveBeenCalledTimes(2);
   });
 
-  it("propaga erro do S3 como evento de erro do stream", async () => {
-    s3.buscarArquivo.mockRejectedValue(new Error("falha no S3"));
+  // A resposta HTTP já foi enviada com 200 quando a leitura do S3 falha: abortar o zip
+  // entregaria um arquivo truncado sem erro visível. Zip parcial e válido é preferível.
+  it("pula documento ilegível no S3 e conclui o zip com os demais", async () => {
+    const erroDoConsole = jest.spyOn(console, "error").mockImplementation(() => {});
+    s3.buscarArquivo.mockImplementation(async (key: string) => {
+      if (key.includes("quebrado")) {
+        throw new Error("falha no S3");
+      }
+      return Readable.from([Buffer.from(`conteudo de ${key}`)]);
+    });
 
-    const zip = montarZipDocumentos([documentoFake()]);
+    const zip = montarZipDocumentos([
+      documentoFake({ id: "doc-quebrado", storageKey: "development/quebrado", nomeOriginal: "quebrado.pdf" }),
+      documentoFake({ id: "doc-2", nomeOriginal: "procuracao.pdf" }),
+    ]);
 
-    await expect(coletar(zip)).rejects.toThrow();
+    const buffer = await coletar(zip);
+
+    expect(buffer.subarray(0, 2).toString()).toBe("PK");
+    // Só o documento legível entrou no arquivo (o nome da entrada aparece no diretório
+    // central do zip, que não é comprimido).
+    expect(buffer.includes(Buffer.from("procuracao.pdf"))).toBe(true);
+    expect(buffer.includes(Buffer.from("quebrado.pdf"))).toBe(false);
+    expect(erroDoConsole).toHaveBeenCalled();
+    erroDoConsole.mockRestore();
+  });
+
+  it("conclui um zip vazio quando não há documentos", async () => {
+    const buffer = await coletar(montarZipDocumentos([]));
+
+    expect(buffer.subarray(0, 2).toString()).toBe("PK");
+    expect(s3.buscarArquivo).not.toHaveBeenCalled();
   });
 });

@@ -18,6 +18,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const caso = await casoService.obter(ctx, id);
     const documentos = await documentoService.listarPorEscopo(ctx, "caso", id);
     const zip = montarZipDocumentos(documentos);
+    // A resposta já saiu com 200 quando o stream começa: erro daqui pra frente (interno do
+    // archiver) não tem mais como virar status HTTP — pelo menos fica no log do servidor.
+    zip.on("error", (err) => console.error("Erro ao montar zip de documentos", err));
 
     return new NextResponse(Readable.toWeb(zip) as ReadableStream, {
       headers: {

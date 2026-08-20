@@ -60,4 +60,19 @@ describe("GET /api/casos/[id]/documentos/download-todos", () => {
     });
     expect(resposta.status).toBe(404);
   });
+
+  // A resposta já saiu com 200 quando o stream começa: erro interno do archiver não pode
+  // desaparecer em silêncio, tem que pelo menos ir para o log do servidor.
+  it("registra listener de erro no stream do zip", async () => {
+    (casoService.obter as jest.Mock).mockResolvedValue({ id: "caso-1", titulo: "Ação de Cobrança" });
+    (documentoService.listarPorEscopo as jest.Mock).mockResolvedValue([]);
+    const zip = Readable.from([Buffer.from("PK\x03\x04")]);
+    (montarZipDocumentos as jest.Mock).mockReturnValue(zip);
+
+    await GET(new Request("http://localhost/api/casos/caso-1/documentos/download-todos"), {
+      params: Promise.resolve({ id: "caso-1" }),
+    });
+
+    expect(zip.listenerCount("error")).toBeGreaterThan(0);
+  });
 });

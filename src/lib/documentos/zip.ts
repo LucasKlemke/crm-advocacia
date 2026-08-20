@@ -12,15 +12,18 @@ export function montarZipDocumentos(documentos: Documento[]): Archiver {
   const zip = new ZipArchive({ zlib: { level: 9 } });
 
   (async () => {
-    try {
-      for (const documento of documentos) {
+    for (const documento of documentos) {
+      try {
         const stream = await s3Client.buscarArquivo(documento.storageKey);
         zip.append(stream, { name: documento.nomeOriginal });
+      } catch (error) {
+        // A resposta HTTP já saiu com 200 e o zip já está sendo transmitido: abortar aqui
+        // entregaria um arquivo truncado sem nenhum erro visível ao usuário. Continua com
+        // os demais documentos — zip parcial e válido é melhor que zip corrompido.
+        console.error(`Erro ao ler documento ${documento.id} do S3 para o zip`, error);
       }
-      await zip.finalize();
-    } catch (error) {
-      zip.emit("error", error instanceof Error ? error : new Error(String(error)));
     }
+    await zip.finalize();
   })();
 
   return zip;
