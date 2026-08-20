@@ -219,7 +219,6 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Readable } from "node:stream";
-import { sdkStreamMixin } from "@smithy/util-stream";
 
 jest.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: jest.fn(async (_client: unknown, command: { constructor: { name: string } }) => {
@@ -272,7 +271,7 @@ describe("s3Client.gerarUrlDownload", () => {
 
 describe("s3Client.buscarArquivo", () => {
   it("devolve o stream do objeto", async () => {
-    const stream = sdkStreamMixin(Readable.from([Buffer.from("conteudo do arquivo")]));
+    const stream = Readable.from([Buffer.from("conteudo do arquivo")]);
     s3Mock.on(GetObjectCommand).resolves({ Body: stream });
 
     const resultado = await s3Client.buscarArquivo("development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf");
