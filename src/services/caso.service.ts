@@ -11,7 +11,7 @@ import type { Caso, Status } from "@prisma/client";
 
 export class CasoNaoEncontradoError extends Error {
   constructor() {
-    super("Caso não encontrado.");
+    super("Processo não encontrado.");
     this.name = "CasoNaoEncontradoError";
   }
 }
@@ -20,7 +20,7 @@ export class CasoNaoEncontradoError extends Error {
 // de âncora para um caso novo ou reatribuído.
 export class ClienteInativoError extends Error {
   constructor() {
-    super("Este cliente está inativo e não pode ser vinculado a um caso.");
+    super("Este cliente está inativo e não pode ser vinculado a um processo.");
     this.name = "ClienteInativoError";
   }
 }
@@ -37,6 +37,7 @@ export interface DadosNovoCaso {
   clienteId: string;
   statusId: string;
   responsavelMembroId?: string | null;
+  numeroProcesso?: string | null;
   descricao?: string | null;
   valor?: number | null;
 }
@@ -48,6 +49,7 @@ const CAMPOS_AUDITADOS = [
   "clienteId",
   "statusId",
   "responsavelMembroId",
+  "numeroProcesso",
   "descricao",
   "valor",
 ] as const;
@@ -83,11 +85,26 @@ export const casoService = {
 
   // Uma coluna por Status do escritório (ordenadas por `ordem`), com o total real
   // da coluna e uma primeira página de casos para o card não carregar tudo de uma vez.
+  // Quando `statusIds`/`tipoStatusIds` vêm preenchidos, colunas fora da seleção nem
+  // aparecem — não é só o conteúdo do card que é filtrado, a coluna inteira some.
   async listarKanban(
     ctx: TenantContext,
-    filtros: Omit<FiltrosCaso, "statusIds" | "skip" | "take"> = {}
+    filtros: Omit<FiltrosCaso, "skip" | "take"> = {}
   ): Promise<{ status: Status; total: number; casos: CasoComRelacoes[] }[]> {
-    const status = await statusRepository.listar(ctx.escritorioId);
+    const todosStatus = await statusRepository.listar(ctx.escritorioId);
+    const status = todosStatus.filter((coluna) => {
+      if (filtros.statusIds && filtros.statusIds.length > 0 && !filtros.statusIds.includes(coluna.id)) {
+        return false;
+      }
+      if (
+        filtros.tipoStatusIds &&
+        filtros.tipoStatusIds.length > 0 &&
+        !filtros.tipoStatusIds.includes(coluna.tipoStatusId)
+      ) {
+        return false;
+      }
+      return true;
+    });
 
     return Promise.all(
       status.map(async (coluna) => {
@@ -121,6 +138,7 @@ export const casoService = {
       const caso = await casoRepository.create(
         {
           titulo: dados.titulo.trim(),
+          numeroProcesso: dados.numeroProcesso?.trim() || null,
           descricao: dados.descricao?.trim() || null,
           valor: dados.valor ?? null,
           escritorio: { connect: { id: ctx.escritorioId } },
@@ -168,6 +186,9 @@ export const casoService = {
       ...(dados.responsavelMembroId !== undefined
         ? { responsavelMembroId: dados.responsavelMembroId }
         : {}),
+      ...(dados.numeroProcesso !== undefined
+        ? { numeroProcesso: dados.numeroProcesso?.trim() || null }
+        : {}),
       ...(dados.descricao !== undefined ? { descricao: dados.descricao?.trim() || null } : {}),
       ...(dados.valor !== undefined ? { valor: dados.valor } : {}),
     };
@@ -196,6 +217,9 @@ export const casoService = {
             ? mudancas.responsavelMembroId
               ? { responsavel: { connect: { id: mudancas.responsavelMembroId } } }
               : { responsavel: { disconnect: true } }
+            : {}),
+          ...(mudancas.numeroProcesso !== undefined
+            ? { numeroProcesso: mudancas.numeroProcesso }
             : {}),
           ...(mudancas.descricao !== undefined ? { descricao: mudancas.descricao } : {}),
           ...(mudancas.valor !== undefined ? { valor: mudancas.valor } : {}),

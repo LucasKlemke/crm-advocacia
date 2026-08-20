@@ -15,6 +15,7 @@ export interface DadosCasoForm {
   clienteId: string;
   statusId: string;
   responsavelMembroId?: string | null;
+  numeroProcesso?: string | null;
   descricao?: string | null;
   valor?: number | null;
 }
@@ -27,7 +28,7 @@ const RAIZ = ["casos"] as const;
 export const chaveCasos = (filtros?: FiltrosCasos) =>
   filtros ? ([...RAIZ, "list", filtros] as const) : RAIZ;
 
-export const chaveCasosKanban = (filtros?: Omit<FiltrosCasos, "pagina" | "statusIds">) =>
+export const chaveCasosKanban = (filtros?: Omit<FiltrosCasos, "pagina">) =>
   filtros ? ([...RAIZ, "kanban", filtros] as const) : ([...RAIZ, "kanban"] as const);
 
 export const chaveCasosFiltroOpcoes = () => [...RAIZ, "filtros"] as const;
@@ -60,7 +61,7 @@ function urlListagem(filtros: FiltrosCasos): string {
   return query ? `/api/casos?${query}` : "/api/casos";
 }
 
-function urlKanban(filtros: Omit<FiltrosCasos, "pagina" | "statusIds">): string {
+function urlKanban(filtros: Omit<FiltrosCasos, "pagina">): string {
   const query = paramsDeFiltros(filtros).toString();
   return query ? `/api/casos/kanban?${query}` : "/api/casos/kanban";
 }
@@ -73,7 +74,7 @@ export function useCasos(filtros: FiltrosCasos) {
   });
 }
 
-export function useCasosKanban(filtros: Omit<FiltrosCasos, "pagina" | "statusIds">) {
+export function useCasosKanban(filtros: Omit<FiltrosCasos, "pagina">) {
   return useQuery({
     queryKey: chaveCasosKanban(filtros),
     queryFn: () => apiFetch<KanbanCasos>(urlKanban(filtros)),

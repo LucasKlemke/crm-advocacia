@@ -185,6 +185,7 @@ Casos do escritório, vinculados a um cliente ativo e a um status (RN06/RN07). A
 | status_id | uuid | FK → `status`, `onDelete: Restrict` (obrigatório, RN07) |
 | responsavel_membro_id | uuid | FK → `membro`, `onDelete: SetNull` — opcional ("sem responsável" é um estado válido) |
 | titulo | varchar(140) | |
+| numero_processo | varchar(25) | Número CNJ do processo (`NNNNNNN-DD.AAAA.J.TR.OOOO`) — opcional, texto livre |
 | descricao | text | Opcional |
 | valor | decimal(12,2) | Quanto o advogado recebe ao concluir o caso — opcional |
 | arquivado | boolean | Sai do kanban ativo, mantém histórico (RN08) |

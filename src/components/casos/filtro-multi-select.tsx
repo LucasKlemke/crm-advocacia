@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,13 @@ export interface OpcaoMultiSelect {
   nome: string;
   // Cor opcional (bolinha) para diferenciar status na lista, como no picker de ícones.
   cor?: string;
+  // Linha secundária abaixo do nome (ex.: CPF do cliente), como no combobox de cliente.
+  subtitulo?: string;
+}
+
+export interface AcaoCriarMultiSelect {
+  label: string;
+  onSelecionar: () => void;
 }
 
 export interface FiltroMultiSelectProps {
@@ -33,6 +41,9 @@ export interface FiltroMultiSelectProps {
   // Filtro de responsável: mostra o avatar de iniciais ao lado do nome, como no
   // select de responsável do formulário de caso.
   avatares?: boolean;
+  // Item extra no topo da lista (ex.: "Criar cliente"), como o combobox do form de
+  // caso — fecha o popover e delega a ação a quem renderiza o filtro.
+  acaoCriar?: AcaoCriarMultiSelect;
 }
 
 // Popover + Command genérico para os filtros de casos (responsável/cliente/status/tipo):
@@ -46,6 +57,7 @@ export function FiltroMultiSelect({
   onChange,
   buscaPlaceholder,
   avatares,
+  acaoCriar,
 }: FiltroMultiSelectProps) {
   const [aberto, setAberto] = useState(false);
 
@@ -78,6 +90,20 @@ export function FiltroMultiSelect({
           <CommandInput placeholder={buscaPlaceholder ?? `Buscar ${label.toLowerCase()}...`} />
           <CommandList>
             <CommandEmpty>Nenhuma opção encontrada.</CommandEmpty>
+            {acaoCriar ? (
+              <CommandGroup>
+                <CommandItem
+                  value={acaoCriar.label}
+                  onSelect={() => {
+                    setAberto(false);
+                    acaoCriar.onSelecionar();
+                  }}
+                >
+                  <Plus className="size-3.5" />
+                  {acaoCriar.label}
+                </CommandItem>
+              </CommandGroup>
+            ) : null}
             <CommandGroup>
               {opcoes.map((opcao) => {
                 const marcado = selecionados.includes(opcao.id);
@@ -98,7 +124,16 @@ export function FiltroMultiSelect({
                     {avatares && opcao.id !== SEM_RESPONSAVEL ? (
                       <AvatarIniciais nome={opcao.nome} className="size-5 text-[10px]" />
                     ) : null}
-                    {opcao.nome}
+                    {opcao.subtitulo ? (
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate">{opcao.nome}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {opcao.subtitulo}
+                        </span>
+                      </span>
+                    ) : (
+                      opcao.nome
+                    )}
                   </CommandItem>
                 );
               })}

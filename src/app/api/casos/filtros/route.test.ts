@@ -47,22 +47,26 @@ beforeEach(() => {
 
 describe("GET /api/casos/filtros", () => {
   it("monta o payload único de opções de filtro", async () => {
-    clientes.listar.mockResolvedValue([{ id: "cliente-1", nome: "Maria" }] as never);
+    clientes.listar.mockResolvedValue([
+      { id: "cliente-1", nome: "Maria", cpf: "52998224725" },
+    ] as never);
     membros.listarComUsuarioPorEscritorio.mockResolvedValue([
       { id: "membro-1", usuario: { nome: "Advogado" } },
     ] as never);
     status.listar.mockResolvedValue([{ id: "status-1", nome: "Novo", cor: "#000" }] as never);
-    tipos.listar.mockResolvedValue([{ id: "tipo-1", nome: "Novo", chave: "nova_conversa" }] as never);
+    tipos.listar.mockResolvedValue([
+      { id: "tipo-1", nome: "Novo", chave: "nova_conversa", cor: "#111" },
+    ] as never);
 
     const response = await GET();
     const corpo = await response.json();
 
     expect(response.status).toBe(200);
     expect(corpo).toEqual({
-      clientes: [{ id: "cliente-1", nome: "Maria" }],
+      clientes: [{ id: "cliente-1", nome: "Maria", cpf: "52998224725" }],
       membros: [{ id: "membro-1", nome: "Advogado" }],
       status: [{ id: "status-1", nome: "Novo", cor: "#000" }],
-      tipos: [{ id: "tipo-1", nome: "Novo", chave: "nova_conversa" }],
+      tipos: [{ id: "tipo-1", nome: "Novo", chave: "nova_conversa", cor: "#111" }],
     });
     expect(clientes.listar).toHaveBeenCalledWith("esc-1");
   });

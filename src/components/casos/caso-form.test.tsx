@@ -49,9 +49,9 @@ describe("CasoForm", () => {
     renderComQuery(<CasoForm onSucesso={jest.fn()} />);
     await screen.findByText("Em análise");
 
-    await usuario.click(screen.getByRole("button", { name: "Criar caso" }));
+    await usuario.click(screen.getByRole("button", { name: "Criar processo" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Informe o título do caso.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Informe o título do processo.");
   });
 
   it("mostra erro quando o cliente não foi selecionado", async () => {
@@ -60,7 +60,7 @@ describe("CasoForm", () => {
     await screen.findByText("Em análise");
 
     await usuario.type(screen.getByLabelText(/Título/), "Ação de cobrança");
-    await usuario.click(screen.getByRole("button", { name: "Criar caso" }));
+    await usuario.click(screen.getByRole("button", { name: "Criar processo" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Selecione o cliente.");
   });
@@ -76,7 +76,7 @@ describe("CasoForm", () => {
     await usuario.click(screen.getByRole("combobox", { name: /Cliente/ }));
     await usuario.click(await screen.findByRole("option", { name: "Maria Silva" }));
 
-    await usuario.click(screen.getByRole("button", { name: "Criar caso" }));
+    await usuario.click(screen.getByRole("button", { name: "Criar processo" }));
 
     await waitFor(() => {
       const chamada = (global.fetch as jest.Mock).mock.calls.find(

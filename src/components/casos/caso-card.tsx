@@ -3,6 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { formatarValorBrl } from "@/lib/utils/valor";
+import { formatarCpf } from "@/lib/utils/cpf";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import type { CasoDTO } from "@/types/caso";
 
@@ -18,7 +19,11 @@ function CasoCardConteudo({ caso }: { caso: CasoDTO }) {
   return (
     <>
       <p className="line-clamp-2 text-sm font-medium text-foreground">{caso.titulo}</p>
+      {caso.numeroProcesso ? (
+        <p className="truncate text-xs text-muted-foreground">{caso.numeroProcesso}</p>
+      ) : null}
       <p className="truncate text-xs text-muted-foreground">{caso.cliente.nome}</p>
+      <p className="truncate text-xs text-muted-foreground">{formatarCpf(caso.cliente.cpf)}</p>
 
       <div className="flex items-center justify-between gap-2 pt-1">
         {caso.responsavel ? (
@@ -70,7 +75,7 @@ export function CasoCard({ caso, onClick }: CasoCardProps) {
       {...attributes}
       role="button"
       tabIndex={0}
-      aria-label={`Abrir caso ${caso.titulo}`}
+      aria-label={`Abrir processo ${caso.titulo}`}
       onClick={onClick}
       onKeyDown={(evento) => {
         if (evento.key === "Enter") onClick();

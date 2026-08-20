@@ -60,6 +60,13 @@ function clienteFake(over: Partial<Cliente> = {}): Cliente {
     email: null,
     telefone: null,
     endereco: null,
+    sexo: null,
+    estadoCivil: null,
+    nomeMae: null,
+    nomePai: null,
+    nacionalidade: null,
+    nascimento: null,
+    profissao: null,
     softDeletedAt: null,
     createdAt: AGORA,
     updatedAt: AGORA,
@@ -172,6 +179,30 @@ describe("casoService.listarKanban", () => {
       "esc-1",
       expect.objectContaining({ statusIds: ["status-1"] })
     );
+  });
+
+  it("oculta colunas de status não selecionados quando statusIds é informado", async () => {
+    const colunaUm = statusFake({ id: "status-1", ordem: 1 });
+    const colunaDois = statusFake({ id: "status-2", ordem: 2, nome: "Em análise" });
+    statusRepo.listar.mockResolvedValue([colunaUm, colunaDois]);
+    repo.listar.mockResolvedValue([]);
+    repo.contar.mockResolvedValue(0);
+
+    const colunas = await casoService.listarKanban(ctx(), { statusIds: ["status-1"] });
+
+    expect(colunas).toEqual([{ status: colunaUm, total: 0, casos: [] }]);
+  });
+
+  it("oculta colunas cujo tipo de status não foi selecionado", async () => {
+    const colunaUm = statusFake({ id: "status-1", tipoStatusId: "tipo-1", ordem: 1 });
+    const colunaDois = statusFake({ id: "status-2", tipoStatusId: "tipo-2", ordem: 2, nome: "Em análise" });
+    statusRepo.listar.mockResolvedValue([colunaUm, colunaDois]);
+    repo.listar.mockResolvedValue([]);
+    repo.contar.mockResolvedValue(0);
+
+    const colunas = await casoService.listarKanban(ctx(), { tipoStatusIds: ["tipo-2"] });
+
+    expect(colunas).toEqual([{ status: colunaDois, total: 0, casos: [] }]);
   });
 });
 

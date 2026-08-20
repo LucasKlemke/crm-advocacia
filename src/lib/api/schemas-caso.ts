@@ -1,7 +1,9 @@
 import { z } from "zod";
 import type { FiltrosCaso } from "@/repositories/caso.repository";
 
-export const tituloCasoSchema = z.string().trim().min(1, "Informe o título do caso.").max(140);
+export const tituloCasoSchema = z.string().trim().min(1, "Informe o título do processo.").max(140);
+
+export const numeroProcessoCasoSchema = z.string().trim().max(25).nullish();
 
 export const descricaoCasoSchema = z.string().trim().max(10000).nullish();
 
@@ -13,6 +15,7 @@ export const novoCasoSchema = z.object({
   clienteId: z.uuid("Cliente inválido."),
   statusId: z.uuid("Status inválido."),
   responsavelMembroId: z.uuid("Responsável inválido.").nullish(),
+  numeroProcesso: numeroProcessoCasoSchema,
   descricao: descricaoCasoSchema,
   valor: valorCasoSchema,
 });

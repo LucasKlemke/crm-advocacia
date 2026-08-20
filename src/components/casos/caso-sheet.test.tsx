@@ -13,6 +13,7 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
     statusId: "status-1",
     responsavelMembroId: null,
     titulo: "Ação de cobrança",
+    numeroProcesso: null,
     descricao: null,
     valor: null,
     arquivado: false,
@@ -108,15 +109,15 @@ describe("CasoSheet", () => {
   it("mostra o formulário de criação no modo criar", async () => {
     renderSheet({ modo: "criar", caso: null });
 
-    expect(await screen.findByRole("heading", { name: "Novo caso" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Criar caso" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Novo processo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Criar processo" })).toBeInTheDocument();
   });
 
   it("mostra o selo Arquivado e esconde o botão de arquivar quando o caso já está arquivado", async () => {
     renderSheet({ caso: casoFake({ arquivado: true }) });
 
     expect(await screen.findByText("Arquivado")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Arquivar caso" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Arquivar processo" })).not.toBeInTheDocument();
   });
 
   it("arquiva o caso ao clicar em Arquivar caso", async () => {
@@ -125,7 +126,7 @@ describe("CasoSheet", () => {
     renderSheet({ onOpenChange });
     await screen.findByDisplayValue("Ação de cobrança");
 
-    await usuario.click(screen.getByRole("button", { name: "Arquivar caso" }));
+    await usuario.click(screen.getByRole("button", { name: "Arquivar processo" }));
 
     await waitFor(() => {
       const chamada = (global.fetch as jest.Mock).mock.calls.find(

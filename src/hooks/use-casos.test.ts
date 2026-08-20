@@ -29,6 +29,7 @@ const CASO: CasoDTO = {
   statusId: "status-1",
   responsavelMembroId: null,
   titulo: "Ação de cobrança",
+  numeroProcesso: null,
   descricao: null,
   valor: null,
   arquivado: false,
@@ -118,6 +119,23 @@ describe("useCasosKanban", () => {
     const [url] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain("/api/casos/kanban?");
     expect(url).toContain("busca=cobran");
+  });
+
+  it("repassa statusId na query para ocultar colunas não selecionadas", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ colunas: [] }),
+    } as Response);
+
+    const { Wrapper } = criarWrapper();
+    renderHook(() => useCasosKanban({ ...filtrosCasosPadrao, statusIds: ["status-1"] }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const [url] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toContain("statusId=status-1");
   });
 });
 

@@ -20,10 +20,10 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
-      clientes: clientes.map((c) => ({ id: c.id, nome: c.nome })),
+      clientes: clientes.map((c) => ({ id: c.id, nome: c.nome, cpf: c.cpf })),
       membros: membros.map((m) => ({ id: m.id, nome: m.usuario.nome })),
       status: status.map((s) => ({ id: s.id, nome: s.nome, cor: s.cor })),
-      tipos: tipos.map((t) => ({ id: t.id, nome: t.nome, chave: t.chave })),
+      tipos: tipos.map((t) => ({ id: t.id, nome: t.nome, chave: t.chave, cor: t.cor })),
     });
   } catch (error) {
     const resposta = tratarErroDeContexto(error);

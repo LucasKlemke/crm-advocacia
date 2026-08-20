@@ -32,7 +32,7 @@ export class TipoStatusInvalidoError extends Error {
 
 export class StatusComCasosError extends Error {
   constructor() {
-    super("Este status tem casos vinculados e não pode ser excluído.");
+    super("Este status tem processos vinculados e não pode ser excluído.");
     this.name = "StatusComCasosError";
   }
 }

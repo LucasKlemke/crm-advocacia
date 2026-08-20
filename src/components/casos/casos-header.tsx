@@ -2,11 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { LayoutGrid, Plus, Search, Table2, Tag, User, Users } from "lucide-react";
-import { useCasoFiltroOpcoes } from "@/hooks/use-casos";
+import { useQueryClient } from "@tanstack/react-query";
+import { chaveCasosFiltroOpcoes, useCasoFiltroOpcoes } from "@/hooks/use-casos";
 import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
+import { ClienteForm } from "@/components/clientes/cliente-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { formatarCpf } from "@/lib/utils/cpf";
 import { SEM_RESPONSAVEL } from "@/types/caso";
 import type { FiltrosCasos } from "@/types/caso";
 
@@ -21,7 +31,7 @@ export interface CasosHeaderProps {
 }
 
 // Cabeçalho da tela: busca + alternância Kanban/Tabela + filtros multi-select
-// (responsável/cliente/status/tipo) + período de criação + "+ Novo caso" — ver
+// (responsável/cliente/status/tipo) + período de criação + "+ Novo processo" — ver
 // referencias_visuais/header-filtros.png.
 export function CasosHeader({
   filtros,
@@ -30,7 +40,9 @@ export function CasosHeader({
   onVisaoChange,
   onNovoCaso,
 }: CasosHeaderProps) {
+  const queryClient = useQueryClient();
   const [buscaDigitada, setBuscaDigitada] = useState(filtros.busca);
+  const [criandoCliente, setCriandoCliente] = useState(false);
   const { data: opcoes } = useCasoFiltroOpcoes();
 
   // Debounce da busca: cada tecla não pode virar uma chamada de API.
@@ -58,7 +70,7 @@ export function CasosHeader({
       <div className="relative min-w-56 flex-1">
         <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          aria-label="Buscar casos"
+          aria-label="Buscar processos"
           placeholder="Buscar por título ou descrição"
           className="pl-8"
           value={buscaDigitada}
@@ -100,10 +112,15 @@ export function CasosHeader({
       <FiltroMultiSelect
         label="Cliente"
         icone={User}
-        opcoes={opcoes?.clientes ?? []}
+        opcoes={(opcoes?.clientes ?? []).map((c) => ({
+          id: c.id,
+          nome: c.nome,
+          subtitulo: formatarCpf(c.cpf),
+        }))}
         selecionados={filtros.clienteIds}
         onChange={(clienteIds) => onFiltrosChange({ ...filtros, clienteIds, pagina: 1 })}
         buscaPlaceholder="Buscar cliente..."
+        acaoCriar={{ label: "Novo cliente", onSelecionar: () => setCriandoCliente(true) }}
       />
 
       <FiltroMultiSelect
@@ -117,7 +134,7 @@ export function CasosHeader({
 
       <FiltroMultiSelect
         label="Tipo de status"
-        opcoes={opcoes?.tipos ?? []}
+        opcoes={(opcoes?.tipos ?? []).map((t) => ({ id: t.id, nome: t.nome, cor: t.cor }))}
         selecionados={filtros.tipoStatusIds}
         onChange={(tipoStatusIds) => onFiltrosChange({ ...filtros, tipoStatusIds, pagina: 1 })}
         buscaPlaceholder="Buscar tipo de status..."
@@ -130,8 +147,33 @@ export function CasosHeader({
 
       <Button onClick={onNovoCaso}>
         <Plus />
-        Novo caso
+        Novo processo
       </Button>
+
+      <Sheet open={criandoCliente} onOpenChange={setCriandoCliente}>
+        <SheetContent className="w-full gap-0 sm:max-w-xl">
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Novo cliente</SheetTitle>
+              <SheetDescription>Cadastre um cliente do escritório sem sair dos processos.</SheetDescription>
+            </SheetHeader>
+            <div className="px-4 py-4">
+              <ClienteForm
+                onSucesso={(cliente) => {
+                  queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+                  onFiltrosChange({
+                    ...filtros,
+                    clienteIds: [...filtros.clienteIds, cliente.id],
+                    pagina: 1,
+                  });
+                  setCriandoCliente(false);
+                }}
+                onCancelar={() => setCriandoCliente(false)}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

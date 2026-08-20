@@ -46,13 +46,13 @@ describe("GET /api/casos/kanban", () => {
     );
   });
 
-  it("não repassa statusId da query — o kanban monta uma coluna por status", async () => {
+  it("repassa statusId da query — o kanban oculta colunas não selecionadas", async () => {
     service.listarKanban.mockResolvedValue([]);
 
     await GET(new Request("http://localhost/api/casos/kanban?statusId=algum-id"));
 
     const filtrosRecebidos = service.listarKanban.mock.calls[0][1];
-    expect(filtrosRecebidos).not.toHaveProperty("statusIds");
+    expect(filtrosRecebidos).toEqual(expect.objectContaining({ statusIds: ["algum-id"] }));
   });
 
   it("responde 401 sem sessão", async () => {

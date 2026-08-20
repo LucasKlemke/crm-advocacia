@@ -1,11 +1,12 @@
 "use client";
 
 import { toast } from "sonner";
-import { Banknote, ExternalLink, History, Tag, User, Users } from "lucide-react";
+import { Banknote, ExternalLink, Hash, History, Tag, User, Users } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { formatarValorBrl } from "@/lib/utils/valor";
 import { useAtualizarCaso, useCasoFiltroOpcoes, useCasos } from "@/hooks/use-casos";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,27 +24,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SEM_RESPONSAVEL_VALOR } from "@/components/casos/campos-caso";
 import type { CasoDTO, FiltrosCasos } from "@/types/caso";
 
 export interface CasosTableProps {
   filtros: FiltrosCasos;
   onFiltrosChange: (filtros: FiltrosCasos) => void;
   onAbrirCaso: (caso: CasoDTO) => void;
+  // Corta a lista (já ordenada por updatedAt desc pelo backend) para os N mais
+  // recentes e esconde a paginação — usado pelo preview de /casos no dashboard.
+  limite?: number;
 }
 
 // Mirror de clientes-table.tsx: paginação, loading skeleton, estados vazio/erro. A
 // coluna de status é um Select que dispara PATCH direto na linha (mudança de status
 // via tabela, complementar ao drag-and-drop do kanban).
-export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTableProps) {
+export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: CasosTableProps) {
   const { data, isLoading, isError } = useCasos(filtros);
   const { data: opcoes } = useCasoFiltroOpcoes();
   const atualizar = useAtualizarCaso();
 
-  const casos = data?.casos ?? [];
+  const casos = limite ? (data?.casos ?? []).slice(0, limite) : data?.casos ?? [];
   const total = data?.total ?? 0;
   const porPagina = data?.porPagina ?? 20;
-  const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
+  const totalPaginas = limite ? 1 : Math.max(1, Math.ceil(total / porPagina));
   const statusOpcoes = opcoes?.status ?? [];
+  const membrosOpcoes = opcoes?.membros ?? [];
 
   function irParaPagina(proxima: number) {
     onFiltrosChange({ ...filtros, pagina: proxima });
@@ -59,6 +65,19 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTable
     }
   }
 
+  async function alterarResponsavel(caso: CasoDTO, valor: string) {
+    const responsavelMembroId = valor === SEM_RESPONSAVEL_VALOR ? null : valor;
+    if (responsavelMembroId === caso.responsavelMembroId) return;
+    try {
+      await atualizar.mutateAsync({ id: caso.id, dados: { responsavelMembroId } });
+      toast.success("Responsável atualizado.");
+    } catch (erro) {
+      toast.error(
+        erro instanceof ApiError ? erro.message : "Não foi possível atualizar o responsável."
+      );
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-border">
@@ -67,6 +86,12 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTable
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className="w-10 px-4" />
               <TableHead>Título</TableHead>
+              <TableHead>
+                <span className="flex items-center gap-1.5">
+                  <Hash aria-hidden className="size-3.5 text-muted-foreground" />
+                  Nº do processo
+                </span>
+              </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1.5">
                   <User aria-hidden className="size-3.5 text-muted-foreground" />
@@ -104,7 +129,7 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTable
             {isLoading
               ? Array.from({ length: 3 }).map((_, indice) => (
                   <TableRow key={indice}>
-                    <TableCell colSpan={8} className="px-4 py-3">
+                    <TableCell colSpan={9} className="px-4 py-3">
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
                   </TableRow>
@@ -113,16 +138,18 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTable
 
             {isError ? (
               <TableRow>
-                <TableCell colSpan={8} className="px-4 py-6 text-center text-sm text-destructive">
-                  Não foi possível carregar os casos.
+                <TableCell colSpan={9} className="px-4 py-6 text-center text-sm text-destructive">
+                  Não foi possível carregar os processos.
                 </TableCell>
               </TableRow>
             ) : null}
 
             {!isLoading && !isError && casos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  {filtros.busca ? "Nenhum caso encontrado para esta busca." : "Nenhum caso cadastrado ainda."}
+                <TableCell colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  {filtros.busca
+                    ? "Nenhum processo encontrado para esta busca."
+                    : "Nenhum processo cadastrado ainda."}
                 </TableCell>
               </TableRow>
             ) : null}
@@ -140,11 +167,42 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTable
                   </Button>
                 </TableCell>
                 <TableCell className="max-w-56 truncate py-3 font-medium">{caso.titulo}</TableCell>
+                <TableCell className="max-w-40 truncate text-muted-foreground">
+                  {caso.numeroProcesso ?? "—"}
+                </TableCell>
                 <TableCell className="max-w-40 truncate">{caso.cliente.nome}</TableCell>
-                <TableCell className="max-w-40 truncate">
-                  {caso.responsavel?.usuario.nome ?? (
-                    <span className="text-muted-foreground">Sem responsável</span>
-                  )}
+                <TableCell onClick={(evento) => evento.stopPropagation()}>
+                  <Select
+                    value={caso.responsavelMembroId ?? SEM_RESPONSAVEL_VALOR}
+                    onValueChange={(valor) => alterarResponsavel(caso, valor as string)}
+                    disabled={atualizar.isPending}
+                  >
+                    <SelectTrigger size="sm" aria-label={`Responsável de ${caso.titulo}`}>
+                      <SelectValue>
+                        {() => {
+                          const nome =
+                            membrosOpcoes.find((membro) => membro.id === caso.responsavelMembroId)
+                              ?.nome ?? caso.responsavel?.usuario.nome;
+                          if (!nome) return "Sem responsável";
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <AvatarIniciais nome={nome} className="size-5 text-[10px]" />
+                              {nome}
+                            </span>
+                          );
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
+                      {membrosOpcoes.map((membro) => (
+                        <SelectItem key={membro.id} value={membro.id}>
+                          <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                          {membro.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell onClick={(evento) => evento.stopPropagation()}>
                   <Select
@@ -196,7 +254,7 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso }: CasosTable
       {totalPaginas > 1 ? (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Página {filtros.pagina} de {totalPaginas} · {total} caso(s)
+            Página {filtros.pagina} de {totalPaginas} · {total} processo(s)
           </span>
           <div className="flex gap-2">
             <Button

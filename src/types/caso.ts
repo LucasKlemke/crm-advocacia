@@ -27,6 +27,7 @@ export interface CasoDTO {
   statusId: string;
   responsavelMembroId: string | null;
   titulo: string;
+  numeroProcesso: string | null;
   descricao: string | null;
   valor: string | number | null;
   arquivado: boolean;
@@ -59,6 +60,12 @@ export interface OpcaoFiltroCaso {
   nome: string;
 }
 
+export interface OpcaoClienteFiltro {
+  id: string;
+  nome: string;
+  cpf: string;
+}
+
 export interface OpcaoStatusFiltro {
   id: string;
   nome: string;
@@ -69,10 +76,11 @@ export interface OpcaoTipoStatusFiltro {
   id: string;
   nome: string;
   chave: string;
+  cor: string;
 }
 
 export interface FiltrosCasoOpcoes {
-  clientes: OpcaoFiltroCaso[];
+  clientes: OpcaoClienteFiltro[];
   membros: OpcaoFiltroCaso[];
   status: OpcaoStatusFiltro[];
   tipos: OpcaoTipoStatusFiltro[];

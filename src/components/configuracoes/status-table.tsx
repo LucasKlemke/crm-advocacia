@@ -80,7 +80,7 @@ export function StatusTable({ somenteLeitura }: StatusTableProps) {
         <div>
           <h1 className="text-xl font-semibold">Status</h1>
           <p className="text-sm text-muted-foreground">
-            Configure as etapas do funil de casos do seu escritório.
+            Configure as etapas do funil de processos do seu escritório.
           </p>
         </div>
         {!somenteLeitura ? (

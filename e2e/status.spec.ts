@@ -67,7 +67,7 @@ test.describe("CRUD de status", () => {
     await page.getByRole("button", { name: "Excluir Nova conversa" }).click();
     const dialogoExcluir = page.getByRole("alertdialog");
     await dialogoExcluir.getByRole("button", { name: "Excluir", exact: true }).click();
-    await expect(page.getByText(/tem casos vinculados|não pode ser excluído/i)).toBeVisible();
+    await expect(page.getByText(/tem processos vinculados|não pode ser excluído/i)).toBeVisible();
     // O status continua na lista: a exclusão foi recusada, não silenciosamente ignorada.
     await expect(page.getByText("Nova conversa").first()).toBeVisible();
   });

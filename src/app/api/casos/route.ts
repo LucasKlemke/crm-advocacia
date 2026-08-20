@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const resposta = tratarErroDeContexto(error);
     if (resposta) return resposta;
     console.error("Erro ao listar casos", error);
-    return NextResponse.json({ error: "Não foi possível listar os casos." }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível listar os processos." }, { status: 500 });
   }
 }
 
@@ -44,6 +44,6 @@ export async function POST(request: Request) {
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;
     console.error("Erro ao criar caso", error);
-    return NextResponse.json({ error: "Não foi possível criar o caso." }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível criar o processo." }, { status: 500 });
   }
 }

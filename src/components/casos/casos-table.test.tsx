@@ -14,6 +14,7 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
     statusId: "status-1",
     responsavelMembroId: null,
     titulo: "Ação de cobrança",
+    numeroProcesso: null,
     descricao: null,
     valor: "1500.00",
     arquivado: false,
@@ -57,7 +58,7 @@ function mockarFetch() {
         status: 200,
         json: async () => ({
           clientes: [{ id: "cli-1", nome: "Maria Silva" }],
-          membros: [],
+          membros: [{ id: "membro-1", nome: "João Souza" }],
           status: [
             { id: "status-1", nome: "Em análise", cor: "#f59e0b" },
             { id: "status-2", nome: "Fechado", cor: "#10b981" },
@@ -131,7 +132,7 @@ describe("CasosTable", () => {
     });
     renderTabela();
 
-    expect(await screen.findByText("Nenhum caso cadastrado ainda.")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum processo cadastrado ainda.")).toBeInTheDocument();
   });
 
   it("troca o status do caso pelo select da linha", async () => {
@@ -148,6 +149,23 @@ describe("CasosTable", () => {
       );
       expect(chamada).toBeDefined();
       expect(JSON.parse(chamada[1].body)).toEqual({ statusId: "status-2" });
+    });
+  });
+
+  it("troca o responsável do caso pelo select da linha", async () => {
+    const usuario = userEvent.setup();
+    renderTabela();
+    await screen.findByText("Ação de cobrança");
+
+    await usuario.click(screen.getByRole("combobox", { name: "Responsável de Ação de cobrança" }));
+    await usuario.click(await screen.findByRole("option", { name: /João Souza/ }));
+
+    await waitFor(() => {
+      const chamada = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, init]) => url === "/api/casos/caso-1" && init?.method === "PATCH"
+      );
+      expect(chamada).toBeDefined();
+      expect(JSON.parse(chamada[1].body)).toEqual({ responsavelMembroId: "membro-1" });
     });
   });
 });

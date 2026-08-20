@@ -9,8 +9,6 @@ export async function GET(request: Request) {
     const ctx = await getTenantContext();
     const { searchParams } = new URL(request.url);
     const filtros = parseFiltrosCasoDaQuery(searchParams);
-    // O kanban monta uma coluna por status: statusIds da query não se aplica aqui.
-    delete filtros.statusIds;
 
     const colunas = await casoService.listarKanban(ctx, filtros);
     return NextResponse.json({ colunas });

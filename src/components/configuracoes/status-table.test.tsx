@@ -140,7 +140,7 @@ describe("StatusTable", () => {
       return Promise.resolve({
         ok: false,
         status: 409,
-        json: async () => ({ error: "Este status tem casos vinculados e não pode ser excluído." }),
+        json: async () => ({ error: "Este status tem processos vinculados e não pode ser excluído." }),
       } as Response);
     });
 
@@ -153,7 +153,7 @@ describe("StatusTable", () => {
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        "Este status tem casos vinculados e não pode ser excluído."
+        "Este status tem processos vinculados e não pode ser excluído."
       )
     );
   });

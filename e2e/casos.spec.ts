@@ -35,18 +35,18 @@ test.describe("Kanban e tabela de casos", () => {
     await page.goto("/casos");
 
     // Criar caso: por padrão a tela abre em Kanban.
-    await page.getByRole("button", { name: "Novo caso" }).click();
+    await page.getByRole("button", { name: "Novo processo" }).click();
     await page.getByLabel("Título").fill("Ação de cobrança");
     await page.getByRole("combobox", { name: "Cliente" }).click();
     await page.getByRole("option", { name: "Cliente do Caso" }).click();
-    await page.getByRole("button", { name: "Criar caso" }).click();
-    await expect(page.getByRole("dialog", { name: "Novo caso" })).toBeHidden();
+    await page.getByRole("button", { name: "Criar processo" }).click();
+    await expect(page.getByRole("dialog", { name: "Novo processo" })).toBeHidden();
 
     // O card aparece na primeira coluna do kanban (status padrão de menor ordem).
     await expect(page.getByText("Ação de cobrança")).toBeVisible();
 
     // Abrir o caso e comentar.
-    await page.getByRole("button", { name: "Abrir caso Ação de cobrança" }).click();
+    await page.getByRole("button", { name: "Abrir processo Ação de cobrança" }).click();
     await page.getByLabel("Novo comentário").fill("Cliente contatado por telefone.");
     await page.getByRole("button", { name: "Comentar" }).click();
     await expect(page.getByText("Cliente contatado por telefone.")).toBeVisible();
@@ -70,7 +70,7 @@ test.describe("Kanban e tabela de casos", () => {
 
     // Abrir pelo botão de ação da primeira coluna e arquivar.
     await page.getByRole("button", { name: "Abrir Ação de cobrança" }).click();
-    await page.getByRole("button", { name: "Arquivar caso" }).click();
+    await page.getByRole("button", { name: "Arquivar processo" }).click();
     await expect(page.getByRole("dialog", { name: "Ação de cobrança" })).toBeHidden();
 
     // Arquivado, o caso some da visão ativa (kanban e tabela mostram só ativos por padrão).

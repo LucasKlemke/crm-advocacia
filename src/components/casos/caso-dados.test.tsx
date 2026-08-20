@@ -13,6 +13,7 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
     statusId: "status-1",
     responsavelMembroId: null,
     titulo: "Ação de cobrança",
+    numeroProcesso: null,
     descricao: null,
     valor: null,
     arquivado: false,

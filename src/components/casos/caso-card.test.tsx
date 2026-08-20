@@ -11,6 +11,7 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
     statusId: "status-1",
     responsavelMembroId: null,
     titulo: "Ação de cobrança",
+    numeroProcesso: null,
     descricao: null,
     valor: "1500.00",
     arquivado: false,
@@ -61,6 +62,18 @@ describe("CasoCard", () => {
     expect(screen.getByText("R$ 1.500,00")).toBeInTheDocument();
   });
 
+  it("mostra o CPF do cliente formatado", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByText("529.982.247-25")).toBeInTheDocument();
+  });
+
+  it("mostra o número do processo quando informado", () => {
+    renderCard(casoFake({ numeroProcesso: "0001234-56.2026.8.24.0001" }));
+
+    expect(screen.getByText("0001234-56.2026.8.24.0001")).toBeInTheDocument();
+  });
+
   it("mostra 'Sem responsável' quando não há responsável", () => {
     renderCard(casoFake());
 
@@ -82,7 +95,7 @@ describe("CasoCard", () => {
     const onClick = jest.fn();
     renderCard(casoFake(), onClick);
 
-    fireEvent.click(screen.getByRole("button", { name: "Abrir caso Ação de cobrança" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir processo Ação de cobrança" }));
 
     expect(onClick).toHaveBeenCalled();
   });

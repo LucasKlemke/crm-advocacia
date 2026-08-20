@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;
     console.error("Erro ao buscar caso", error);
-    return NextResponse.json({ error: "Não foi possível buscar o caso." }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível buscar o processo." }, { status: 500 });
   }
 }
 
@@ -37,7 +37,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;
     console.error("Erro ao atualizar caso", error);
-    return NextResponse.json({ error: "Não foi possível atualizar o caso." }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível atualizar o processo." }, { status: 500 });
   }
 }
 
@@ -54,6 +54,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;
     console.error("Erro ao arquivar caso", error);
-    return NextResponse.json({ error: "Não foi possível arquivar o caso." }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível arquivar o processo." }, { status: 500 });
   }
 }

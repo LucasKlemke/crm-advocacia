@@ -55,10 +55,10 @@ export function CasoSheet({
     if (!caso) return;
     try {
       await arquivar.mutateAsync(caso.id);
-      toast.success("Caso arquivado.");
+      toast.success("Processo arquivado.");
       onOpenChange(false);
     } catch (erro) {
-      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível arquivar o caso.");
+      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível arquivar o processo.");
     }
   }
 
@@ -69,12 +69,12 @@ export function CasoSheet({
           <SheetHeader className="gap-3 border-b border-border">
             <div className="flex flex-col gap-0.5">
               <SheetTitle className="flex items-center gap-2">
-                {modo === "criar" ? "Novo caso" : (exibido?.titulo ?? "Caso")}
+                {modo === "criar" ? "Novo processo" : (exibido?.titulo ?? "Processo")}
                 {arquivado ? <Badge variant="outline">Arquivado</Badge> : null}
               </SheetTitle>
               <SheetDescription>
                 {modo === "criar" ? (
-                  "Cadastre um caso vinculado a um cliente do escritório."
+                  "Cadastre um processo vinculado a um cliente do escritório."
                 ) : exibido ? (
                   <span className="flex flex-wrap items-center gap-x-3 text-[11px]">
                     <span className="flex items-center gap-1">
@@ -122,7 +122,7 @@ export function CasoSheet({
               onClick={arquivarCaso}
             >
               <Archive />
-              Arquivar caso
+              Arquivar processo
             </Button>
           </SheetFooter>
         ) : null}

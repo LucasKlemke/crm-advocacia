@@ -31,9 +31,12 @@ interface EstadoColuna extends ColunaKanban {
   carregandoMais: boolean;
 }
 
-function filtrosSemPaginaEStatus(filtros: FiltrosCasos) {
+// `statusIds`/`tipoStatusIds` são repassados: colunas fora da seleção não aparecem
+// no kanban (diferente de `paramsDeFiltros`, que só filtra o conteúdo de cada coluna).
+function filtrosSemPagina(filtros: FiltrosCasos) {
   return {
     busca: filtros.busca,
+    statusIds: filtros.statusIds,
     tipoStatusIds: filtros.tipoStatusIds,
     clienteIds: filtros.clienteIds,
     responsavelIds: filtros.responsavelIds,
@@ -48,7 +51,7 @@ function filtrosSemPaginaEStatus(filtros: FiltrosCasos) {
 // as colunas — permite mover um card entre colunas otimisticamente e paginar cada
 // coluna de forma independente, sem reconciliar isso com o cache de outra tela.
 export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
-  const filtrosKanban = useMemo(() => filtrosSemPaginaEStatus(filtros), [filtros]);
+  const filtrosKanban = useMemo(() => filtrosSemPagina(filtros), [filtros]);
   const { data, isLoading, isError } = useCasosKanban(filtrosKanban);
   const atualizar = useAtualizarCaso();
   // Sem essa distância mínima, o próprio pointerdown do clique em um card já é lido
@@ -107,7 +110,7 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
         )
       );
     } catch {
-      toast.error("Não foi possível carregar mais casos desta coluna.");
+      toast.error("Não foi possível carregar mais processos desta coluna.");
       setColunas((atuais) =>
         atuais.map((c) => (c.status.id === statusId ? { ...c, carregandoMais: false } : c))
       );
@@ -152,7 +155,7 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
       await atualizar.mutateAsync({ id: casoId, dados: { statusId: novoStatusId } });
     } catch (erro) {
       setColunas(snapshot);
-      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível mover o caso.");
+      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível mover o processo.");
     }
   }
 
@@ -177,9 +180,13 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
   }
 
   if (colunas.length === 0) {
+    const filtroDeColunaAtivo =
+      filtros.statusIds.length > 0 || filtros.tipoStatusIds.length > 0;
     return (
       <p className="p-4 text-sm text-muted-foreground">
-        Nenhum status cadastrado ainda — crie etapas do funil em Configurações.
+        {filtroDeColunaAtivo
+          ? "Nenhuma coluna corresponde aos filtros de status selecionados."
+          : "Nenhum status cadastrado ainda — crie etapas do funil em Configurações."}
       </p>
     );
   }
@@ -236,7 +243,7 @@ function ColunaKanbanView({
       <ScrollArea className="h-[calc(100vh-320px)] min-h-40">
         <div className="flex flex-col gap-2 px-2 pb-2">
           {coluna.casos.length === 0 ? (
-            <p className="px-1 py-4 text-center text-xs text-muted-foreground">Nenhum caso aqui.</p>
+            <p className="px-1 py-4 text-center text-xs text-muted-foreground">Nenhum processo aqui.</p>
           ) : (
             coluna.casos.map((caso) => (
               <CasoCard key={caso.id} caso={caso} onClick={() => onAbrirCaso(caso)} />

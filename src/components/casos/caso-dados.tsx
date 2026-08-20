@@ -15,6 +15,7 @@ import {
   CRIAR_CLIENTE_VALOR,
   ICONE_CLIENTE,
   ICONE_DESCRICAO,
+  ICONE_NUMERO_PROCESSO,
   ICONE_RESPONSAVEL,
   ICONE_TITULO,
   ICONE_VALOR,
@@ -52,6 +53,7 @@ interface Valores {
   clienteId: string;
   statusId: string;
   responsavelMembroId: string;
+  numeroProcesso: string;
   valor: string;
   descricao: string;
 }
@@ -62,6 +64,7 @@ function valoresIniciais(caso: CasoDTO): Valores {
     clienteId: caso.clienteId,
     statusId: caso.statusId,
     responsavelMembroId: caso.responsavelMembroId ?? SEM_RESPONSAVEL_VALOR,
+    numeroProcesso: caso.numeroProcesso ?? "",
     valor: caso.valor === null ? "" : String(caso.valor),
     descricao: caso.descricao ?? "",
   };
@@ -84,6 +87,7 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
   const status = opcoes?.status ?? [];
   const alteradoTexto =
     valores.titulo !== original.titulo ||
+    valores.numeroProcesso !== original.numeroProcesso ||
     valores.valor !== original.valor ||
     valores.descricao !== original.descricao;
 
@@ -98,10 +102,12 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
       setValores(novosValores);
       setOriginal(novosValores);
       onAtualizado?.(atualizado);
-      toast.success("Caso atualizado.");
+      toast.success("Processo atualizado.");
     } catch (erroCapturado) {
       const mensagem =
-        erroCapturado instanceof ApiError ? erroCapturado.message : "Não foi possível salvar o caso.";
+        erroCapturado instanceof ApiError
+          ? erroCapturado.message
+          : "Não foi possível salvar o processo.";
       setErro(mensagem);
       toast.error(mensagem);
     }
@@ -130,12 +136,15 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
 
   async function salvarTexto() {
     if (!valores.titulo.trim()) {
-      setErro("Informe o título do caso.");
+      setErro("Informe o título do processo.");
       return;
     }
     setErro(null);
     const dados: Partial<DadosCasoForm> = {};
     if (valores.titulo !== original.titulo) dados.titulo = valores.titulo;
+    if (valores.numeroProcesso !== original.numeroProcesso) {
+      dados.numeroProcesso = valores.numeroProcesso || null;
+    }
     if (valores.valor !== original.valor) dados.valor = valores.valor.trim() ? Number(valores.valor) : null;
     if (valores.descricao !== original.descricao) dados.descricao = valores.descricao || null;
     await salvarCampo(dados, valores);
@@ -158,6 +167,19 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
           id="caso-dados-titulo"
           value={valores.titulo}
           onChange={(evento) => alterar("titulo", evento.target.value)}
+          disabled={atualizar.isPending}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="caso-dados-numero-processo">
+          <ICONE_NUMERO_PROCESSO aria-hidden className="size-3.5 text-muted-foreground" />
+          Nº do processo
+        </Label>
+        <Input
+          id="caso-dados-numero-processo"
+          value={valores.numeroProcesso}
+          onChange={(evento) => alterar("numeroProcesso", evento.target.value)}
           disabled={atualizar.isPending}
         />
       </div>
@@ -308,20 +330,22 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
     </div>
 
     <Sheet open={criandoCliente} onOpenChange={setCriandoCliente}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Novo cliente</SheetTitle>
-          <SheetDescription>Cadastre um cliente do escritório sem sair do caso.</SheetDescription>
-        </SheetHeader>
-        <div className="px-4">
-          <ClienteForm
-            onSucesso={async (cliente) => {
-              queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
-              setCriandoCliente(false);
-              await alterarCliente(cliente.id);
-            }}
-            onCancelar={() => setCriandoCliente(false)}
-          />
+      <SheetContent className="w-full gap-0 sm:max-w-xl">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Novo cliente</SheetTitle>
+            <SheetDescription>Cadastre um cliente do escritório sem sair do processo.</SheetDescription>
+          </SheetHeader>
+          <div className="px-4 py-4">
+            <ClienteForm
+              onSucesso={async (cliente) => {
+                queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+                setCriandoCliente(false);
+                await alterarCliente(cliente.id);
+              }}
+              onCancelar={() => setCriandoCliente(false)}
+            />
+          </div>
         </div>
       </SheetContent>
     </Sheet>

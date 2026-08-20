@@ -254,6 +254,7 @@ model Caso {
   statusId            String   @map("status_id")
   responsavelMembroId String?  @map("responsavel_membro_id")
   titulo              String   @db.VarChar(140)
+  numeroProcesso      String?  @map("numero_processo") @db.VarChar(25)
   descricao           String?  @db.Text
   valor               Decimal? @db.Decimal(12, 2)
   arquivado           Boolean  @default(false)
