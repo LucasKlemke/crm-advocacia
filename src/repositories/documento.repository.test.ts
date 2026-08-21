@@ -91,6 +91,16 @@ describe("documentoRepository", () => {
     });
   });
 
+  // Renomear troca só o metadado nomeOriginal; a storageKey não muda de lugar no S3.
+  it("atualizarNome troca o nome exibido sem alterar a storageKey", async () => {
+    const criado = await criar(escritorioId, "cliente-1", "antigo.pdf");
+
+    const renomeado = await documentoRepository.atualizarNome(criado.id, "novo-nome.pdf");
+
+    expect(renomeado.nomeOriginal).toBe("novo-nome.pdf");
+    expect(renomeado.storageKey).toBe(criado.storageKey);
+  });
+
   // O parâmetro `db` existe para compor com prisma.$transaction: se ele não fosse
   // respeitado, documento e log poderiam ser gravados fora da mesma transação.
   it("respeita o cliente da transação recebido", async () => {

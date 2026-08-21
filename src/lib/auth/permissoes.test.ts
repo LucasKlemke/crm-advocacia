@@ -6,7 +6,7 @@ import {
   ehAutoAlvo,
   podeEditarComentario,
   podeModerarComentario,
-  podeExcluirDocumento,
+  podeModerarDocumento,
 } from "./permissoes";
 
 describe("permissoes", () => {
@@ -98,21 +98,21 @@ describe("permissoes", () => {
     expect(NIVEL_ROLE.admin).toBeGreaterThan(NIVEL_ROLE.padrao);
   });
 
-  describe("podeExcluirDocumento", () => {
+  describe("podeModerarDocumento", () => {
     it("o autor do upload pode excluir o próprio documento", () => {
-      expect(podeExcluirDocumento("padrao", true)).toBe(true);
+      expect(podeModerarDocumento("padrao", true)).toBe(true);
     });
 
     it("owner exclui documento de qualquer membro", () => {
-      expect(podeExcluirDocumento("owner", false)).toBe(true);
+      expect(podeModerarDocumento("owner", false)).toBe(true);
     });
 
     it("admin exclui documento de qualquer membro", () => {
-      expect(podeExcluirDocumento("admin", false)).toBe(true);
+      expect(podeModerarDocumento("admin", false)).toBe(true);
     });
 
     it("membro padrão não exclui documento alheio", () => {
-      expect(podeExcluirDocumento("padrao", false)).toBe(false);
+      expect(podeModerarDocumento("padrao", false)).toBe(false);
     });
   });
 });

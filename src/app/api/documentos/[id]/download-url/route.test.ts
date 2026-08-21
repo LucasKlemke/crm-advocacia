@@ -59,4 +59,34 @@ describe("GET /api/documentos/[id]/download-url", () => {
     });
     expect(resposta.status).toBe(404);
   });
+
+  it("sem ?modo pede disposição de anexo (inline=false)", async () => {
+    service.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+
+    await GET(new Request("http://localhost/api/documentos/doc-1/download-url"), {
+      params: Promise.resolve({ id: "doc-1" }),
+    });
+
+    expect(service.gerarUrlDownload).toHaveBeenCalledWith(ctx, "doc-1", false);
+  });
+
+  it("com ?modo=inline pede disposição inline (visualizar sem baixar)", async () => {
+    service.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+
+    await GET(new Request("http://localhost/api/documentos/doc-1/download-url?modo=inline"), {
+      params: Promise.resolve({ id: "doc-1" }),
+    });
+
+    expect(service.gerarUrlDownload).toHaveBeenCalledWith(ctx, "doc-1", true);
+  });
+
+  it("recusa ?modo desconhecido com 400", async () => {
+    const resposta = await GET(
+      new Request("http://localhost/api/documentos/doc-1/download-url?modo=qualquer"),
+      { params: Promise.resolve({ id: "doc-1" }) }
+    );
+
+    expect(resposta.status).toBe(400);
+    expect(service.gerarUrlDownload).not.toHaveBeenCalled();
+  });
 });

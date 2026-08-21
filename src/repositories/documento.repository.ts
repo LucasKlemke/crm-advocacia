@@ -27,4 +27,9 @@ export const documentoRepository = {
   async marcarExcluido(id: string, quando: Date, db: Db = prisma): Promise<Documento> {
     return db.documento.update({ where: { id }, data: { softDeletedAt: quando } });
   },
+
+  // Renomear é só metadado: a storageKey (e o objeto no S3) não mudam de lugar.
+  async atualizarNome(id: string, nomeOriginal: string, db: Db = prisma): Promise<Documento> {
+    return db.documento.update({ where: { id }, data: { nomeOriginal } });
+  },
 };

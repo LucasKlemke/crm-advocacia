@@ -5,7 +5,7 @@ import { clienteService } from "@/services/cliente.service";
 import { casoService } from "@/services/caso.service";
 import { logService } from "@/services/log.service";
 import { s3Client } from "@/lib/external/s3-client";
-import { podeExcluirDocumento } from "@/lib/auth/permissoes";
+import { podeModerarDocumento } from "@/lib/auth/permissoes";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { Documento, EscopoDocumento, TipoArquivo } from "@prisma/client";
 
@@ -49,6 +49,10 @@ export class DocumentoConflitanteError extends Error {
 }
 
 const TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024;
+const URL_DOWNLOAD_SEGUNDOS = 60;
+// Visualização embutida fica aberta na tela enquanto o usuário lê o documento — 60s
+// (padrão de download) expiraria no meio da leitura de um PDF longo.
+const URL_VISUALIZACAO_SEGUNDOS = 5 * 60;
 
 const MIME_POR_TIPO_ARQUIVO: Record<TipoArquivo, string> = {
   pdf: "application/pdf",
@@ -264,9 +268,14 @@ export const documentoService = {
     return documento;
   },
 
-  async gerarUrlDownload(ctx: TenantContext, id: string): Promise<string> {
+  async gerarUrlDownload(ctx: TenantContext, id: string, inline = false): Promise<string> {
     const documento = await this.obter(ctx, id);
-    return s3Client.gerarUrlDownload(documento.storageKey);
+    // nomeOriginal (não a storageKey) reflete o nome atual do documento: renomear não
+    // move o objeto no S3, só troca esse metadado. `inline` deixa o navegador exibir o
+    // arquivo embutido (pdf/imagem) em vez de sempre baixar — e usa uma expiração maior
+    // porque a visualização fica aberta na tela por mais tempo que um download imediato.
+    const expiresIn = inline ? URL_VISUALIZACAO_SEGUNDOS : URL_DOWNLOAD_SEGUNDOS;
+    return s3Client.gerarUrlDownload(documento.storageKey, expiresIn, documento.nomeOriginal, inline);
   },
 
   async excluir(ctx: TenantContext, id: string): Promise<void> {
@@ -274,7 +283,7 @@ export const documentoService = {
     const membro = await membroRepository.findByUsuarioEEscritorio(ctx.usuarioId, ctx.escritorioId);
     const ehAutor = membro?.id === documento.autorMembroId;
 
-    if (!podeExcluirDocumento(ctx.role, ehAutor)) {
+    if (!podeModerarDocumento(ctx.role, ehAutor)) {
       throw new PermissaoDocumentoError();
     }
 
@@ -290,6 +299,35 @@ export const documentoService = {
         },
         tx
       );
+    });
+  },
+
+  // Renomear troca só o nomeOriginal exibido; a extensão precisa continuar batendo com o
+  // tipoArquivo já confirmado (RN18) — trocar de tipo não é "renomear", é outro upload.
+  async renomear(ctx: TenantContext, id: string, novoNome: string): Promise<Documento> {
+    const documento = await this.obter(ctx, id);
+    validarTipo(novoNome, documento.tipoArquivo);
+
+    const membro = await membroRepository.findByUsuarioEEscritorio(ctx.usuarioId, ctx.escritorioId);
+    const ehAutor = membro?.id === documento.autorMembroId;
+
+    if (!podeModerarDocumento(ctx.role, ehAutor)) {
+      throw new PermissaoDocumentoError();
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const renomeado = await documentoRepository.atualizarNome(id, novoNome, tx);
+      await logService.registrar(
+        ctx,
+        {
+          acao: "atualizar",
+          entidade: "documento",
+          entidadeId: id,
+          resumo: `Documento "${documento.nomeOriginal}" renomeado para "${novoNome}"`,
+        },
+        tx
+      );
+      return renomeado;
     });
   },
 };

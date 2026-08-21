@@ -29,6 +29,17 @@ function criarClienteAws(): AwsS3Client {
   });
 }
 
+// A key do S3 nunca muda quando um documento é renomeado (é derivada uma vez, na
+// confirmação do upload) — sem isso, o download sempre sugeriria o nome do arquivo no
+// momento do upload, não o nome atual. `filename*` (RFC 5987) cobre acentos/unicode;
+// `filename` é o fallback ASCII para clientes que não leem `filename*`. `inline` deixa
+// o navegador exibir o arquivo na própria aba (pdf/imagem) em vez de sempre baixar.
+function contentDispositionAnexo(nomeArquivo: string, inline = false): string {
+  const nomeAscii = nomeArquivo.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
+  const tipo = inline ? "inline" : "attachment";
+  return `${tipo}; filename="${nomeAscii}"; filename*=UTF-8''${encodeURIComponent(nomeArquivo)}`;
+}
+
 // Único ponto de contato com o SDK da AWS — chamado só por Services (CLAUDE.md:
 // Auth Middleware → Tenant Context → Controller → Service → Cliente Externo).
 export const s3Client = {
@@ -42,10 +53,18 @@ export const s3Client = {
     return getSignedUrl(criarClienteAws(), command, { expiresIn: URL_EXPIRA_SEGUNDOS });
   },
 
-  async gerarUrlDownload(key: string, expiresIn: number = URL_EXPIRA_SEGUNDOS): Promise<string> {
+  async gerarUrlDownload(
+    key: string,
+    expiresIn: number = URL_EXPIRA_SEGUNDOS,
+    nomeArquivo?: string,
+    inline = false
+  ): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: obterBucket(),
       Key: key,
+      ...(nomeArquivo
+        ? { ResponseContentDisposition: contentDispositionAnexo(nomeArquivo, inline) }
+        : {}),
     });
     return getSignedUrl(criarClienteAws(), command, { expiresIn });
   },

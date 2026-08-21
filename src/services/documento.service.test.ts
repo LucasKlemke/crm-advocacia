@@ -398,6 +398,63 @@ describe("documentoService.excluir", () => {
   });
 });
 
+describe("documentoService.renomear", () => {
+  it("o autor renomeia o próprio documento (troca o nome + log)", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ autorMembroId: "membro-1" }));
+    repo.atualizarNome.mockResolvedValue(documentoFake({ nomeOriginal: "novo-nome.pdf" }));
+    membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake({ id: "membro-1" }));
+
+    const resultado = await documentoService.renomear(ctx, "doc-1", "novo-nome.pdf");
+
+    expect(resultado.nomeOriginal).toBe("novo-nome.pdf");
+    expect(repo.atualizarNome).toHaveBeenCalledWith("doc-1", "novo-nome.pdf", expect.anything());
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({ acao: "atualizar", entidade: "documento", entidadeId: "doc-1" }),
+      expect.anything()
+    );
+  });
+
+  it("owner renomeia documento de qualquer membro", async () => {
+    const owner: TenantContext = { usuarioId: "user-9", escritorioId: "esc-1", role: "owner" };
+    repo.findById.mockResolvedValue(documentoFake({ autorMembroId: "membro-1" }));
+    repo.atualizarNome.mockResolvedValue(documentoFake({ nomeOriginal: "novo-nome.pdf" }));
+    membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake({ id: "membro-9", usuarioId: "user-9" }));
+
+    await expect(documentoService.renomear(owner, "doc-1", "novo-nome.pdf")).resolves.toMatchObject({
+      nomeOriginal: "novo-nome.pdf",
+    });
+  });
+
+  it("membro padrão não renomeia documento alheio", async () => {
+    const outroPadrao: TenantContext = { usuarioId: "user-2", escritorioId: "esc-1", role: "padrao" };
+    repo.findById.mockResolvedValue(documentoFake({ autorMembroId: "membro-1" }));
+    membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake({ id: "membro-2", usuarioId: "user-2" }));
+
+    await expect(documentoService.renomear(outroPadrao, "doc-1", "novo-nome.pdf")).rejects.toThrow(
+      PermissaoDocumentoError
+    );
+    expect(repo.atualizarNome).not.toHaveBeenCalled();
+  });
+
+  // RN18: trocar de tipo (extensão) não é "renomear" — é outro upload.
+  it("recusa novo nome com extensão diferente do tipo já confirmado", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ tipoArquivo: "pdf" }));
+
+    await expect(documentoService.renomear(ctx, "doc-1", "novo-nome.docx")).rejects.toThrow(
+      TipoInvalidoError
+    );
+    expect(repo.atualizarNome).not.toHaveBeenCalled();
+  });
+
+  it("trata documento de outro escritório como não encontrado (RN19)", async () => {
+    repo.findById.mockResolvedValue(documentoFake({ escritorioId: "esc-2" }));
+    await expect(documentoService.renomear(ctx, "doc-1", "novo-nome.pdf")).rejects.toThrow(
+      DocumentoNaoEncontradoError
+    );
+  });
+});
+
 describe("documentoService.gerarUrlDownload", () => {
   it("valida o tenant e devolve a URL assinada de GET", async () => {
     repo.findById.mockResolvedValue(documentoFake());
@@ -406,9 +463,49 @@ describe("documentoService.gerarUrlDownload", () => {
     const url = await documentoService.gerarUrlDownload(ctx, "doc-1");
 
     expect(s3.gerarUrlDownload).toHaveBeenCalledWith(
-      "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf"
+      "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
+      60,
+      "contrato.pdf",
+      false
     );
     expect(url).toBe("https://bucket.s3.amazonaws.com/signed-get");
+  });
+
+  // "Visualizar" (clicar no card) usa inline em vez de forçar download, e uma expiração
+  // maior — a visualização fica aberta na tela por mais tempo que um download imediato.
+  it("pede disposição inline e expiração maior quando inline=true", async () => {
+    repo.findById.mockResolvedValue(documentoFake());
+    s3.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+
+    await documentoService.gerarUrlDownload(ctx, "doc-1", true);
+
+    expect(s3.gerarUrlDownload).toHaveBeenCalledWith(
+      "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
+      300,
+      "contrato.pdf",
+      true
+    );
+  });
+
+  // A storageKey guarda o nome do upload original; o download precisa sugerir o nome
+  // atual (pós-renomear), não o que estava lá quando o arquivo foi enviado.
+  it("usa o nomeOriginal atual (não o da storageKey) para o nome sugerido no download", async () => {
+    repo.findById.mockResolvedValue(
+      documentoFake({
+        nomeOriginal: "novo-nome.pdf",
+        storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-antigo.pdf",
+      })
+    );
+    s3.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+
+    await documentoService.gerarUrlDownload(ctx, "doc-1");
+
+    expect(s3.gerarUrlDownload).toHaveBeenCalledWith(
+      "development/esc-1/documentos/cliente/cli-1/doc-1-antigo.pdf",
+      60,
+      "novo-nome.pdf",
+      false
+    );
   });
 
   it("trata documento de outro escritório como não encontrado (RN19)", async () => {

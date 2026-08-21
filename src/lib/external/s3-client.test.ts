@@ -66,6 +66,59 @@ describe("s3Client.gerarUrlDownload", () => {
     const mocked = getSignedUrl as jest.Mock;
     expect(mocked.mock.calls[0][2]).toEqual({ expiresIn: 600 });
   });
+
+  // A storageKey não muda quando o documento é renomeado — sem o
+  // ResponseContentDisposition, o navegador sugeriria o nome do upload original.
+  it("inclui ResponseContentDisposition com o nome atual do arquivo quando informado", async () => {
+    await s3Client.gerarUrlDownload(
+      "development/esc-1/documentos/cliente/cli-1/doc-1-antigo.pdf",
+      undefined,
+      "novo-nome.pdf"
+    );
+
+    const mocked = getSignedUrl as jest.Mock;
+    const command = mocked.mock.calls[0][1] as GetObjectCommand;
+    expect(command.input).toEqual({
+      Bucket: "bucket-teste",
+      Key: "development/esc-1/documentos/cliente/cli-1/doc-1-antigo.pdf",
+      ResponseContentDisposition: 'attachment; filename="novo-nome.pdf"; filename*=UTF-8\'\'novo-nome.pdf',
+    });
+  });
+
+  it("escapa acentos no fallback ASCII e preserva unicode em filename*", async () => {
+    await s3Client.gerarUrlDownload("development/esc-1/documentos/cliente/cli-1/doc-1.pdf", undefined, "contrato-João.pdf");
+
+    const mocked = getSignedUrl as jest.Mock;
+    const command = mocked.mock.calls[0][1] as GetObjectCommand;
+    expect(command.input.ResponseContentDisposition).toBe(
+      "attachment; filename=\"contrato-Jo_o.pdf\"; filename*=UTF-8''contrato-Jo%C3%A3o.pdf"
+    );
+  });
+
+  it("não inclui ResponseContentDisposition quando o nome não é informado", async () => {
+    await s3Client.gerarUrlDownload("development/esc-1/documentos/cliente/cli-1/doc-1.pdf");
+
+    const mocked = getSignedUrl as jest.Mock;
+    const command = mocked.mock.calls[0][1] as GetObjectCommand;
+    expect(command.input).not.toHaveProperty("ResponseContentDisposition");
+  });
+
+  // "inline" deixa o navegador exibir o arquivo na aba (visualizar) em vez de sempre
+  // forçar o download.
+  it("usa 'inline' em vez de 'attachment' quando inline=true", async () => {
+    await s3Client.gerarUrlDownload(
+      "development/esc-1/documentos/cliente/cli-1/doc-1.pdf",
+      undefined,
+      "contrato.pdf",
+      true
+    );
+
+    const mocked = getSignedUrl as jest.Mock;
+    const command = mocked.mock.calls[0][1] as GetObjectCommand;
+    expect(command.input.ResponseContentDisposition).toBe(
+      "inline; filename=\"contrato.pdf\"; filename*=UTF-8''contrato.pdf"
+    );
+  });
 });
 
 describe("s3Client.buscarArquivo", () => {
