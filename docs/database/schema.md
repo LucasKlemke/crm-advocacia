@@ -29,7 +29,7 @@ Perfil de quem acessa o sistema. Não tem `escritorio_id` — a associação a e
 | nome | varchar(140) | Nome completo |
 | email | varchar(255) | Login; único globalmente |
 | senha_hash | varchar(255) | Hash bcrypt |
-| avatar_url | varchar(500) | Reservado para upload de avatar via S3 (ainda não implementado) |
+| avatar_url | varchar(500) | Storage key do avatar no S3 (não é URL pública; upload via `/perfil`, 5MB máx, JPEG/PNG/WEBP) |
 | oab | varchar(20) | Número da OAB (opcional) |
 | telefone | varchar(20) | Telefone de contato |
 | ativo | boolean | Desativação global da conta, sem apagar histórico de autoria |
