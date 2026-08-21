@@ -9,3 +9,304 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum RoleMembro {
+  owner
+  admin
+  padrao
+}
+
+// Escopo de um comentário: a entidade à qual ele está ancorado. Cresce junto com o
+// domínio (caso, prazo...) sem precisar de uma tabela de comentários por entidade.
+enum EscopoComentario {
+  cliente
+  caso
+}
+
+enum EscopoDocumento {
+  cliente
+  caso
+}
+
+enum TipoArquivo {
+  pdf
+  docx
+  jpg
+  png
+  jpeg
+}
+
+enum EntidadeLog {
+  cliente
+  comentario
+  caso
+  status
+  membro
+  documento
+}
+
+enum AcaoLog {
+  criar
+  atualizar
+  excluir
+  restaurar
+}
+
+enum SexoCliente {
+  masculino
+  feminino
+  outro
+}
+
+enum EstadoCivilCliente {
+  solteiro
+  casado
+  divorciado
+  viuvo
+  uniao_estavel
+}
+
+model Escritorio {
+  id               String   @id @default(uuid())
+  nome             String   @db.VarChar(140)
+  oabResponsavel   String?  @map("oab_responsavel") @db.VarChar(20)
+  telefoneWhatsapp String?  @map("telefone_whatsapp") @db.VarChar(20)
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  membros     Membro[]
+  convites    Convite[]
+  clientes    Cliente[]
+  comentarios Comentario[]
+  logs        Log[]
+  status      Status[]
+  casos       Caso[]
+  documentos  Documento[]
+
+  @@map("escritorio")
+}
+
+// Perfil global do usuário — não pertence a um único escritório; a associação
+// N:N com papel por tenant vive em Membro.
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String   @db.VarChar(140)
+  email     String   @unique @db.VarChar(255)
+  senhaHash String   @map("senha_hash") @db.VarChar(255)
+  avatarUrl String?  @map("avatar_url") @db.VarChar(500)
+  oab       String?  @db.VarChar(20)
+  telefone  String?  @db.VarChar(20)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  membros          Membro[]
+  convitesEnviados Convite[]    @relation("ConviteCriadoPor")
+  comentarios      Comentario[] @relation("ComentarioAutor")
+  logs             Log[]        @relation("LogAutor")
+
+  @@map("usuario")
+}
+
+// Tabela híbrida: associação de um usuário a um escritório com um papel (RN02a).
+model Membro {
+  id           String     @id @default(uuid())
+  usuarioId    String     @map("usuario_id")
+  escritorioId String     @map("escritorio_id")
+  role         RoleMembro @default(padrao)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  casos      Caso[]
+  documentos Documento[]
+
+  @@unique([usuarioId, escritorioId])
+  @@index([escritorioId])
+  @@index([usuarioId])
+  @@map("membro")
+}
+
+// Convite pendente para um e-mail entrar num escritório com um papel. Linha existe =
+// convite pendente; aceitar/cancelar remove a linha (evita índice parcial — RFC).
+model Convite {
+  id                 String     @id @default(uuid())
+  escritorioId       String     @map("escritorio_id")
+  email              String     @db.VarChar(255)
+  role               RoleMembro @default(padrao)
+  criadoPorUsuarioId String     @map("criado_por_usuario_id")
+  expiraEm           DateTime   @map("expira_em")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  criadoPor  Usuario    @relation("ConviteCriadoPor", fields: [criadoPorUsuarioId], references: [id])
+
+  @@unique([escritorioId, email])
+  @@index([email])
+  @@map("convite")
+}
+
+// Cliente do escritório. Nunca é apagado (RN04): "desativar" grava soft_deleted_at,
+// e cliente ativo é simplesmente soft_deleted_at = null.
+model Cliente {
+  id            String              @id @default(uuid())
+  escritorioId  String              @map("escritorio_id")
+  nome          String              @db.VarChar(140)
+  cpf           String              @db.VarChar(11)
+  email         String?             @db.VarChar(140)
+  telefone      String?             @db.VarChar(20)
+  endereco      String?             @db.VarChar(255)
+  sexo          SexoCliente?
+  estadoCivil   EstadoCivilCliente? @map("estado_civil")
+  nomeMae       String?             @map("nome_mae") @db.VarChar(140)
+  nomePai       String?             @map("nome_pai") @db.VarChar(140)
+  nacionalidade String?             @db.VarChar(60)
+  nascimento    DateTime?           @db.Date
+  profissao     String?             @db.VarChar(100)
+  softDeletedAt DateTime?           @map("soft_deleted_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  casos      Caso[]
+
+  @@unique([escritorioId, cpf])
+  @@index([escritorioId, softDeletedAt])
+  @@map("cliente")
+}
+
+// Comentário ancorado numa entidade via (escopo, escopo_id) — sem FK, porque o alvo
+// varia. O isolamento continua vindo de escritorio_id (RN19).
+model Comentario {
+  id             String           @id @default(uuid())
+  escritorioId   String           @map("escritorio_id")
+  escopo         EscopoComentario
+  escopoId       String           @map("escopo_id")
+  autorUsuarioId String           @map("autor_usuario_id")
+  conteudo       String           @db.Text
+  editadoEm      DateTime?        @map("editado_em")
+  softDeletedAt  DateTime?        @map("soft_deleted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  autor      Usuario    @relation("ComentarioAutor", fields: [autorUsuarioId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, escopo, escopoId, createdAt])
+  @@map("comentario")
+}
+
+// Documento anexado a um cliente ou caso (escopo, escopo_id — mesmo padrão de
+// Comentario), armazenado no S3 via storage_key (RN17/RN18).
+model Documento {
+  id             String          @id @default(uuid())
+  escritorioId   String          @map("escritorio_id")
+  escopo         EscopoDocumento
+  escopoId       String          @map("escopo_id")
+  autorMembroId  String          @map("autor_membro_id")
+  nomeOriginal   String          @map("nome_original") @db.VarChar(255)
+  tipoArquivo    TipoArquivo     @map("tipo_arquivo")
+  tamanhoKb      Int             @map("tamanho_kb")
+  storageKey     String          @map("storage_key") @db.VarChar(500)
+  softDeletedAt  DateTime?       @map("soft_deleted_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  autor      Membro     @relation(fields: [autorMembroId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, escopo, escopoId, softDeletedAt])
+  @@map("documento")
+}
+
+// Trilha de auditoria transversal (RN20): quem fez (usuario_id), quando fez (created_at)
+// e o que fez (acao + entidade + entidade_id + resumo + diff em dados).
+// Append-only: sem updated_at, e o Repository não expõe update/delete.
+model Log {
+  id           String      @id @default(uuid())
+  escritorioId String      @map("escritorio_id")
+  usuarioId    String      @map("usuario_id")
+  acao         AcaoLog
+  entidade     EntidadeLog
+  entidadeId   String      @map("entidade_id")
+  resumo       String      @db.VarChar(255)
+  dados        Json?
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  usuario    Usuario    @relation("LogAutor", fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, createdAt])
+  @@index([escritorioId, entidade, entidadeId])
+  @@map("log")
+}
+
+// Referência global do sistema: os tipos de status padronizam o funil de todos os
+// escritórios. Só o desenvolvedor administrador altera esta tabela (via migration);
+// nenhum endpoint de escrita é exposto para ela.
+model TipoStatus {
+  id        String  @id @default(uuid())
+  chave     String  @unique @db.VarChar(30)
+  nome      String  @db.VarChar(60)
+  icone     String  @db.VarChar(60)
+  cor       String  @db.VarChar(9)
+  descricao String? @db.VarChar(255)
+  ordem     Int
+
+  status Status[]
+
+  @@map("tipo_status")
+}
+
+// Status do funil de um escritório, associado a um TipoStatus para permitir
+// agrupamento/relatórios comparáveis entre escritórios diferentes.
+model Status {
+  id           String   @id @default(uuid())
+  escritorioId String   @map("escritorio_id")
+  tipoStatusId String   @map("tipo_status_id")
+  nome         String   @db.VarChar(60)
+  icone        String   @db.VarChar(60)
+  cor          String   @db.VarChar(9)
+  descricao    String?  @db.VarChar(255)
+  ordem        Int
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  tipo       TipoStatus @relation(fields: [tipoStatusId], references: [id], onDelete: Restrict)
+  casos      Caso[]
+
+  @@unique([escritorioId, nome])
+  @@index([escritorioId, ordem])
+  @@map("status")
+}
+
+// Caso do escritório: sempre vinculado a um cliente ativo e a um status (RN06/RN07).
+// Responsável é opcional ("sem responsável") e vira null se o membro for removido.
+model Caso {
+  id                  String   @id @default(uuid())
+  escritorioId        String   @map("escritorio_id")
+  clienteId           String   @map("cliente_id")
+  statusId            String   @map("status_id")
+  responsavelMembroId String?  @map("responsavel_membro_id")
+  titulo              String   @db.VarChar(140)
+  numeroProcesso      String?  @map("numero_processo") @db.VarChar(25)
+  descricao           String?  @db.Text
+  valor               Decimal? @db.Decimal(12, 2)
+  arquivado           Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  escritorio  Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  cliente     Cliente    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  status      Status     @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  responsavel Membro?    @relation(fields: [responsavelMembroId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId, arquivado, statusId, createdAt])
+  @@index([escritorioId, clienteId])
+  @@index([escritorioId, responsavelMembroId])
+  @@map("caso")
+}

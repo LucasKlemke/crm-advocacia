@@ -5,13 +5,17 @@ Projeto TCC Católica SC (Projeto trabalho de conclusão de curso)
 
 ## Setup local
 
+Pré-requisitos: Node.js 20+, Docker (para o Postgres local) e npm.
+
 ```bash
 npm install
-cp .env.example .env      # já aponta para as credenciais do docker-compose abaixo
+cp .env.example .env      # DATABASE_URL já aponta para o docker-compose abaixo; gere NEXTAUTH_SECRET com `openssl rand -base64 32`
 docker compose up -d      # sobe o Postgres local (docs/database/docker-setup.md)
 npm run prisma:migrate    # aplica migrations e gera o client
 npm run dev
 ```
+
+O app fica disponível em [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 

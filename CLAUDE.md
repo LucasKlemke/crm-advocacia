@@ -42,9 +42,9 @@ Todo request segue: **Auth Middleware → Tenant Context → Controller → Serv
 
 Serviço assíncrono separado: `NotificacaoScheduler` (Lambda) roda em background verificando prazos de **todos os escritórios** e acionando WhatsApp/e-mail — não depende de nenhum usuário estar com a interface aberta, e processa cada tenant de forma isolada.
 
-## Modelo de dados (12 tabelas)
+## Modelo de dados (16 tabelas)
 
-`escritorio` (tenant) · `usuario` (N por escritório; titular/colaborador) · `cliente` (FK escritório) · `estagio_pipeline` (FK escritório; colunas do kanban, configuráveis) · `caso` (FK cliente + estagio) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
+`escritorio` (tenant) · `usuario` (perfil global) · `membro` (N:N usuário↔escritório com papel) · `convite` (pendências por e-mail) · `cliente` (FK escritório; soft delete via `soft_deleted_at`) · `comentario` (ancorado por `escopo`+`escopo_id`, sem FK; hoje `cliente` e `caso`) · `log` (auditoria append-only: quem/quando/o quê + diff) · `tipo_status` (referência global, seed fixo de 6 tipos, só o administrador do sistema edita) · `status` (FK escritório + tipo_status; colunas do kanban, configuráveis pelo próprio escritório) · `caso` (FK escritório + cliente + status + responsável opcional; campo `valor`) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso — a ser absorvida por `comentario` com escopo `caso`) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
 
 Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/database/docker-setup.md)); toda alteração de schema é feita via migration do Prisma, nunca `db push`, com histórico auditável em `prisma/migrations/` ([docs/database/migrations-prisma.md](docs/database/migrations-prisma.md)).
 
@@ -52,13 +52,15 @@ Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/databa
 
 - **RN02 (revisada)**: sistema multi-tenant — cadastro de escritório é self-service pela UI (cria o tenant + o usuário titular); um escritório nunca acessa dados de outro.
 - **RN02a**: usuário titular pode convidar/cadastrar colaboradores dentro do próprio escritório; apenas o titular gerencia usuários (criar, desativar, promover).
-- **RN04/RN05**: cliente nunca é excluído permanentemente se tiver casos vinculados (apenas inativado); CPF é único **por escritório** (não globalmente).
-- **RN06/RN07**: todo caso precisa de cliente ativo e etapa de pipeline; nunca existe "solto".
-- **RN08/RN09**: casos arquivados saem do kanban mas ficam no histórico; etapa do pipeline só pode ser removida se vazia.
+- **RN04/RN05**: cliente nunca é excluído permanentemente — "desativar" grava `cliente.soft_deleted_at` (ativo = `NULL`), operação reversível por "Restaurar"; CPF é armazenado sem máscara e é único **por escritório** (não globalmente).
+- **RN06/RN07**: todo caso precisa de cliente ativo e de um `status` do escritório; nunca existe "solto".
+- **RN08/RN09**: casos arquivados saem do kanban mas ficam no histórico; um `status` só pode ser removido se não tiver casos vinculados.
 - **RN10/RN11/RN12**: prazo sempre vinculado a um caso; datas passadas viram "retroativo" com indicação visual; notificações automáticas em 3 dias antes, 1 dia antes e no dia — sem ação manual.
 - **RN13/RN14/RN15/RN16**: disparo de WhatsApp exige telefone cadastrado; processado assíncrono via Lambda; todo envio (sucesso/falha) fica no histórico; até 3 retentativas automáticas em falha.
 - **RN17/RN18**: upload de documento limitado a 10MB, tipos aceitos PDF/DOCX/JPG/PNG/JPEG.
 - **RN19 (nova)**: nenhuma query de aplicação pode retornar ou modificar dados de um `escritorio_id` diferente do da sessão autenticada — isolamento de tenant é regra transversal a todos os módulos.
+- **RN20 (nova)**: toda escrita gera um registro em `log` (quem/quando/o quê + diff dos campos), gravado na mesma transação da mudança — escrita que falha não deixa log, e mudança efetivada nunca fica sem log. Tabela append-only; ação em lote gera um log por entidade afetada.
+- **RN21 (nova)**: comentários (`comentario`) substituem campos livres de observação, são ancorados por `escopo`+`escopo_id` e o alvo é validado contra o tenant antes de qualquer escrita. Editar é exclusivo do autor; excluir (soft) cabe ao autor, `owner` ou `admin`.
 
 Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-negocio.md); casos de uso/user stories por fluxo em [docs/produto/casos-de-uso.md](docs/produto/casos-de-uso.md).
 
@@ -78,6 +80,20 @@ Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-ne
 - **Estrutura de código e UI**: convenções de pastas/nomes por camada em [docs/app/estrutura-codigo.md](docs/app/estrutura-codigo.md); Tailwind + shadcn/ui sempre via tokens de tema (nunca `bg-blue-500` literal) em [docs/app/design-system.md](docs/app/design-system.md); regras de reuso de componentes/hooks em [docs/app/modularizacao.md](docs/app/modularizacao.md).
 - **Qualidade e deploy**: análise estática via SonarCloud (Quality Gate obrigatório em todo PR) em [docs/qualidade/analise-estatica.md](docs/qualidade/analise-estatica.md); monitoramento via New Relic em [docs/qualidade/observabilidade.md](docs/qualidade/observabilidade.md); pipeline de deploy (AWS Amplify + RDS, migrations, rollback) em [docs/deploy/deploy.md](docs/deploy/deploy.md).
 
+## Uso de subagentes
+
+Ao elaborar planos ou executar tarefas propostas pelo usuário, priorize o uso de subagentes (Agent tool) para paralelizar o trabalho, acelerar a execução e preservar o contexto da conversa principal. Delegue investigações, buscas amplas no código e etapas independentes a subagentes ao invés de executá-las diretamente sempre que fizer sentido.
+
 ## Autor / contexto
 
 Projeto de portfólio (PAC Extensionista VII, Católica SC) de Lucas Affonso Klemke, evoluído a partir da necessidade real do escritório do Dr. Lucas Quintino para suportar múltiplos escritórios. RFC original e assets (mockups, diagramas C4, DER) versionados em `github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

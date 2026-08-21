@@ -2,11 +2,13 @@
 
 Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia (seção 5.2), evoluído para **multi-tenant**. Ver também [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md), [../produto/regras-negocio.md](../produto/regras-negocio.md) e [migrations-prisma.md](migrations-prisma.md) (como aplicar mudanças neste schema).
 
-12 tabelas (as 10 originais + `escritorio` e a evolução de `advogado` para `usuario`), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens e documentos. PK `uuid` em todas.
+16 tabelas (as 10 originais + `escritorio`, a evolução de `advogado` para `usuario`, `membro`/`convite` para o modelo N:N usuário↔escritório, e `comentario`/`log` para anotações por escopo e auditoria), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens, documentos e trilha de auditoria. PK `uuid` em todas.
+
+> **Multi-tenant real (evolução sobre o RFC original):** `usuario` deixou de pertencer a um único `escritorio` — vira um perfil global (um e-mail, uma senha), e a associação a um ou mais escritórios, com um papel por escritório, vive em `membro`. Isso permite a um mesmo profissional participar de múltiplos escritórios com papéis diferentes em cada um. `convite` guarda convites pendentes por e-mail, consumidos automaticamente no cadastro (ver [../produto/regras-negocio.md](../produto/regras-negocio.md)).
 
 ## `escritorio` (novo — tenant)
 
-Representa cada escritório de advocacia cadastrado na plataforma. Toda entidade "de topo" do domínio (`cliente`, `estagio_pipeline`, `template_mensagem`, `usuario`) pertence a exatamente um escritório.
+Representa cada escritório de advocacia cadastrado na plataforma. Toda entidade "de topo" do domínio (`cliente`, `status`, `caso`, `template_mensagem`, `usuario`) pertence a exatamente um escritório.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
@@ -17,24 +19,50 @@ Representa cada escritório de advocacia cadastrado na plataforma. Toda entidade
 | ativo | boolean | Permite suspender um tenant sem apagar dados |
 | created_at / updated_at | timestamp | |
 
-## `usuario` (substitui `advogado`)
+## `usuario` (substitui `advogado`; perfil global, não pertence a um escritório)
 
-Usuários que acessam o sistema, sempre vinculados a um escritório.
+Perfil de quem acessa o sistema. Não tem `escritorio_id` — a associação a escritório(s) e o papel em cada um vivem em `membro`.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| escritorio_id | uuid | FK → `escritorio` (obrigatório) |
 | nome | varchar(140) | Nome completo |
-| email | varchar | Login; único globalmente (um e-mail não pode estar em dois escritórios) |
+| email | varchar(255) | Login; único globalmente |
 | senha_hash | varchar(255) | Hash bcrypt |
-| oab | varchar(20) | Número da OAB (opcional para colaboradores não-advogados, ex. estagiário) |
+| avatar_url | varchar(500) | Storage key do avatar no S3 (não é URL pública; upload via `/perfil`, 5MB máx, JPEG/PNG/WEBP) |
+| oab | varchar(20) | Número da OAB (opcional) |
 | telefone | varchar(20) | Telefone de contato |
-| role | varchar(20) | `titular` ou `colaborador` (RN02a) |
-| ativo | boolean | Desativação de membro pelo titular, sem apagar histórico de autoria |
+| ativo | boolean | Desativação global da conta, sem apagar histórico de autoria |
 | created_at / updated_at | timestamp | |
 
-> O primeiro `usuario` de um `escritorio` é sempre criado com `role = titular` no fluxo de cadastro self-service. Apenas um `titular` por escritório é necessário para autorizar convites, mas nada impede promover mais de um colaborador a `titular` futuramente (decisão de produto, não uma restrição do banco).
+Cadastro self-service coleta só nome/e-mail/senha. Se já havia `convite` pendente para o e-mail, o cadastro consome todos os convites na mesma transação e cria as respectivas linhas de `membro` — senão o usuário segue para o onboarding, que cria seu primeiro escritório (e vira `owner` dele).
+
+## `membro` (novo — associação N:N usuário↔escritório com papel)
+
+Tabela híbrida: cada linha é a participação de um `usuario` em um `escritorio`, com um papel.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| usuario_id | uuid | FK → `usuario`, `onDelete: Cascade` |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| role | varchar(20) | `owner` \| `admin` \| `padrao` (hierarquia: owner > admin > padrao) |
+| created_at / updated_at | timestamp | |
+
+`@@unique([usuario_id, escritorio_id])` — um usuário tem no máximo uma membership por escritório. `@@index([escritorio_id])` e `@@index([usuario_id])` para as duas direções de consulta (membros de um escritório; escritórios de um usuário). O escritório ativo da sessão é resolvido contra esta tabela a cada login/troca (nunca confiando em payload cru do client) — ver [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md). Regras de negócio (nunca remover/rebaixar o último `owner`, só `owner` promove a `owner`, sem auto-remoção) ficam no Service, não em constraint de banco.
+
+## `convite` (novo — convite pendente de e-mail para um escritório)
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| email | varchar(255) | E-mail convidado (normalizado, minúsculo/trim) |
+| role | varchar(20) | Papel que o convidado terá ao aceitar |
+| criado_por_usuario_id | uuid | FK → `usuario` — quem convidou |
+| created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, email])`, `@@index([email])`. Convite pendente = linha existente (evita índice parcial); aceitar (cadastro com e-mail convidado) ou cancelar removem a linha dentro de uma transação.
 
 ## `cliente`
 
@@ -45,44 +73,125 @@ Cadastro dos clientes do escritório.
 | id | uuid | PK |
 | escritorio_id | uuid | FK → `escritorio` (obrigatório — escopo de tenant) |
 | nome | varchar(140) | |
-| cpf | varchar(14) | Único **por escritório** (RN05), não globalmente |
-| email | varchar(140) | |
-| telefone | varchar(20) | Usado para disparo de WhatsApp (RN13) |
-| endereco | varchar | |
-| observacoes | text | Anotações livres iniciais |
-| ativo | boolean | Inativação em vez de exclusão (RN04) |
+| cpf | varchar(11) | Armazenado **sem máscara** (só dígitos); único **por escritório** (RN05), não globalmente |
+| email | varchar(140) | Normalizado em caixa baixa |
+| telefone | varchar(20) | Armazenado **sem máscara**, no formato internacional completo `55 + DDD + 9 dígitos` — é assim que a Uazapi identifica o destinatário no disparo (RN13) |
+| endereco | varchar(255) | |
+| sexo | enum (`SexoCliente`) | `masculino` \| `feminino` \| `outro` — opcional |
+| estado_civil | enum (`EstadoCivilCliente`) | `solteiro` \| `casado` \| `divorciado` \| `viuvo` \| `uniao_estavel` — opcional |
+| nome_mae | varchar(140) | Opcional |
+| nome_pai | varchar(140) | Opcional |
+| nacionalidade | varchar(60) | Opcional |
+| nascimento | date | Opcional |
+| profissao | varchar(100) | Opcional |
+| soft_deleted_at | timestamp | Data da exclusão suave; `NULL` = cliente ativo (RN04) |
 | created_at / updated_at | timestamp | |
 
-## `estagio_pipeline`
+`@@unique([escritorio_id, cpf])` e `@@index([escritorio_id, soft_deleted_at])` (a listagem padrão filtra por tenant + ativos). Guardar o CPF normalizado é o que faz a unicidade valer independentemente de como o usuário digitou.
 
-Colunas do kanban, configuráveis por escritório (compartilhadas entre os usuários do mesmo tenant).
+Não há coluna `ativo` nem `observacoes`: a desativação é o próprio `soft_deleted_at` (uma única fonte de verdade, reversível por "Restaurar"), e as anotações livres viraram um CRUD de comentários na tabela `comentario`.
+
+CPF, telefone e e-mail são validados no `ClienteService` antes de qualquer escrita (dígitos verificadores do CPF, celular brasileiro completo, forma do e-mail). As rotas repetem a checagem no schema zod para que o erro volte por campo em `detalhes` e o formulário destaque o input certo — os dois lados usam os mesmos validadores de `src/lib/utils/`.
+
+O CPF de um cliente desativado continua reservado pela constraint. O Service detecta esse caso e devolve um erro específico orientando restaurar o cadastro, em vez de um erro cru de constraint.
+
+## `comentario` (novo — anotações por escopo)
+
+Comentários no estilo "thread do Notion", exibidos em ordem cronológica inversa com autor e data. Substituem o antigo campo livre `cliente.observacoes`.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| escritorio_id | uuid | FK → `escritorio` (obrigatório) |
-| nome | varchar(50) | Ex.: "Em Andamento" |
-| ordem | int | Posição no kanban |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` — escopo de tenant (RN19) |
+| escopo | enum | Entidade à qual o comentário está ancorado; hoje só `cliente` |
+| escopo_id | uuid | Id da entidade alvo — **sem FK**, porque o alvo varia com o escopo |
+| autor_usuario_id | uuid | FK → `usuario`, `onDelete: Restrict` — preserva a autoria |
+| conteudo | text | |
+| editado_em | timestamp | Preenchido na primeira edição; alimenta o rótulo "(editado)" |
+| soft_deleted_at | timestamp | Exclusão suave; `NULL` = visível |
+| created_at / updated_at | timestamp | |
 
-Padrão sugerido ao criar um novo escritório (seed automático no cadastro): Prospecção, Consulta, Contrato, Em Andamento, Concluído.
+`@@index([escritorio_id, escopo, escopo_id, created_at])` — a consulta real é sempre "os comentários deste alvo, do mais novo ao mais antigo".
+
+Como `(escopo, escopo_id)` não tem integridade referencial do banco, o `ComentarioService` valida o alvo contra o tenant antes de qualquer escrita — essa checagem é a única garantia de que um comentário não seja ancorado num recurso de outro escritório (RN19/RN21).
+
+Adicionar um novo escopo (`caso`, `prazo`) é acrescentar um valor ao enum e um caso na validação de alvo, sem tabela nova.
+
+## `log` (novo — trilha de auditoria)
+
+Tabela transversal que responde, para qualquer operação de escrita do sistema: **quem fez**, **quando fez** e **o que fez** (RN20).
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| usuario_id | uuid | FK → `usuario`, `onDelete: Restrict` — **quem fez** |
+| acao | enum | `criar` \| `atualizar` \| `excluir` \| `restaurar` |
+| entidade | enum | `cliente` \| `comentario` \| `caso` \| `status` (cresce com o domínio) |
+| entidade_id | uuid | Id do registro afetado |
+| resumo | varchar(255) | Texto legível, ex.: "Cliente Maria Silva desativado" |
+| dados | jsonb | Diff dos campos alterados: `{ campo: { antes, depois } }` |
+| created_at | timestamp | **quando fez** |
+
+`@@index([escritorio_id, created_at])` para a linha do tempo do escritório e `@@index([escritorio_id, entidade, entidade_id])` para o histórico de um registro específico.
+
+Sem `updated_at`: a tabela é *append-only* e o Repository não expõe `update` nem `delete`. O log é escrito **dentro da mesma transação** da mudança que o originou, então nunca existe log de uma operação que falhou, nem mudança efetivada sem log.
+
+Uma ação em lote gera **um log por entidade afetada**, não um log por clique — a auditoria é sobre registros, não sobre interações de UI.
+
+## `tipo_status`
+
+Referência **global** do sistema (não pertence a nenhum escritório): padroniza o funil de todos os tenants, permitindo agrupar/comparar status diferentes entre escritórios (ex.: relatórios). Só o desenvolvedor administrador do sistema altera esta tabela, via migration — nenhum endpoint de escrita é exposto para ela.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| chave | varchar(30) | Identificador estável, único (ex.: `nova_conversa`, `proposta`) |
+| nome | varchar(60) | Ex.: "Proposta" |
+| icone | varchar(60) | Nome de um ícone Lucide |
+| cor | varchar(9) | Hex |
+| descricao | varchar(255) | Opcional |
+| ordem | int | Posição sugerida no funil |
+
+Seedada com 6 linhas fixas (Nova conversa, Análise, Qualificado, Proposta, Sucesso, Perda) diretamente no SQL da migration que cria a tabela — garante que ela exista em todo banco novo, sem depender de um script de seed separado.
+
+## `status`
+
+Colunas do kanban, definidas por cada escritório e associadas a um `tipo_status` (compartilhadas entre os usuários do mesmo tenant).
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório) |
+| tipo_status_id | uuid | FK → `tipo_status`, `onDelete: Restrict` (obrigatório) |
+| nome | varchar(60) | Ex.: "Reunião agendada" — único por escritório |
+| icone | varchar(60) | Nome de um ícone Lucide |
+| cor | varchar(9) | Hex |
+| descricao | varchar(255) | Opcional |
+| ordem | int | Posição no kanban |
+| created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, nome])`. Todo escritório novo já nasce com 6 status básicos (um por `tipo_status`), criados dentro da mesma transação que cria o escritório — não é um seed de banco, é um comportamento do `EscritorioService`/`StatusService` no momento do cadastro.
 
 ## `caso`
 
-Processos/casos vinculados a um cliente e posicionados no pipeline. Não tem `escritorio_id` direto — o tenant é resolvido via `cliente.escritorio_id`, mas todo Repository deve fazer `join` com `cliente` (ou `estagio_pipeline`) para aplicar o filtro de isolamento (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)).
+Casos do escritório, vinculados a um cliente ativo e a um status (RN06/RN07). Ao contrário do sugerido inicialmente, guarda `escritorio_id` diretamente (como `cliente`/`comentario`/`log`) em vez de resolver o tenant via `join` com `cliente` — mesmo padrão do restante do schema, evita join obrigatório em toda query do kanban e mantém RN19 simples de auditar.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| cliente_id | uuid | FK → `cliente` (obrigatório, RN06) |
-| estagio_id | uuid | FK → `estagio_pipeline` (obrigatório, RN07) |
-| criado_por_usuario_id | uuid | FK → `usuario` — autoria, útil com múltiplos colaboradores |
-| tipo_acao | varchar(140) | Área/tipo do processo (ex.: "Civil") |
-| numero_processo | varchar(40) | |
-| comarca | varchar(140) | |
-| descricao | text | |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
+| cliente_id | uuid | FK → `cliente`, `onDelete: Restrict` (obrigatório, RN06) |
+| status_id | uuid | FK → `status`, `onDelete: Restrict` (obrigatório, RN07) |
+| responsavel_membro_id | uuid | FK → `membro`, `onDelete: SetNull` — opcional ("sem responsável" é um estado válido) |
+| titulo | varchar(140) | |
+| numero_processo | varchar(25) | Número CNJ do processo (`NNNNNNN-DD.AAAA.J.TR.OOOO`) — opcional, texto livre |
+| descricao | text | Opcional |
+| valor | decimal(12,2) | Quanto o advogado recebe ao concluir o caso — opcional |
 | arquivado | boolean | Sai do kanban ativo, mantém histórico (RN08) |
-| prioridade | varchar | |
 | created_at / updated_at | timestamp | |
+
+`onDelete: Restrict` em `caso.status_id` é a garantia física de RN09 ("status só pode ser removido se vazio") — a checagem amigável (contar casos antes de excluir) fica no `StatusService`, a constraint é a rede de segurança contra bugs.
 
 ## `prazo`
 
@@ -141,6 +250,8 @@ Registro de mensagens disparadas.
 
 Observações vinculadas a um caso.
 
+> **A revisar quando `caso` for implementado:** esta tabela cobre exatamente o que `comentario` já resolve de forma genérica. A intenção é ancorar as anotações de caso em `comentario` com `escopo = 'caso'` e não criar `anotacao`, evitando duas tabelas concorrentes para o mesmo conceito.
+
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
@@ -167,13 +278,18 @@ Arquivos anexados a um caso.
 
 | Origem | Cardinalidade | Destino |
 |---|---|---|
-| `usuario` | N:1 | `escritorio` |
+| `membro` | N:1 | `usuario` |
+| `membro` | N:1 | `escritorio` |
+| `convite` | N:1 | `escritorio` |
+| `convite` | N:1 | `usuario` (criado por) |
 | `cliente` | N:1 | `escritorio` |
-| `estagio_pipeline` | N:1 | `escritorio` |
+| `status` | N:1 | `escritorio` |
+| `status` | N:1 | `tipo_status` |
 | `template_mensagem` | N:1 | `escritorio` |
+| `caso` | N:1 | `escritorio` |
 | `caso` | N:1 | `cliente` |
-| `caso` | N:1 | `estagio_pipeline` |
-| `caso` | N:1 | `usuario` (autoria) |
+| `caso` | N:1 | `status` |
+| `caso` | N:1 | `membro` (responsável, opcional) |
 | `prazo` | N:1 | `caso` |
 | `notificacoes_prazo` | N:1 | `prazo` |
 | `anotacao` | N:1 | `caso` |
@@ -187,10 +303,9 @@ Arquivos anexados a um caso.
 ## Notas de implementação (Prisma)
 
 - Usar `@id @default(uuid())` em todas as PKs.
-- `usuario.email` com `@unique` (global — um e-mail é a identidade de login, não pode repetir entre escritórios).
+- `usuario.email` com `@unique` (global — identidade de login única, independente de quantos escritórios o usuário integra via `membro`).
 - `cliente.cpf` com `@@unique([escritorio_id, cpf])` — único **composto** por escritório, não globalmente.
-- Índice composto `@@index([escritorio_id])` em `cliente`, `estagio_pipeline`, `template_mensagem`, `usuario` para performance de queries escopadas por tenant.
-- `onDelete: Restrict` (ou equivalente) em `caso.cliente_id` para impedir exclusão física de cliente com casos — a regra é sempre inativar, nunca deletar (RN04).
-- `estagio_pipeline` sem FK obrigatória de exclusão automática: a validação "coluna vazia antes de excluir" (RN09) é regra de aplicação no `EstagioService`, não constraint de banco.
-- **Todo Repository que consulta `caso`, `prazo`, `anotacao`, `documento` ou `historico_mensagem` deve fazer join até `cliente`/`estagio_pipeline` para aplicar o filtro de `escritorio_id`** — essas tabelas não guardam o tenant diretamente para evitar duplicação de dado derivável, mas isso exige disciplina na camada de Repository (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)). Alternativa mais defensiva, se preferível na implementação: desnormalizar `escritorio_id` também nessas tabelas para permitir filtro direto sem join — trade-off entre simplicidade de schema e robustez contra bugs de isolamento.
+- Índice composto `@@index([escritorio_id, ...])` em `cliente`, `status`, `caso`, `template_mensagem`, `membro` para performance de queries escopadas por tenant. `caso` guarda `escritorio_id` diretamente (não resolve por join) — mesmo padrão de `cliente`/`comentario`/`log`.
+- `onDelete: Restrict` em `caso.cliente_id` e `caso.status_id` para impedir exclusão física de cliente/status com casos vinculados — a regra é sempre inativar/bloquear, nunca deletar em cascata (RN04/RN09).
+- **Todo Repository que consulta `prazo`, `anotacao`, `documento` ou `historico_mensagem` deve fazer join até `caso`/`cliente` para aplicar o filtro de `escritorio_id`**, já que essas tabelas ainda não guardam o tenant diretamente — isso exige disciplina na camada de Repository (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)). Alternativa mais defensiva, se preferível na implementação: desnormalizar `escritorio_id` também nessas tabelas para permitir filtro direto sem join — trade-off entre simplicidade de schema e robustez contra bugs de isolamento.
 - Toda alteração neste schema segue o fluxo de migrations descrito em [migrations-prisma.md](migrations-prisma.md) — nunca editar o banco diretamente.
