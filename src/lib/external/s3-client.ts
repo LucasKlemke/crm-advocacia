@@ -19,13 +19,18 @@ function obterBucket(): string {
   return bucket;
 }
 
+// AWS_S3_ENDPOINT permite apontar pra um provedor S3-compatível (ex.: Supabase Storage)
+// sem trocar de SDK — forcePathStyle é exigido por provedores que não suportam o
+// endereçamento virtual-hosted-style (bucket.endpoint) padrão da AWS.
 function criarClienteAws(): AwsS3Client {
+  const endpoint = process.env.AWS_S3_ENDPOINT;
   return new AwsS3Client({
     region: process.env.AWS_REGION,
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
     },
+    ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
   });
 }
 
