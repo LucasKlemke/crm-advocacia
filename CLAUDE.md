@@ -18,11 +18,11 @@ O sistema é **multi-tenant**: cada escritório cadastrado (`escritorio`) tem se
 | Estado assíncrono no cliente | TanStack Query (React Query) |
 | Estilo | Tailwind CSS |
 | Autenticação | NextAuth.js (JWT, sessão carrega `escritorioId` + `role`) |
-| Banco de dados | PostgreSQL + Prisma ORM |
-| Armazenamento de arquivos | Amazon S3 (URL assinada) |
-| Jobs assíncronos | AWS Lambda + Amazon EventBridge Scheduler |
+| Banco de dados | PostgreSQL + Prisma ORM — RDS (deploy acadêmico) ou Supabase (deploy real), mesmo schema, ver [docs/deploy/deploy.md](docs/deploy/deploy.md) |
+| Armazenamento de arquivos | S3 ou provedor S3-compatível (URL assinada) — Amazon S3 (deploy acadêmico) ou Supabase Storage (deploy real) |
+| Jobs assíncronos | AWS Lambda + Amazon EventBridge Scheduler (ainda não implementado) |
 | WhatsApp | Uazapi (API não-oficial via QR Code, apenas envio) |
-| Hosting | AWS Amplify (app) + Amazon RDS (Postgres) |
+| Hosting | Vercel (app), em dois Projects de produção a partir do mesmo repositório — ver [docs/deploy/deploy.md](docs/deploy/deploy.md) |
 | CI/CD | GitHub Actions |
 | Análise estática | SonarCloud |
 | Monitoramento | New Relic |
@@ -78,7 +78,7 @@ Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-ne
 - **Test-driven**: toda regra de negócio ou componente com lógica tem teste escrito antes da implementação. Meta de cobertura institucional (linha Web Apps do Portfólio, cobrada na prova de autoria): **75% backend / 25% frontend**; metas internas por camada (Services ~90%, Repositories/Controllers ~70-80%) garantem esse piso com folga, gate de CI. Ferramentas: Jest + Testing Library (unit/integração) e Playwright (E2E dos fluxos críticos). Detalhes em [docs/testes/estrategia-tdd.md](docs/testes/estrategia-tdd.md).
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`), branches `feature/<slug>`/`fix/<slug>`, sem commit direto em `main`, migration e teste sempre no mesmo commit da mudança que os motivou. Detalhes em [docs/git/commits-e-branches.md](docs/git/commits-e-branches.md). Documentação também replicada na Wiki do GitHub nos marcos da disciplina — ver [docs/git/wiki-github.md](docs/git/wiki-github.md).
 - **Estrutura de código e UI**: convenções de pastas/nomes por camada em [docs/app/estrutura-codigo.md](docs/app/estrutura-codigo.md); Tailwind + shadcn/ui sempre via tokens de tema (nunca `bg-blue-500` literal) em [docs/app/design-system.md](docs/app/design-system.md); regras de reuso de componentes/hooks em [docs/app/modularizacao.md](docs/app/modularizacao.md).
-- **Qualidade e deploy**: análise estática via SonarCloud (Quality Gate obrigatório em todo PR) em [docs/qualidade/analise-estatica.md](docs/qualidade/analise-estatica.md); monitoramento via New Relic em [docs/qualidade/observabilidade.md](docs/qualidade/observabilidade.md); pipeline de deploy (AWS Amplify + RDS, migrations, rollback) em [docs/deploy/deploy.md](docs/deploy/deploy.md).
+- **Qualidade e deploy**: análise estática via SonarCloud (Quality Gate obrigatório em todo PR) em [docs/qualidade/analise-estatica.md](docs/qualidade/analise-estatica.md); monitoramento via New Relic em [docs/qualidade/observabilidade.md](docs/qualidade/observabilidade.md); pipeline de deploy (Vercel, dois Projects — RDS+S3 para avaliação acadêmica, Supabase para produção real —, migrations, rollback) em [docs/deploy/deploy.md](docs/deploy/deploy.md).
 
 ## Uso de subagentes
 

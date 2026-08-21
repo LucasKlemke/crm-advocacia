@@ -4,8 +4,8 @@ O [Portfólio Directions](https://github.com/CatolicaSC-Portfolio/The-Portfolio-
 
 ## Onde o agente roda
 
-- **Aplicação Next.js (Amplify)** — agente de APM do New Relic (pacote `newrelic`), instrumentado via `instrumentation.ts` do Next.js (App Router), carregado antes de qualquer outra inicialização.
-- **`NotificacaoScheduler` (AWS Lambda)** — New Relic Lambda Layer, monitorado separadamente da aplicação web por rodar fora do processo do Next.js.
+- **Aplicação Next.js (Vercel, nos dois Projects de produção)** — agente de APM do New Relic (pacote `newrelic`), instrumentado via `instrumentation.ts` do Next.js (App Router), carregado antes de qualquer outra inicialização.
+- **`NotificacaoScheduler` (AWS Lambda, ainda não implementado)** — quando existir, New Relic Lambda Layer, monitorado separadamente da aplicação web por rodar fora do processo do Next.js.
 
 `NEW_RELIC_LICENSE_KEY` é configurada como variável de ambiente em produção (ver [../deploy/deploy.md](../deploy/deploy.md)); não roda localmente por padrão, para não gerar ruído de dados de desenvolvimento nos dashboards.
 

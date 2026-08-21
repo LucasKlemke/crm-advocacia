@@ -94,8 +94,8 @@ Cada módulo segue o padrão de camadas acima, com regras de negócio concentrad
 | NextAuth.js com sessão multi-tenant | JWT carrega `escritorioId` + `role`, permitindo resolver o contexto de tenant sem consulta extra ao banco a cada requisição |
 | Uazapi | Envio via WhatsApp sem exigir aprovação de conta business oficial; escopo é só envio (não bidirecional); cada escritório conecta seu próprio número |
 | PostgreSQL + Prisma | Modelo fortemente relacional (escritório → cliente → caso → prazo/anotação/documento); Prisma dá tipagem, migrations versionadas e evita SQL Injection; isolamento lógico multi-tenant via `escritorio_id` + índices compostos |
-| AWS Amplify + RDS | Deploy gerenciado de Next.js com SSL automático; RDS na mesma região minimiza latência |
-| S3 + URL assinada | Armazenamento de documentos com acesso restrito ao usuário autenticado do escritório dono do arquivo |
+| Vercel, dois Projects | Deploy gerenciado de Next.js com SSL automático; um Project usa RDS+S3 (avaliação acadêmica, sem Supabase), outro usa Supabase (produção real) — mesma `main`, variáveis de ambiente diferentes, ver [../deploy/deploy.md](../deploy/deploy.md) |
+| S3 + URL assinada | Armazenamento de documentos com acesso restrito ao usuário autenticado do escritório dono do arquivo; client S3 aceita endpoint customizável para funcionar também contra Supabase Storage |
 | Lambda + EventBridge | Notificações de prazo rodam em background para todos os escritórios, sem depender de nenhuma UI aberta (RN14) |
 
 ### Isolamento lógico vs. físico
