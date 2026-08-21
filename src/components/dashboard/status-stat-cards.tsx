@@ -1,5 +1,7 @@
+import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
 import { formatarValorBrl } from "@/lib/utils/valor";
 import type { ContagemPorTipoStatusDTO } from "@/types/dashboard";
@@ -10,7 +12,7 @@ export interface StatusStatCardsProps {
   onSelect: (contagem: ContagemPorTipoStatusDTO) => void;
 }
 
-// Um card por TipoStatus (já vem ordenado por `ordem` do backend, sempre as 6
+// Um card por TipoStatus (já vem ordenado por `ordem` do backend, sempre todas as
 // categorias) — mesmo padrão de cor dinâmica por `style={{ color }}` já usado no
 // kanban (casos-kanban.tsx), pois `cor` é dado de domínio configurável pelo tenant,
 // não uma classe Tailwind literal. Cada card mostra o valor em R$ atualmente naquela
@@ -32,9 +34,8 @@ export function StatusStatCards({ porTipoStatus, selecionadosIds, onSelect }: St
         const Icone = MAPA_ICONES_STATUS[tipoStatus.icone];
         const percentual = somaValorTotal > 0 ? (valorTotal / somaValorTotal) * 100 : 0;
         const selecionado = selecionadosIds.includes(tipoStatus.id);
-        return (
+        const cartao = (
           <Card
-            key={tipoStatus.id}
             size="sm"
             role="button"
             tabIndex={0}
@@ -64,6 +65,19 @@ export function StatusStatCards({ porTipoStatus, selecionadosIds, onSelect }: St
               <p className="text-xs text-muted-foreground">{percentual.toFixed(1)}%</p>
             </CardContent>
           </Card>
+        );
+
+        if (!tipoStatus.descricao) {
+          return <Fragment key={tipoStatus.id}>{cartao}</Fragment>;
+        }
+
+        // O card inteiro é o gatilho (não só o título) e `delay={0}` sobrescreve os
+        // 600ms padrão do Base UI: a descrição do tipo aparece assim que o mouse entra.
+        return (
+          <Tooltip key={tipoStatus.id}>
+            <TooltipTrigger delay={0} render={cartao} />
+            <TooltipContent>{tipoStatus.descricao}</TooltipContent>
+          </Tooltip>
         );
       })}
     </div>

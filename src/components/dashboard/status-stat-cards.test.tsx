@@ -32,6 +32,22 @@ const POR_TIPO_STATUS: ContagemPorTipoStatusDTO[] = [
   },
 ];
 
+const COM_DESCRICAO: ContagemPorTipoStatusDTO[] = [
+  {
+    tipoStatus: {
+      id: "tipo-1",
+      chave: "lead",
+      nome: "Lead",
+      icone: "UserPlus",
+      cor: "#64748b",
+      descricao: "Contato inicial que ainda não é cliente, potencial caso em avaliação.",
+      ordem: 1,
+    },
+    total: 1,
+    valorTotal: 1000,
+  },
+];
+
 describe("StatusStatCards", () => {
   it("mostra um card por TipoStatus com o nome", () => {
     render(<StatusStatCards porTipoStatus={POR_TIPO_STATUS} selecionadosIds={[]} onSelect={jest.fn()} />);
@@ -75,6 +91,25 @@ describe("StatusStatCards", () => {
 
     expect(screen.getByRole("button", { name: /contato/i })).toHaveClass("opacity-100");
     expect(screen.getByRole("button", { name: /fechado/i })).toHaveClass("opacity-40");
+  });
+
+  it("mostra a descrição do tipo de status ao passar o mouse sobre o card", async () => {
+    render(<StatusStatCards porTipoStatus={COM_DESCRICAO} selecionadosIds={[]} onSelect={jest.fn()} />);
+
+    await userEvent.hover(screen.getByRole("button", { name: /lead/i }));
+
+    expect(
+      await screen.findByText("Contato inicial que ainda não é cliente, potencial caso em avaliação.")
+    ).toBeInTheDocument();
+  });
+
+  it("continua chamando onSelect ao clicar em um card que tem descrição", async () => {
+    const onSelect = jest.fn();
+    render(<StatusStatCards porTipoStatus={COM_DESCRICAO} selecionadosIds={[]} onSelect={onSelect} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /lead/i }));
+
+    expect(onSelect).toHaveBeenCalledWith(COM_DESCRICAO[0]);
   });
 
   it("permite múltiplos cards selecionados ao mesmo tempo, nenhum apagado entre eles", () => {
