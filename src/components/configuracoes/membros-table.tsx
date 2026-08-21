@@ -45,7 +45,13 @@ import { Button } from "@/components/ui/button";
 export interface MembroLinha {
   id: string;
   role: RoleMembro;
-  usuario: { id: string; nome: string; email: string; telefone?: string | null };
+  usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    telefone?: string | null;
+    avatarUrl?: string | null;
+  };
 }
 
 export interface MembrosTableProps {
@@ -142,7 +148,7 @@ export function MembrosTable({ membros, atorUsuarioId, atorRole }: MembrosTableP
               <TableRow key={membro.id}>
                 <TableCell className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <AvatarIniciais nome={membro.usuario.nome} />
+                    <AvatarIniciais nome={membro.usuario.nome} avatarUrl={membro.usuario.avatarUrl} />
                     <div className="flex flex-col">
                       <span className="flex items-center gap-2 font-medium text-foreground">
                         {membro.usuario.nome}

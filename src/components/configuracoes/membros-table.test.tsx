@@ -5,11 +5,25 @@ import { MembrosTable } from "./membros-table";
 
 jest.mock("next/navigation", () => ({ useRouter: jest.fn() }));
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("@/components/shared/avatar-iniciais", () => ({
+  AvatarIniciais: ({ nome, avatarUrl }: { nome: string; avatarUrl?: string | null }) => (
+    <div data-testid={`avatar-${nome}`} data-avatar-url={avatarUrl ?? ""} />
+  ),
+}));
 
 const mockedUseRouter = useRouter as jest.Mock;
 
 const membros = [
-  { id: "membro-1", role: "owner" as const, usuario: { id: "user-1", nome: "Dona Owner", email: "owner@teste.com" } },
+  {
+    id: "membro-1",
+    role: "owner" as const,
+    usuario: {
+      id: "user-1",
+      nome: "Dona Owner",
+      email: "owner@teste.com",
+      avatarUrl: "https://bucket.s3.amazonaws.com/signed-get",
+    },
+  },
   { id: "membro-2", role: "padrao" as const, usuario: { id: "user-2", nome: "Fulano Padrao", email: "padrao@teste.com" } },
 ];
 
@@ -25,6 +39,16 @@ describe("MembrosTable", () => {
     expect(screen.getByText("Dona Owner")).toBeInTheDocument();
     expect(screen.getByText("owner@teste.com")).toBeInTheDocument();
     expect(screen.getByText("Fulano Padrao")).toBeInTheDocument();
+  });
+
+  it("repassa o avatarUrl do membro pro AvatarIniciais", () => {
+    render(<MembrosTable membros={membros} atorUsuarioId="user-1" atorRole="owner" />);
+
+    expect(screen.getByTestId("avatar-Dona Owner")).toHaveAttribute(
+      "data-avatar-url",
+      "https://bucket.s3.amazonaws.com/signed-get"
+    );
+    expect(screen.getByTestId("avatar-Fulano Padrao")).toHaveAttribute("data-avatar-url", "");
   });
 
   it("esconde as ações de gestão quando o ator é padrao", () => {

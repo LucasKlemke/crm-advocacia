@@ -1,6 +1,7 @@
 import { getTenantContextOuRedirect } from "../../_lib/tenant-context-pagina";
 import { membroService } from "@/services/membro.service";
 import { conviteService } from "@/services/convite.service";
+import { usuarioService } from "@/services/usuario.service";
 import { MembrosTable } from "@/components/configuracoes/membros-table";
 import { ConvitesTable } from "@/components/configuracoes/convites-table";
 import { NovoMembroDrawer } from "@/components/configuracoes/novo-membro-drawer";
@@ -9,7 +10,16 @@ import { Separator } from "@/components/ui/separator";
 export default async function ConfiguracoesMembrosPage() {
   const ctx = await getTenantContextOuRedirect();
 
-  const membros = await membroService.listarMembros(ctx);
+  const membrosBrutos = await membroService.listarMembros(ctx);
+  const membros = await Promise.all(
+    membrosBrutos.map(async (membro) => ({
+      ...membro,
+      usuario: {
+        ...membro.usuario,
+        avatarUrl: await usuarioService.assinarUrlAvatar(membro.usuario.avatarUrl),
+      },
+    }))
+  );
   const podeGerenciarMembros = ctx.role !== "padrao";
   const convites = podeGerenciarMembros ? await conviteService.listarPendentes(ctx) : [];
 
@@ -35,6 +45,7 @@ export default async function ConfiguracoesMembrosPage() {
               nome: membro.usuario.nome,
               email: membro.usuario.email,
               telefone: membro.usuario.telefone,
+              avatarUrl: membro.usuario.avatarUrl,
             },
           }))}
           atorUsuarioId={ctx.usuarioId}
