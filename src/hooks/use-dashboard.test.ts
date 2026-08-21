@@ -31,8 +31,6 @@ const RESUMO: ResumoDashboardDTO = {
       valorTotal: 30000,
     },
   ],
-  porMes: [{ mes: "2026-08", total: 3 }],
-  valorTotalAberto: 15000,
 };
 
 beforeEach(() => {

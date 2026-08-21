@@ -1,23 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { User, Users } from "lucide-react";
+import { Plus, User, Users } from "lucide-react";
 import { useDashboardResumo } from "@/hooks/use-dashboard";
 import { useCasoFiltroOpcoes } from "@/hooks/use-casos";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { DashboardSaudacaoCard } from "@/components/dashboard/dashboard-saudacao-card";
 import { StatusStatCards } from "@/components/dashboard/status-stat-cards";
-import { CasosPorTipoStatusChart } from "@/components/dashboard/casos-por-tipo-status-chart";
-import { CasosPorMesChart } from "@/components/dashboard/casos-por-mes-chart";
-import { CasosTable } from "@/components/casos/casos-table";
-import { CasoSheet, type ModoSheet } from "@/components/casos/caso-sheet";
+import { CasosTabelaSimplificada } from "@/components/dashboard/casos-tabela-simplificada";
+import { CasosStatusDonutChart } from "@/components/dashboard/casos-status-donut-chart";
+import { CasoSheet } from "@/components/casos/caso-sheet";
 import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
 import { formatarCpf } from "@/lib/utils/cpf";
 import { filtrosCasosPadrao, SEM_RESPONSAVEL } from "@/types/caso";
 import { filtrosDashboardPadrao } from "@/types/dashboard";
-import type { CasoDTO, FiltrosCasos } from "@/types/caso";
+import type { FiltrosCasos } from "@/types/caso";
 import type { ContagemPorTipoStatusDTO, FiltrosDashboard } from "@/types/dashboard";
 import type { RoleMembro } from "@prisma/client";
 
@@ -28,19 +27,23 @@ export interface DashboardViewProps {
 }
 
 // Boundary cliente da tela /: o filtro de responsável/cliente/período no topo se
-// aplica a tudo (cards, gráficos e tabela) — vale dizer, ao próprio useDashboardResumo,
-// não só à tabela. A tabela de processos abre o CasoSheet ao clicar num caso, por isso
-// precisa do ator, como CasosView.
+// aplica a tudo (cards, gráficos e tabela de preview) — vale dizer, ao próprio
+// useDashboardResumo, não só à tabela.
 export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardViewProps) {
   const [filtrosDashboard, setFiltrosDashboard] = useState<FiltrosDashboard>(filtrosDashboardPadrao);
   const { data, isLoading, isError } = useDashboardResumo(filtrosDashboard);
   const { data: opcoes } = useCasoFiltroOpcoes();
-  const [selecionado, setSelecionado] = useState<ContagemPorTipoStatusDTO | null>(null);
-  const [sheet, setSheet] = useState<{ modo: ModoSheet; caso: CasoDTO | null } | null>(null);
+  const [selecionadosIds, setSelecionadosIds] = useState<string[]>([]);
+  const [criandoCaso, setCriandoCaso] = useState(false);
 
+  // Clicar alterna o TipoStatus dentro/fora da seleção — múltiplos cards podem ficar
+  // ativos ao mesmo tempo, e a tabela filtra por todos eles juntos (OR).
   function selecionarTipoStatus(contagem: ContagemPorTipoStatusDTO) {
-    const jaSelecionado = selecionado?.tipoStatus.id === contagem.tipoStatus.id;
-    setSelecionado(jaSelecionado ? null : contagem);
+    setSelecionadosIds((atual) =>
+      atual.includes(contagem.tipoStatus.id)
+        ? atual.filter((id) => id !== contagem.tipoStatus.id)
+        : [...atual, contagem.tipoStatus.id]
+    );
   }
 
   const opcoesResponsavel = [{ id: SEM_RESPONSAVEL, nome: "Sem responsável" }, ...(opcoes?.membros ?? [])];
@@ -51,7 +54,7 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
 
   const filtrosTabela: FiltrosCasos = {
     ...filtrosCasosPadrao,
-    tipoStatusIds: selecionado ? [selecionado.tipoStatus.id] : [],
+    tipoStatusIds: selecionadosIds,
     clienteIds: filtrosDashboard.clienteIds,
     responsavelIds: filtrosDashboard.responsavelIds,
     dataInicio: filtrosDashboard.dataInicio,
@@ -60,42 +63,51 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <FiltroMultiSelect
-          label="Responsável"
-          icone={Users}
-          opcoes={opcoesResponsavel}
-          selecionados={filtrosDashboard.responsavelIds}
-          onChange={(responsavelIds) =>
-            setFiltrosDashboard({ ...filtrosDashboard, responsavelIds })
-          }
-          buscaPlaceholder="Buscar responsável..."
-          avatares
-        />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        {!isLoading && !isError && data ? <DashboardSaudacaoCard nome={atorNome} /> : <div />}
 
-        <FiltroMultiSelect
-          label="Cliente"
-          icone={User}
-          opcoes={(opcoes?.clientes ?? []).map((c) => ({
-            id: c.id,
-            nome: c.nome,
-            subtitulo: formatarCpf(c.cpf),
-          }))}
-          selecionados={filtrosDashboard.clienteIds}
-          onChange={(clienteIds) => setFiltrosDashboard({ ...filtrosDashboard, clienteIds })}
-          buscaPlaceholder="Buscar cliente..."
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setCriandoCaso(true)}>
+            <Plus />
+            Novo processo
+          </Button>
 
-        <FiltroPeriodo
-          valor={periodo()}
-          onChange={(novoPeriodo) => setFiltrosDashboard({ ...filtrosDashboard, ...novoPeriodo })}
-        />
+          <FiltroMultiSelect
+            label="Responsável"
+            icone={Users}
+            opcoes={opcoesResponsavel}
+            selecionados={filtrosDashboard.responsavelIds}
+            onChange={(responsavelIds) =>
+              setFiltrosDashboard({ ...filtrosDashboard, responsavelIds })
+            }
+            buscaPlaceholder="Buscar responsável..."
+            avatares
+          />
+
+          <FiltroMultiSelect
+            label="Cliente"
+            icone={User}
+            opcoes={(opcoes?.clientes ?? []).map((c) => ({
+              id: c.id,
+              nome: c.nome,
+              subtitulo: formatarCpf(c.cpf),
+            }))}
+            selecionados={filtrosDashboard.clienteIds}
+            onChange={(clienteIds) => setFiltrosDashboard({ ...filtrosDashboard, clienteIds })}
+            buscaPlaceholder="Buscar cliente..."
+          />
+
+          <FiltroPeriodo
+            valor={periodo()}
+            onChange={(novoPeriodo) => setFiltrosDashboard({ ...filtrosDashboard, ...novoPeriodo })}
+          />
+        </div>
       </div>
 
       {isLoading ? (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-            {Array.from({ length: 7 }).map((_, indice) => (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {Array.from({ length: 9 }).map((_, indice) => (
               <Skeleton key={indice} className="h-24 w-full" />
             ))}
           </div>
@@ -110,51 +122,27 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
         <>
           <StatusStatCards
             porTipoStatus={data.porTipoStatus}
-            valorTotalAberto={data.valorTotalAberto}
+            selecionadosIds={selecionadosIds}
             onSelect={selecionarTipoStatus}
           />
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <CasosPorTipoStatusChart porTipoStatus={data.porTipoStatus} />
-            <CasosPorMesChart porMes={data.porMes} />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                Processos{selecionado ? ` — ${selecionado.tipoStatus.nome}` : ""}
-              </h2>
-              <div className="flex items-center gap-2">
-                {selecionado && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => selecionarTipoStatus(selecionado)}
-                  >
-                    Limpar filtro
-                  </Button>
-                )}
-                <Link href="/casos" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                  Ver todos
-                </Link>
-              </div>
-            </div>
-
-            <CasosTable
+            <CasosTabelaSimplificada
               filtros={filtrosTabela}
-              onFiltrosChange={() => {}}
-              onAbrirCaso={(caso) => setSheet({ modo: "ver", caso })}
-              limite={10}
+              atorUsuarioId={atorUsuarioId}
+              atorNome={atorNome}
+              atorRole={atorRole}
             />
+            <CasosStatusDonutChart porTipoStatus={data.porTipoStatus} />
           </div>
         </>
       )}
 
       <CasoSheet
-        modo={sheet?.modo ?? "ver"}
-        caso={sheet?.caso ?? null}
-        aberto={sheet !== null}
-        onOpenChange={(aberto) => setSheet(aberto ? sheet : null)}
+        modo="criar"
+        caso={null}
+        aberto={criandoCaso}
+        onOpenChange={setCriandoCaso}
         atorUsuarioId={atorUsuarioId}
         atorNome={atorNome}
         atorRole={atorRole}
