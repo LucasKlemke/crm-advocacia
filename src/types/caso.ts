@@ -17,7 +17,7 @@ export interface CasoClienteDTO {
 
 export interface CasoResponsavelDTO {
   id: string;
-  usuario: { id: string; nome: string; email: string };
+  usuario: { id: string; nome: string; email: string; avatarUrl: string | null };
 }
 
 export interface CasoDTO {
@@ -58,6 +58,7 @@ export interface KanbanCasos {
 export interface OpcaoFiltroCaso {
   id: string;
   nome: string;
+  avatarUrl: string | null;
 }
 
 export interface OpcaoClienteFiltro {

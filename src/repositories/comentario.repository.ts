@@ -22,7 +22,7 @@ export const comentarioRepository = {
     return db.comentario.findMany({
       where: { escritorioId, escopo, escopoId, softDeletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { autor: { select: { id: true, nome: true, email: true } } },
+      include: { autor: { select: { id: true, nome: true, email: true, avatarUrl: true } } },
     });
   },
 

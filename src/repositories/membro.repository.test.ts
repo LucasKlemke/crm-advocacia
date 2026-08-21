@@ -134,7 +134,13 @@ describe("membroRepository", () => {
     const lista = await membroRepository.listarComUsuarioPorEscritorio(escritorioId);
 
     expect(lista[0].usuario).not.toHaveProperty("senhaHash");
-    expect(Object.keys(lista[0].usuario).sort()).toEqual(["email", "id", "nome", "telefone"]);
+    expect(Object.keys(lista[0].usuario).sort()).toEqual([
+      "avatarUrl",
+      "email",
+      "id",
+      "nome",
+      "telefone",
+    ]);
     expect(JSON.stringify(lista)).not.toContain("senhaHash");
   });
 

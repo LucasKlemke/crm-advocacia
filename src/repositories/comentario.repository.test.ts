@@ -59,6 +59,19 @@ describe("comentarioRepository", () => {
     expect(comentarios[0].autor.nome).toBe("Autora");
   });
 
+  it("não expõe senhaHash do autor e inclui avatarUrl", async () => {
+    await criar(escritorioId, "cliente-avatar", "Comentário com autor.");
+
+    const comentarios = await comentarioRepository.listarPorEscopo(
+      escritorioId,
+      "cliente",
+      "cliente-avatar"
+    );
+
+    expect(comentarios[0].autor).not.toHaveProperty("senhaHash");
+    expect(Object.keys(comentarios[0].autor).sort()).toEqual(["avatarUrl", "email", "id", "nome"]);
+  });
+
   it("não mistura comentários de escopos diferentes", async () => {
     await criar(escritorioId, "cliente-1", "Do cliente 1");
     await criar(escritorioId, "cliente-2", "Do cliente 2");

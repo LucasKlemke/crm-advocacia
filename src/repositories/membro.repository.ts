@@ -10,6 +10,7 @@ export const USUARIO_PUBLICO_SELECT = {
   nome: true,
   email: true,
   telefone: true,
+  avatarUrl: true,
 } satisfies Prisma.UsuarioSelect;
 
 export type UsuarioPublico = Prisma.UsuarioGetPayload<{

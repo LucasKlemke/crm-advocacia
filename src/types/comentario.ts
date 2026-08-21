@@ -8,5 +8,5 @@ export interface ComentarioDTO {
   autorUsuarioId: string;
   editadoEm: string | null;
   createdAt: string;
-  autor: { id: string; nome: string; email: string };
+  autor: { id: string; nome: string; email: string; avatarUrl: string | null };
 }
