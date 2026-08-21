@@ -84,7 +84,7 @@ export interface AtualizarPerfilInput {
 export interface UploadUrlAvatarInput {
   nomeArquivo: string;
   tipoArquivo: "jpeg" | "png" | "webp";
-  tamanhoKb: number;
+  tamanhoBytes: number;
 }
 
 export interface UploadUrlAvatarResult {
@@ -186,15 +186,18 @@ export const usuarioService = {
     usuarioId: string,
     input: UploadUrlAvatarInput
   ): Promise<UploadUrlAvatarResult> {
-    if (input.tamanhoKb > TAMANHO_MAXIMO_AVATAR_KB) {
+    if (input.tamanhoBytes > TAMANHO_MAXIMO_AVATAR_KB * 1024) {
       throw new TamanhoAvatarInvalidoError();
     }
 
     const storageKey = `${prefixoAvatarDe(usuarioId)}${Date.now()}-${input.nomeArquivo}`;
+    // ContentLength é um header assinado — tem que ser o tamanho exato em bytes que o
+    // navegador vai enviar no PUT, nunca um KB arredondado (senão o S3 rejeita com
+    // SignatureDoesNotMatch por divergência de Content-Length).
     const uploadUrl = await s3Client.gerarUrlUpload(
       storageKey,
       MIME_POR_TIPO_AVATAR[input.tipoArquivo],
-      input.tamanhoKb * 1024
+      input.tamanhoBytes
     );
 
     return { uploadUrl, storageKey };

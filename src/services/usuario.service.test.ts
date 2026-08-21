@@ -255,14 +255,28 @@ describe("usuarioService.gerarUrlUploadAvatar", () => {
     const resultado = await usuarioService.gerarUrlUploadAvatar("user-1", {
       nomeArquivo: "foto.png",
       tipoArquivo: "png",
-      tamanhoKb: 200,
+      tamanhoBytes: 204_800,
     });
 
     // Key completa (só o timestamp é variável): uma regressão que perdesse o prefixo e
     // gerasse "undefined/avatares/..." precisa quebrar aqui.
     expect(resultado.storageKey).toMatch(/^development\/avatares\/user-1\/\d+-foto\.png$/);
     expect(resultado.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put-avatar");
-    expect(s3.gerarUrlUpload).toHaveBeenCalledWith(resultado.storageKey, "image/png", 200 * 1024);
+    expect(s3.gerarUrlUpload).toHaveBeenCalledWith(resultado.storageKey, "image/png", 204_800);
+  });
+
+  // Bug: assinar com Math.ceil(bytes/1024)*1024 (arredondado pra cima) diverge do
+  // Content-Length real que o navegador envia no PUT, e o S3 rejeita com
+  // SignatureDoesNotMatch — content-length é um header assinado. Por isso o valor
+  // assinado tem que ser o tamanho exato em bytes, nunca um KB arredondado.
+  it("assina com o tamanho exato em bytes, não um KB arredondado", async () => {
+    await usuarioService.gerarUrlUploadAvatar("user-1", {
+      nomeArquivo: "foto.png",
+      tipoArquivo: "png",
+      tamanhoBytes: 1_687_900,
+    });
+
+    expect(s3.gerarUrlUpload).toHaveBeenCalledWith(expect.any(String), "image/png", 1_687_900);
   });
 
   it("falha explicitamente quando AWS_S3_PREFIX não está configurado", async () => {
@@ -273,7 +287,7 @@ describe("usuarioService.gerarUrlUploadAvatar", () => {
         usuarioService.gerarUrlUploadAvatar("user-1", {
           nomeArquivo: "foto.png",
           tipoArquivo: "png",
-          tamanhoKb: 200,
+          tamanhoBytes: 204_800,
         })
       ).rejects.toThrow("AWS_S3_PREFIX não configurado.");
       expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
@@ -289,7 +303,7 @@ describe("usuarioService.gerarUrlUploadAvatar", () => {
       usuarioService.gerarUrlUploadAvatar("user-1", {
         nomeArquivo: "grande.png",
         tipoArquivo: "png",
-        tamanhoKb: 5121,
+        tamanhoBytes: 5121 * 1024,
       })
     ).rejects.toThrow(TamanhoAvatarInvalidoError);
     expect(s3.gerarUrlUpload).not.toHaveBeenCalled();

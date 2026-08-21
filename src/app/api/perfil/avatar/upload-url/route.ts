@@ -7,7 +7,7 @@ import { usuarioService, TamanhoAvatarInvalidoError } from "@/services/usuario.s
 const uploadUrlAvatarSchema = z.object({
   nomeArquivo: nomeArquivoSchema,
   tipoArquivo: z.enum(["jpeg", "png", "webp"]),
-  tamanhoKb: z.number().int().positive(),
+  tamanhoBytes: z.number().int().positive(),
 });
 
 // Perfil é do usuário, não do tenant — não passa por getTenantContext() (mesmo
