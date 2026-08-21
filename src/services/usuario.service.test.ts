@@ -381,3 +381,60 @@ describe("usuarioService.confirmarUploadAvatar", () => {
     }
   });
 });
+
+describe("usuarioService.gerarUrlDownloadAvatar", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("devolve a URL assinada de download quando o usuário tem avatar", async () => {
+    repo.findById.mockResolvedValue({
+      id: "user-1",
+      avatarUrl: "development/avatares/user-1/111-foto.png",
+    } as never);
+    s3.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get-avatar");
+
+    const resultado = await usuarioService.gerarUrlDownloadAvatar("user-1");
+
+    expect(s3.gerarUrlDownload).toHaveBeenCalledWith("development/avatares/user-1/111-foto.png");
+    expect(resultado).toBe("https://bucket.s3.amazonaws.com/signed-get-avatar");
+  });
+
+  it("devolve null quando o usuário não tem avatar", async () => {
+    repo.findById.mockResolvedValue({ id: "user-1", avatarUrl: null } as never);
+
+    const resultado = await usuarioService.gerarUrlDownloadAvatar("user-1");
+
+    expect(resultado).toBeNull();
+    expect(s3.gerarUrlDownload).not.toHaveBeenCalled();
+  });
+});
+
+describe("usuarioService.assinarUrlAvatar", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Diferente de gerarUrlDownloadAvatar, não busca no banco — assina direto a
+  // storageKey recebida (uso em listas com N avatares de usuários diferentes, ex.:
+  // casos, membros, comentários — não faz sentido um round-trip por item).
+  it("assina a storageKey recebida sem consultar o banco", async () => {
+    s3.gerarUrlDownload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get-avatar");
+
+    const resultado = await usuarioService.assinarUrlAvatar("development/avatares/user-1/foto.png");
+
+    expect(repo.findById).not.toHaveBeenCalled();
+    expect(s3.gerarUrlDownload).toHaveBeenCalledWith(
+      "development/avatares/user-1/foto.png",
+      expect.any(Number)
+    );
+    expect(resultado).toBe("https://bucket.s3.amazonaws.com/signed-get-avatar");
+  });
+
+  it("devolve null quando a storageKey é null", async () => {
+    const resultado = await usuarioService.assinarUrlAvatar(null);
+
+    expect(resultado).toBeNull();
+    expect(s3.gerarUrlDownload).not.toHaveBeenCalled();
+  });
+});

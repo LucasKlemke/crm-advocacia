@@ -41,6 +41,11 @@ export class StorageKeyInvalidoError extends Error {
 
 const TAMANHO_MAXIMO_AVATAR_KB = 5 * 1024;
 
+// Avatares aparecem em listas (casos, membros, comentários) que ficam em cache
+// client-side por mais tempo que os 60s padrão de download de documento — expiração
+// maior evita que a imagem "quebre" antes de um refetch.
+const URL_DOWNLOAD_AVATAR_SEGUNDOS = 600;
+
 // Env ausente/errado produziria keys começando com a string literal "undefined/" sem
 // nenhum sinal de erro — falha explícita é preferível a lixo silencioso no bucket.
 function obterPrefixoS3(): string {
@@ -220,5 +225,22 @@ export const usuarioService = {
     }
 
     return usuarioRepository.update(usuarioId, { avatarUrl: storageKey });
+  },
+
+  async gerarUrlDownloadAvatar(usuarioId: string): Promise<string | null> {
+    const usuario = await usuarioRepository.findById(usuarioId);
+    if (!usuario?.avatarUrl) {
+      return null;
+    }
+
+    return s3Client.gerarUrlDownload(usuario.avatarUrl);
+  },
+
+  async assinarUrlAvatar(storageKey: string | null): Promise<string | null> {
+    if (!storageKey) {
+      return null;
+    }
+
+    return s3Client.gerarUrlDownload(storageKey, URL_DOWNLOAD_AVATAR_SEGUNDOS);
   },
 };
