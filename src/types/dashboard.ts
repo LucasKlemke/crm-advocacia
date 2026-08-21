@@ -10,15 +10,8 @@ export interface ContagemPorTipoStatusDTO {
   valorTotal: number;
 }
 
-export interface ContagemPorMesDTO {
-  mes: string;
-  total: number;
-}
-
 export interface ResumoDashboardDTO {
   porTipoStatus: ContagemPorTipoStatusDTO[];
-  porMes: ContagemPorMesDTO[];
-  valorTotalAberto: number;
 }
 
 // Filtro do header do dashboard (dashboard-view.tsx): mesmo subconjunto de

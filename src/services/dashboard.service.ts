@@ -20,21 +20,8 @@ export interface ContagemPorTipoStatus {
   valorTotal: number;
 }
 
-export interface ContagemPorMes {
-  mes: string;
-  total: number;
-}
-
 export interface ResumoDashboard {
   porTipoStatus: ContagemPorTipoStatus[];
-  porMes: ContagemPorMes[];
-  valorTotalAberto: number;
-}
-
-const MESES_HISTORICO = 6;
-
-function chaveMes(data: Date): string {
-  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export const dashboardService = {
@@ -74,48 +61,8 @@ export const dashboardService = {
     });
   },
 
-  async casosPorMes(ctx: TenantContext, filtros: FiltrosDashboard = {}): Promise<ContagemPorMes[]> {
-    const agora = new Date();
-    const seisMesesAtras = new Date(agora.getFullYear(), agora.getMonth() - (MESES_HISTORICO - 1), 1);
-
-    // O período do header pode encurtar a janela (nunca alargar): os "últimos 6
-    // meses" do gráfico sempre ficam fixos, um dataInicio do usuário só restringe
-    // ainda mais quais casos daquela janela entram na contagem.
-    const dataInicioEfetiva =
-      filtros.dataInicio && filtros.dataInicio > seisMesesAtras ? filtros.dataInicio : seisMesesAtras;
-
-    const datas = await casoRepository.listarDatasCriacao(ctx.escritorioId, {
-      ...filtros,
-      dataInicio: dataInicioEfetiva,
-    });
-
-    const totalPorMes = new Map<string, number>();
-    for (const data of datas) {
-      const chave = chaveMes(data);
-      totalPorMes.set(chave, (totalPorMes.get(chave) ?? 0) + 1);
-    }
-
-    // Zero-fill: um mês sem casos ainda aparece na série, com total 0.
-    const meses: ContagemPorMes[] = [];
-    for (let i = MESES_HISTORICO - 1; i >= 0; i--) {
-      const data = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
-      const mes = chaveMes(data);
-      meses.push({ mes, total: totalPorMes.get(mes) ?? 0 });
-    }
-
-    return meses;
-  },
-
-  async valorTotalAberto(ctx: TenantContext, filtros: FiltrosDashboard = {}): Promise<number> {
-    return casoRepository.somarValorAberto(ctx.escritorioId, filtros);
-  },
-
   async resumo(ctx: TenantContext, filtros: FiltrosDashboard = {}): Promise<ResumoDashboard> {
-    const [porTipoStatus, porMes, valorTotalAberto] = await Promise.all([
-      this.contarPorTipoStatus(ctx, filtros),
-      this.casosPorMes(ctx, filtros),
-      this.valorTotalAberto(ctx, filtros),
-    ]);
-    return { porTipoStatus, porMes, valorTotalAberto };
+    const porTipoStatus = await this.contarPorTipoStatus(ctx, filtros);
+    return { porTipoStatus };
   },
 };

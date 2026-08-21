@@ -126,130 +126,13 @@ describe("dashboardService.contarPorTipoStatus", () => {
   });
 });
 
-describe("dashboardService.casosPorMes", () => {
-  beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(new Date("2026-08-15T12:00:00.000Z"));
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("devolve exatamente 6 meses em ordem cronológica, zero-filled", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-
-    const resultado = await dashboardService.casosPorMes(ctx());
-
-    expect(resultado).toEqual([
-      { mes: "2026-03", total: 0 },
-      { mes: "2026-04", total: 0 },
-      { mes: "2026-05", total: 0 },
-      { mes: "2026-06", total: 0 },
-      { mes: "2026-07", total: 0 },
-      { mes: "2026-08", total: 0 },
-    ]);
-  });
-
-  it("agrupa as datas de criação por mês", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([
-      new Date("2026-06-01T10:00:00.000Z"),
-      new Date("2026-06-20T10:00:00.000Z"),
-      new Date("2026-08-01T10:00:00.000Z"),
-      new Date("2026-08-31T23:00:00.000Z"),
-      new Date("2026-08-31T23:00:00.000Z"),
-    ]);
-
-    const resultado = await dashboardService.casosPorMes(ctx());
-
-    expect(resultado).toEqual([
-      { mes: "2026-03", total: 0 },
-      { mes: "2026-04", total: 0 },
-      { mes: "2026-05", total: 0 },
-      { mes: "2026-06", total: 2 },
-      { mes: "2026-07", total: 0 },
-      { mes: "2026-08", total: 3 },
-    ]);
-  });
-
-  it("chama o repositório escopado ao escritório e desde 6 meses atrás", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-
-    await dashboardService.casosPorMes(ctx());
-
-    expect(repo.listarDatasCriacao).toHaveBeenCalledWith("esc-1", {
-      dataInicio: expect.any(Date),
-    });
-  });
-
-  it("usa o dataInicio do filtro quando ele encurta a janela de 6 meses", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-    const dataInicioFiltro = new Date("2026-07-15T00:00:00.000Z");
-
-    await dashboardService.casosPorMes(ctx(), { dataInicio: dataInicioFiltro });
-
-    expect(repo.listarDatasCriacao).toHaveBeenCalledWith("esc-1", {
-      dataInicio: dataInicioFiltro,
-    });
-  });
-
-  it("ignora um dataInicio do filtro anterior aos 6 meses (a janela nunca alarga)", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-    const dataInicioFiltro = new Date("2020-01-01T00:00:00.000Z");
-
-    await dashboardService.casosPorMes(ctx(), { dataInicio: dataInicioFiltro });
-
-    const [, filtrosChamados] = repo.listarDatasCriacao.mock.calls[0];
-    expect((filtrosChamados as { dataInicio: Date }).dataInicio.getTime()).toBeGreaterThan(
-      dataInicioFiltro.getTime()
-    );
-  });
-
-  it("repassa clienteIds e responsavelIds do filtro ao repositório", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-
-    await dashboardService.casosPorMes(ctx(), {
-      clienteIds: ["cli-1"],
-      responsavelIds: ["membro-1"],
-    });
-
-    expect(repo.listarDatasCriacao).toHaveBeenCalledWith("esc-1", {
-      clienteIds: ["cli-1"],
-      responsavelIds: ["membro-1"],
-      dataInicio: expect.any(Date),
-    });
-  });
-});
-
-describe("dashboardService.valorTotalAberto", () => {
-  it("delega ao repositório escopado ao escritório", async () => {
-    repo.somarValorAberto.mockResolvedValue(1234.5);
-
-    const resultado = await dashboardService.valorTotalAberto(ctx());
-
-    expect(resultado).toBe(1234.5);
-    expect(repo.somarValorAberto).toHaveBeenCalledWith("esc-1", {});
-  });
-
-  it("repassa os filtros ao repositório", async () => {
-    repo.somarValorAberto.mockResolvedValue(0);
-
-    await dashboardService.valorTotalAberto(ctx(), { clienteIds: ["cli-1"] });
-
-    expect(repo.somarValorAberto).toHaveBeenCalledWith("esc-1", { clienteIds: ["cli-1"] });
-  });
-});
-
 describe("dashboardService.resumo", () => {
-  it("monta os três campos do resumo", async () => {
+  it("monta o resumo a partir da contagem por tipo de status", async () => {
     statusRepo.listar.mockResolvedValue([]);
     repo.contarPorStatus.mockResolvedValue([]);
-    repo.listarDatasCriacao.mockResolvedValue([]);
-    repo.somarValorAberto.mockResolvedValue(500);
 
     const resultado = await dashboardService.resumo(ctx());
 
     expect(resultado.porTipoStatus).toHaveLength(6);
-    expect(resultado.porMes).toHaveLength(6);
-    expect(resultado.valorTotalAberto).toBe(500);
   });
 });
