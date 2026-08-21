@@ -75,6 +75,13 @@ function mockarFetch() {
         json: async () => ({ caso: { ...casoFake(), arquivado: true } }),
       } as unknown as Response);
     }
+    if (url.startsWith("/api/documentos")) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ documentos: [] }),
+      } as unknown as Response);
+    }
     return Promise.reject(new Error(`URL não mockada: ${url}`));
   });
 }
@@ -135,5 +142,105 @@ describe("CasoSheet", () => {
       expect(chamada).toBeDefined();
     });
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it("mostra as abas Detalhes/Documentos no modo ver, mas não no modo criar", async () => {
+    renderSheet();
+    expect(await screen.findByRole("tab", { name: "Detalhes" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Documentos" })).toBeInTheDocument();
+  });
+
+  it("não mostra abas no modo criar", async () => {
+    renderSheet({ modo: "criar", caso: null });
+    await screen.findByRole("heading", { name: "Novo processo" });
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  it("mostra os documentos do processo e do cliente ao trocar para a aba Documentos", async () => {
+    const usuario = userEvent.setup();
+    renderSheet();
+
+    await usuario.click(await screen.findByRole("tab", { name: "Documentos" }));
+
+    expect(await screen.findByText("Documentos do processo")).toBeInTheDocument();
+    expect(screen.getByText("Documentos do cliente")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/documentos?escopo=caso&escopoId=caso-1",
+        expect.anything()
+      )
+    );
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/documentos?escopo=cliente&escopoId=cli-1",
+        expect.anything()
+      )
+    );
+  });
+
+  // Clicar num documento troca o conteúdo da drawer inteira pelo visualizador (como uma
+  // aba exclusiva), escondendo as abas Detalhes/Documentos até voltar.
+  it("abre o documento na própria drawer ao clicar no card, e Voltar restaura as abas", async () => {
+    global.fetch = jest.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/comentarios")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ comentarios: [] }) } as Response);
+      }
+      if (url.startsWith("/api/casos/filtros")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ clientes: [], membros: [], status: [], tipos: [] }),
+        } as Response);
+      }
+      if (url === "/api/documentos?escopo=caso&escopoId=caso-1") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            documentos: [
+              {
+                id: "doc-1",
+                escopo: "caso",
+                escopoId: "caso-1",
+                nomeOriginal: "contrato.pdf",
+                tipoArquivo: "pdf",
+                tamanhoKb: 100,
+                createdAt: "2026-08-01T12:00:00.000Z",
+              },
+            ],
+          }),
+        } as Response);
+      }
+      if (url.startsWith("/api/documentos?escopo=cliente")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ documentos: [] }) } as Response);
+      }
+      if (url.includes("download-url")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ downloadUrl: "https://s3.example.com/get-inline" }),
+        } as Response);
+      }
+      return Promise.reject(new Error(`URL não mockada: ${url}`));
+    });
+
+    const usuario = userEvent.setup();
+    renderSheet();
+
+    await usuario.click(await screen.findByRole("tab", { name: "Documentos" }));
+    await usuario.click(await screen.findByRole("button", { name: /^contrato\.pdf/i }));
+
+    expect(await screen.findByRole("button", { name: "Voltar" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    await screen.findByTitle("contrato.pdf");
+
+    await usuario.click(screen.getByRole("button", { name: "Voltar" }));
+
+    // Voltar reabre na aba Documentos (de onde o clique partiu), não em Detalhes.
+    expect(await screen.findByRole("tab", { name: "Documentos" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByText("Documentos do processo")).toBeInTheDocument();
   });
 });

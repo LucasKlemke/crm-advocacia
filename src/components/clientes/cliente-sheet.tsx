@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { CalendarPlus, History, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarPlus, History, Info, Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes } from "@/hooks/use-clientes";
 import { ClienteDados } from "@/components/clientes/cliente-dados";
 import { ClienteForm } from "@/components/clientes/cliente-form";
 import { ComentariosPanel } from "@/components/shared/comentarios-panel";
+import { DocumentosGrupo } from "@/components/shared/documentos-grupo";
+import { DocumentoViewer } from "@/components/shared/documento-viewer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,8 +21,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RoleMembro } from "@prisma/client";
 import type { ClienteDTO } from "@/types/cliente";
+import type { DocumentoDTO } from "@/types/documento";
 
 export type ModoSheet = "criar" | "ver";
 
@@ -36,7 +40,7 @@ export interface ClienteSheetProps {
 
 // Um único drawer serve criação e consulta/edição: no modo criar mostra o formulário
 // completo; com um cliente carregado, os comentários ficam no topo (como no Notion) e
-// os dados abaixo, editáveis campo a campo.
+// abaixo ficam as abas de Detalhes (editável campo a campo) e Documentos.
 export function ClienteSheet({
   modo,
   cliente,
@@ -50,6 +54,11 @@ export function ClienteSheet({
   // A tabela só recarrega depois; enquanto o drawer está aberto, o que foi salvo aqui
   // é a versão mais recente do cadastro.
   const [salvo, setSalvo] = useState<ClienteDTO | null>(null);
+  const [documentoVisualizando, setDocumentoVisualizando] = useState<DocumentoDTO | null>(null);
+  // Controlada (não defaultValue) para sobreviver ao Tabs desmontar/remontar quando a
+  // drawer troca para o DocumentoViewer e volta — sem isso, "Voltar" sempre reabria em
+  // "Detalhes".
+  const [tabAtiva, setTabAtiva] = useState("detalhes");
   const exibido = salvo?.id === cliente?.id ? salvo : cliente;
   const excluido = exibido?.softDeletedAt != null;
 
@@ -63,6 +72,21 @@ export function ClienteSheet({
     } catch (erro) {
       toast.error(erro instanceof ApiError ? erro.message : "Não foi possível concluir a ação.");
     }
+  }
+
+  // Visualizar um documento ocupa a drawer inteira (sem cabeçalho/comentários nem
+  // rodapé de ativação) — só a barra "Voltar" do próprio DocumentoViewer.
+  if (cliente && documentoVisualizando) {
+    return (
+      <Sheet open={aberto} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-xl" showCloseButton={false}>
+          <DocumentoViewer
+            documento={documentoVisualizando}
+            onVoltar={() => setDocumentoVisualizando(null)}
+          />
+        </SheetContent>
+      </Sheet>
+    );
   }
 
   return (
@@ -116,7 +140,30 @@ export function ClienteSheet({
                 onCancelar={() => onOpenChange(false)}
               />
             ) : cliente ? (
-              <ClienteDados key={cliente.id} cliente={cliente} onAtualizado={setSalvo} />
+              <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="gap-4">
+                <TabsList className="w-full">
+                  <TabsTrigger value="detalhes">
+                    <Info />
+                    Detalhes
+                  </TabsTrigger>
+                  <TabsTrigger value="documentos">
+                    <Paperclip />
+                    Documentos
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="detalhes">
+                  <ClienteDados key={cliente.id} cliente={cliente} onAtualizado={setSalvo} />
+                </TabsContent>
+                <TabsContent value="documentos">
+                  <DocumentosGrupo
+                    escopo="cliente"
+                    escopoId={cliente.id}
+                    titulo="Documentos"
+                    hrefBaixarTodos={`/api/clientes/${cliente.id}/documentos/download-todos`}
+                    onVisualizar={setDocumentoVisualizando}
+                  />
+                </TabsContent>
+              </Tabs>
             ) : null}
           </div>
         </div>

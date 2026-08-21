@@ -57,12 +57,45 @@ describe("ClienteSheet", () => {
     expect(screen.getByText("maria@ex.com")).toBeInTheDocument();
   });
 
-  // Sem abas: os comentários ficam no cabeçalho e os dados logo abaixo, tudo à vista.
-  it("mostra os comentários no cabeçalho, sem abas", async () => {
+  // Comentários ficam no cabeçalho, fora das abas: sempre visíveis independente da aba
+  // selecionada abaixo (Detalhes/Documentos).
+  it("mostra os comentários no cabeçalho, e as abas Detalhes/Documentos abaixo", async () => {
     renderSheet();
 
     expect(await screen.findByRole("textbox", { name: "Novo comentário" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Detalhes" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Documentos" })).toBeInTheDocument();
+  });
+
+  it("mostra a lista de documentos do cliente ao trocar para a aba Documentos", async () => {
+    const usuario = userEvent.setup();
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.startsWith("/api/documentos")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ documentos: [] }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ comentarios: [] }),
+      } as Response);
+    });
+
+    renderSheet();
+    await screen.findByRole("tab", { name: "Documentos" });
+
+    await usuario.click(screen.getByRole("tab", { name: "Documentos" }));
+
+    expect(await screen.findByText(/nenhum documento enviado/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/documentos?escopo=cliente&escopoId=cli-1",
+        expect.anything()
+      )
+    );
   });
 
   it("clicar em um dado abre aquele campo para edição", async () => {
@@ -115,6 +148,7 @@ describe("ClienteSheet", () => {
     expect(await screen.findByRole("button", { name: "Criar cliente" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Novo comentário" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Desativar cliente" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
   // A ação individual saiu da tabela: quem abre o cadastro é quem decide desativá-lo.
