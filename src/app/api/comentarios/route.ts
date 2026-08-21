@@ -6,6 +6,7 @@ import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
 import { tratarErroDeComentario } from "@/lib/api/erros-comentario";
 import { comentarioService } from "@/services/comentario.service";
+import { usuarioService } from "@/services/usuario.service";
 
 const escopoSchema = z.enum(["cliente", "caso"]);
 
@@ -30,7 +31,16 @@ export async function GET(request: Request) {
       parsed.data.escopo,
       parsed.data.escopoId
     );
-    return NextResponse.json({ comentarios });
+    const comentariosComAvatar = await Promise.all(
+      comentarios.map(async (comentario) => ({
+        ...comentario,
+        autor: {
+          ...comentario.autor,
+          avatarUrl: await usuarioService.assinarUrlAvatar(comentario.autor.avatarUrl),
+        },
+      }))
+    );
+    return NextResponse.json({ comentarios: comentariosComAvatar });
   } catch (error) {
     const resposta =
       tratarErroDeContexto(error) ??

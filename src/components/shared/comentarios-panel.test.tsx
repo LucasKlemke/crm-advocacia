@@ -4,6 +4,11 @@ import { ComentariosPanel } from "./comentarios-panel";
 import type { ComentarioDTO } from "@/types/comentario";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("@/components/shared/avatar-iniciais", () => ({
+  AvatarIniciais: ({ nome, avatarUrl }: { nome: string; avatarUrl?: string | null }) => (
+    <div data-testid={`avatar-${nome}`} data-avatar-url={avatarUrl ?? ""} />
+  ),
+}));
 
 function comentarioFake(over: Partial<ComentarioDTO> = {}): ComentarioDTO {
   return {
@@ -12,7 +17,7 @@ function comentarioFake(over: Partial<ComentarioDTO> = {}): ComentarioDTO {
     autorUsuarioId: "user-1",
     editadoEm: null,
     createdAt: "2026-08-01T12:00:00.000Z",
-    autor: { id: "user-1", nome: "Ana Advogada", email: "ana@ex.com" },
+    autor: { id: "user-1", nome: "Ana Advogada", email: "ana@ex.com", avatarUrl: null },
     ...over,
   };
 }
@@ -45,6 +50,29 @@ describe("ComentariosPanel", () => {
     expect(await screen.findByText("Primeiro contato feito.")).toBeInTheDocument();
     expect(screen.getByText("Ana Advogada")).toBeInTheDocument();
     expect(screen.getByText(/2026/)).toBeInTheDocument();
+  });
+
+  it("repassa o avatarUrl do autor pro AvatarIniciais", async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      respostaLista([
+        comentarioFake({
+          autor: {
+            id: "user-1",
+            nome: "Ana Advogada",
+            email: "ana@ex.com",
+            avatarUrl: "https://bucket.s3.amazonaws.com/signed-get",
+          },
+        }),
+      ])
+    );
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("avatar-Ana Advogada")).toHaveAttribute(
+        "data-avatar-url",
+        "https://bucket.s3.amazonaws.com/signed-get"
+      )
+    );
   });
 
   it("marca comentários que foram editados", async () => {

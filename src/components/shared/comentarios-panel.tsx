@@ -118,7 +118,11 @@ export function ComentariosPanel({
 
           return (
             <li key={comentario.id} className="flex gap-2">
-              <AvatarIniciais nome={comentario.autor.nome} className="size-6" />
+              <AvatarIniciais
+                nome={comentario.autor.nome}
+                avatarUrl={comentario.autor.avatarUrl}
+                className="size-6"
+              />
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex h-6 items-center gap-2">
                   <span className="text-xs font-medium text-foreground">

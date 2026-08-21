@@ -41,9 +41,13 @@ jest.mock("@/services/cliente.service", () => {
     EmailInvalidoError,
   };
 });
+jest.mock("@/services/usuario.service", () => ({
+  usuarioService: { assinarUrlAvatar: jest.fn() },
+}));
 
 const mockedGetTenantContext = getTenantContext as jest.Mock;
 const service = comentarioService as jest.Mocked<typeof comentarioService>;
+const { usuarioService } = jest.requireMock("@/services/usuario.service");
 
 const ctx = { usuarioId: "user-1", escritorioId: "esc-1", role: "padrao" as const };
 const CLIENTE_ID = "11111111-1111-4111-8111-111111111111";
@@ -72,6 +76,25 @@ describe("GET /api/comentarios", () => {
 
     expect(response.status).toBe(200);
     expect(service.listar).toHaveBeenCalledWith(ctx, "cliente", CLIENTE_ID);
+  });
+
+  it("assina o avatarUrl do autor de cada comentário", async () => {
+    usuarioService.assinarUrlAvatar.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+    service.listar.mockResolvedValue([
+      {
+        id: "com-1",
+        conteudo: "Olá",
+        autor: { id: "user-1", nome: "Fulano", email: "fulano@teste.com", avatarUrl: "development/avatares/user-1/foto.png" },
+      },
+    ] as never);
+
+    const response = await GET(
+      new Request(`http://localhost/api/comentarios?escopo=cliente&escopoId=${CLIENTE_ID}`)
+    );
+    const corpo = await response.json();
+
+    expect(usuarioService.assinarUrlAvatar).toHaveBeenCalledWith("development/avatares/user-1/foto.png");
+    expect(corpo.comentarios[0].autor.avatarUrl).toBe("https://bucket.s3.amazonaws.com/signed-get");
   });
 
   it("recusa escopo desconhecido", async () => {
