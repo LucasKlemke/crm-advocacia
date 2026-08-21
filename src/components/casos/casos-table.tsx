@@ -180,13 +180,16 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: Ca
                     <SelectTrigger size="sm" aria-label={`Responsável de ${caso.titulo}`}>
                       <SelectValue>
                         {() => {
-                          const nome =
-                            membrosOpcoes.find((membro) => membro.id === caso.responsavelMembroId)
-                              ?.nome ?? caso.responsavel?.usuario.nome;
+                          const membroSelecionado = membrosOpcoes.find(
+                            (membro) => membro.id === caso.responsavelMembroId
+                          );
+                          const nome = membroSelecionado?.nome ?? caso.responsavel?.usuario.nome;
+                          const avatarUrl =
+                            membroSelecionado?.avatarUrl ?? caso.responsavel?.usuario.avatarUrl;
                           if (!nome) return "Sem responsável";
                           return (
                             <span className="flex items-center gap-1.5">
-                              <AvatarIniciais nome={nome} className="size-5 text-[10px]" />
+                              <AvatarIniciais nome={nome} avatarUrl={avatarUrl} className="size-5 text-[10px]" />
                               {nome}
                             </span>
                           );
@@ -197,7 +200,7 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: Ca
                       <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
                       {membrosOpcoes.map((membro) => (
                         <SelectItem key={membro.id} value={membro.id}>
-                          <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                          <AvatarIniciais nome={membro.nome} avatarUrl={membro.avatarUrl} className="size-5 text-[10px]" />
                           {membro.nome}
                         </SelectItem>
                       ))}

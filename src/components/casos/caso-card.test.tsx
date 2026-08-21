@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { CasoCard } from "./caso-card";
 import type { CasoDTO } from "@/types/caso";
 
+jest.mock("@/components/shared/avatar-iniciais", () => ({
+  AvatarIniciais: ({ nome, avatarUrl }: { nome: string; avatarUrl?: string | null }) => (
+    <div data-testid={`avatar-${nome}`} data-avatar-url={avatarUrl ?? ""} />
+  ),
+}));
+
 function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
   return {
     id: "caso-1",
@@ -84,11 +90,36 @@ describe("CasoCard", () => {
     renderCard(
       casoFake({
         responsavelMembroId: "membro-1",
-        responsavel: { id: "membro-1", usuario: { id: "user-1", nome: "Ana Advogada", email: "ana@ex.com" } },
+        responsavel: {
+          id: "membro-1",
+          usuario: { id: "user-1", nome: "Ana Advogada", email: "ana@ex.com", avatarUrl: null },
+        },
       })
     );
 
     expect(screen.getByText("Ana Advogada")).toBeInTheDocument();
+  });
+
+  it("repassa o avatarUrl do responsável pro AvatarIniciais", () => {
+    renderCard(
+      casoFake({
+        responsavelMembroId: "membro-1",
+        responsavel: {
+          id: "membro-1",
+          usuario: {
+            id: "user-1",
+            nome: "Ana Advogada",
+            email: "ana@ex.com",
+            avatarUrl: "https://bucket.s3.amazonaws.com/signed-get",
+          },
+        },
+      })
+    );
+
+    expect(screen.getByTestId("avatar-Ana Advogada")).toHaveAttribute(
+      "data-avatar-url",
+      "https://bucket.s3.amazonaws.com/signed-get"
+    );
   });
 
   it("chama onClick ao clicar no card", () => {

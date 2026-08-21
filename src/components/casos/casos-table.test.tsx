@@ -5,6 +5,11 @@ import { filtrosCasosPadrao } from "@/types/caso";
 import type { CasoDTO } from "@/types/caso";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("@/components/shared/avatar-iniciais", () => ({
+  AvatarIniciais: ({ nome, avatarUrl }: { nome: string; avatarUrl?: string | null }) => (
+    <div data-testid={`avatar-${nome}`} data-avatar-url={avatarUrl ?? ""} />
+  ),
+}));
 
 function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
   return {
@@ -58,7 +63,9 @@ function mockarFetch() {
         status: 200,
         json: async () => ({
           clientes: [{ id: "cli-1", nome: "Maria Silva" }],
-          membros: [{ id: "membro-1", nome: "João Souza" }],
+          membros: [
+            { id: "membro-1", nome: "João Souza", avatarUrl: "https://bucket.s3.amazonaws.com/signed-get" },
+          ],
           status: [
             { id: "status-1", nome: "Em análise", cor: "#f59e0b" },
             { id: "status-2", nome: "Fechado", cor: "#10b981" },
@@ -150,6 +157,19 @@ describe("CasosTable", () => {
       expect(chamada).toBeDefined();
       expect(JSON.parse(chamada[1].body)).toEqual({ statusId: "status-2" });
     });
+  });
+
+  it("repassa o avatarUrl do membro pro AvatarIniciais nas opções do select", async () => {
+    const usuario = userEvent.setup();
+    renderTabela();
+    await screen.findByText("Ação de cobrança");
+
+    await usuario.click(screen.getByRole("combobox", { name: "Responsável de Ação de cobrança" }));
+
+    expect(await screen.findByTestId("avatar-João Souza")).toHaveAttribute(
+      "data-avatar-url",
+      "https://bucket.s3.amazonaws.com/signed-get"
+    );
   });
 
   it("troca o responsável do caso pelo select da linha", async () => {

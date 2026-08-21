@@ -256,13 +256,13 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
             <SelectValue>
               {() => {
                 if (valores.responsavelMembroId === SEM_RESPONSAVEL_VALOR) return "Sem responsável";
-                const nome =
-                  membros.find((m) => m.id === valores.responsavelMembroId)?.nome ??
-                  caso.responsavel?.usuario.nome;
+                const membroSelecionado = membros.find((m) => m.id === valores.responsavelMembroId);
+                const nome = membroSelecionado?.nome ?? caso.responsavel?.usuario.nome;
+                const avatarUrl = membroSelecionado?.avatarUrl ?? caso.responsavel?.usuario.avatarUrl;
                 if (!nome) return "Sem responsável";
                 return (
                   <span className="flex items-center gap-2">
-                    <AvatarIniciais nome={nome} className="size-5 text-[10px]" />
+                    <AvatarIniciais nome={nome} avatarUrl={avatarUrl} className="size-5 text-[10px]" />
                     {nome}
                   </span>
                 );
@@ -273,7 +273,7 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
             <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
             {membros.map((membro) => (
               <SelectItem key={membro.id} value={membro.id}>
-                <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                <AvatarIniciais nome={membro.nome} avatarUrl={membro.avatarUrl} className="size-5 text-[10px]" />
                 {membro.nome}
               </SelectItem>
             ))}

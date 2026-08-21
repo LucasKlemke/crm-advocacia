@@ -240,7 +240,7 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
                 if (!membro) return "Selecione";
                 return (
                   <span className="flex items-center gap-2">
-                    <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                    <AvatarIniciais nome={membro.nome} avatarUrl={membro.avatarUrl} className="size-5 text-[10px]" />
                     {membro.nome}
                   </span>
                 );
@@ -251,7 +251,7 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
             <SelectItem value={SEM_RESPONSAVEL_VALOR}>Sem responsável</SelectItem>
             {membros.map((membro) => (
               <SelectItem key={membro.id} value={membro.id}>
-                <AvatarIniciais nome={membro.nome} className="size-5 text-[10px]" />
+                <AvatarIniciais nome={membro.nome} avatarUrl={membro.avatarUrl} className="size-5 text-[10px]" />
                 {membro.nome}
               </SelectItem>
             ))}

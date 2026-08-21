@@ -24,6 +24,7 @@ export interface OpcaoMultiSelect {
   cor?: string;
   // Linha secundária abaixo do nome (ex.: CPF do cliente), como no combobox de cliente.
   subtitulo?: string;
+  avatarUrl?: string | null;
 }
 
 export interface AcaoCriarMultiSelect {
@@ -122,7 +123,11 @@ export function FiltroMultiSelect({
                       />
                     ) : null}
                     {avatares && opcao.id !== SEM_RESPONSAVEL ? (
-                      <AvatarIniciais nome={opcao.nome} className="size-5 text-[10px]" />
+                      <AvatarIniciais
+                        nome={opcao.nome}
+                        avatarUrl={opcao.avatarUrl}
+                        className="size-5 text-[10px]"
+                      />
                     ) : null}
                     {opcao.subtitulo ? (
                       <span className="flex min-w-0 flex-col">

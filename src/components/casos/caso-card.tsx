@@ -28,7 +28,11 @@ function CasoCardConteudo({ caso }: { caso: CasoDTO }) {
       <div className="flex items-center justify-between gap-2 pt-1">
         {caso.responsavel ? (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <AvatarIniciais nome={caso.responsavel.usuario.nome} className="size-5 text-[10px]" />
+            <AvatarIniciais
+              nome={caso.responsavel.usuario.nome}
+              avatarUrl={caso.responsavel.usuario.avatarUrl}
+              className="size-5 text-[10px]"
+            />
             <span className="max-w-24 truncate">{caso.responsavel.usuario.nome}</span>
           </span>
         ) : (
