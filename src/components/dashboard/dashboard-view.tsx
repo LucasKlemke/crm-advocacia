@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { User, Users } from "lucide-react";
+import { Plus, User, Users } from "lucide-react";
 import { useDashboardResumo } from "@/hooks/use-dashboard";
 import { useCasoFiltroOpcoes } from "@/hooks/use-casos";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardSaudacaoCard } from "@/components/dashboard/dashboard-saudacao-card";
 import { StatusStatCards } from "@/components/dashboard/status-stat-cards";
 import { CasosTabelaSimplificada } from "@/components/dashboard/casos-tabela-simplificada";
 import { CasosStatusDonutChart } from "@/components/dashboard/casos-status-donut-chart";
+import { CasoSheet } from "@/components/casos/caso-sheet";
 import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
 import { formatarCpf } from "@/lib/utils/cpf";
@@ -32,6 +34,7 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
   const { data, isLoading, isError } = useDashboardResumo(filtrosDashboard);
   const { data: opcoes } = useCasoFiltroOpcoes();
   const [selecionadosIds, setSelecionadosIds] = useState<string[]>([]);
+  const [criandoCaso, setCriandoCaso] = useState(false);
 
   // Clicar alterna o TipoStatus dentro/fora da seleção — múltiplos cards podem ficar
   // ativos ao mesmo tempo, e a tabela filtra por todos eles juntos (OR).
@@ -64,6 +67,11 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
         {!isLoading && !isError && data ? <DashboardSaudacaoCard nome={atorNome} /> : <div />}
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setCriandoCaso(true)}>
+            <Plus />
+            Novo processo
+          </Button>
+
           <FiltroMultiSelect
             label="Responsável"
             icone={Users}
@@ -129,6 +137,16 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
           </div>
         </>
       )}
+
+      <CasoSheet
+        modo="criar"
+        caso={null}
+        aberto={criandoCaso}
+        onOpenChange={setCriandoCaso}
+        atorUsuarioId={atorUsuarioId}
+        atorNome={atorNome}
+        atorRole={atorRole}
+      />
     </div>
   );
 }
