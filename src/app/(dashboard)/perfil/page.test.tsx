@@ -21,6 +21,11 @@ jest.mock("@/components/perfil/perfil-form", () => ({
   ),
 }));
 jest.mock("@/components/perfil/senha-form", () => ({ SenhaForm: () => <div /> }));
+jest.mock("@/components/perfil/avatar-upload", () => ({
+  AvatarUpload: ({ temAvatarInicial }: { temAvatarInicial: boolean }) => (
+    <div data-testid="avatar-upload" data-tem-avatar={temAvatarInicial} />
+  ),
+}));
 
 const mockedAuth = auth as unknown as jest.Mock;
 const mockedObterPerfil = usuarioService.obterPerfil as jest.Mock;
@@ -40,6 +45,7 @@ describe("PerfilPage", () => {
       id: "u1",
       nome: "Nome Novo",
       email: "novo@teste.com",
+      avatarUrl: "development/avatares/u1/1-foto.png",
     });
 
     render(await PerfilPage());
@@ -48,6 +54,21 @@ describe("PerfilPage", () => {
     expect(screen.getByText("Nome Novo")).toBeInTheDocument();
     expect(screen.getByText("novo@teste.com")).toBeInTheDocument();
     expect(screen.queryByText("Nome Antigo")).not.toBeInTheDocument();
+    expect(screen.getByTestId("avatar-upload")).toHaveAttribute("data-tem-avatar", "true");
+  });
+
+  it("informa que o usuário não tem avatar quando avatarUrl é null", async () => {
+    mockedAuth.mockResolvedValue({ user: { id: "u1" } });
+    mockedObterPerfil.mockResolvedValue({
+      id: "u1",
+      nome: "Nome Novo",
+      email: "novo@teste.com",
+      avatarUrl: null,
+    });
+
+    render(await PerfilPage());
+
+    expect(screen.getByTestId("avatar-upload")).toHaveAttribute("data-tem-avatar", "false");
   });
 
   it("manda para o login sem sessão", async () => {

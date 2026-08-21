@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { usuarioService } from "@/services/usuario.service";
 import { PerfilForm } from "@/components/perfil/perfil-form";
 import { SenhaForm } from "@/components/perfil/senha-form";
+import { AvatarUpload } from "@/components/perfil/avatar-upload";
 import { Separator } from "@/components/ui/separator";
 import { PageContainer } from "@/components/shared/page-container";
 
@@ -32,7 +33,7 @@ export default async function PerfilPage() {
 
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-medium text-muted-foreground">Foto</h2>
-        <p className="text-sm text-muted-foreground">Upload de avatar em breve.</p>
+        <AvatarUpload usuario={{ nome: perfil.nome }} temAvatarInicial={perfil.avatarUrl != null} />
       </section>
 
       <Separator />
