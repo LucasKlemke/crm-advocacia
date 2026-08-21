@@ -42,12 +42,12 @@ export const s3Client = {
     return getSignedUrl(criarClienteAws(), command, { expiresIn: URL_EXPIRA_SEGUNDOS });
   },
 
-  async gerarUrlDownload(key: string): Promise<string> {
+  async gerarUrlDownload(key: string, expiresIn: number = URL_EXPIRA_SEGUNDOS): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: obterBucket(),
       Key: key,
     });
-    return getSignedUrl(criarClienteAws(), command, { expiresIn: URL_EXPIRA_SEGUNDOS });
+    return getSignedUrl(criarClienteAws(), command, { expiresIn });
   },
 
   async buscarArquivo(key: string): Promise<Readable> {

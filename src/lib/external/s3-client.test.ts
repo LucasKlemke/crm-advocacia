@@ -47,7 +47,7 @@ describe("s3Client.gerarUrlUpload", () => {
 });
 
 describe("s3Client.gerarUrlDownload", () => {
-  it("gera uma URL assinada de GET com bucket e key corretos", async () => {
+  it("gera uma URL assinada de GET com bucket e key corretos, expirando em 60s por padrão", async () => {
     const url = await s3Client.gerarUrlDownload("development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf");
 
     expect(url).toContain("op=GetObjectCommand");
@@ -57,6 +57,14 @@ describe("s3Client.gerarUrlDownload", () => {
       Bucket: "bucket-teste",
       Key: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
     });
+    expect(mocked.mock.calls[0][2]).toEqual({ expiresIn: 60 });
+  });
+
+  it("aceita um tempo de expiração customizado", async () => {
+    await s3Client.gerarUrlDownload("development/avatares/user-1/foto.png", 600);
+
+    const mocked = getSignedUrl as jest.Mock;
+    expect(mocked.mock.calls[0][2]).toEqual({ expiresIn: 600 });
   });
 });
 
