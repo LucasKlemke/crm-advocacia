@@ -16,7 +16,7 @@ const confirmarUploadSchema = z.object({
   escopoId: z.uuid(),
   nomeArquivo: nomeArquivoSchema,
   tipoArquivo: z.enum(["pdf", "docx", "jpg", "png", "jpeg"]),
-  tamanhoKb: z.number().int().positive(),
+  tamanhoBytes: z.number().int().positive(),
 });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {

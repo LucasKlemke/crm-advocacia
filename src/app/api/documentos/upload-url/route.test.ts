@@ -76,7 +76,7 @@ describe("POST /api/documentos/upload-url", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       })
     );
 
@@ -106,7 +106,7 @@ describe("POST /api/documentos/upload-url", () => {
           escopoId: "550e8400-e29b-41d4-a716-446655440000",
           nomeArquivo,
           tipoArquivo: "pdf",
-          tamanhoKb: 100,
+          tamanhoBytes: 100 * 1024,
         })
       );
 
@@ -124,7 +124,7 @@ describe("POST /api/documentos/upload-url", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "grande.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 99999,
+        tamanhoBytes: 10 * 1024 * 1024 + 1,
       })
     );
     expect(resposta.status).toBe(400);
@@ -139,7 +139,7 @@ describe("POST /api/documentos/upload-url", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       })
     );
     expect(resposta.status).toBe(404);

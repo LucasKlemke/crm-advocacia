@@ -89,7 +89,7 @@ describe("documentoService.gerarUrlUpload", () => {
       escopoId: "cli-1",
       nomeArquivo: "contrato.pdf",
       tipoArquivo: "pdf",
-      tamanhoKb: 100,
+      tamanhoBytes: 102_312,
     });
 
     expect(clientes.obter).toHaveBeenCalledWith(ctx, "cli-1");
@@ -99,10 +99,12 @@ describe("documentoService.gerarUrlUpload", () => {
     expect(resultado.storageKey).toBe(
       `development/esc-1/documentos/cliente/cli-1/${resultado.documentoId}-contrato.pdf`
     );
+    // Bytes exatos (não arredondados para KB) repassados ao S3: é o Content-Length
+    // assinado na URL, e precisa bater com o PUT real do navegador (senão 403).
     expect(s3.gerarUrlUpload).toHaveBeenCalledWith(
       resultado.storageKey,
       "application/pdf",
-      100 * 1024
+      102_312
     );
     expect(repo.create).not.toHaveBeenCalled();
   });
@@ -115,7 +117,7 @@ describe("documentoService.gerarUrlUpload", () => {
         escopoId: "cli-1",
         nomeArquivo: "grande.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 10241,
+        tamanhoBytes: 10 * 1024 * 1024 + 1,
       })
     ).rejects.toThrow(TamanhoInvalidoError);
     expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
@@ -129,7 +131,7 @@ describe("documentoService.gerarUrlUpload", () => {
         escopoId: "cli-alheio",
         nomeArquivo: "x.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       })
     ).rejects.toThrow(ClienteNaoEncontradoError);
     expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
@@ -143,7 +145,7 @@ describe("documentoService.gerarUrlUpload", () => {
         escopoId: "cli-1",
         nomeArquivo: "malware.exe",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       })
     ).rejects.toThrow(TipoInvalidoError);
     expect(clientes.obter).not.toHaveBeenCalled();
@@ -157,7 +159,7 @@ describe("documentoService.gerarUrlUpload", () => {
         escopoId: "cli-1",
         nomeArquivo: "planilha.xlsx",
         tipoArquivo: "xlsx" as never,
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       })
     ).rejects.toThrow(TipoInvalidoError);
     expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
@@ -173,7 +175,7 @@ describe("documentoService.gerarUrlUpload", () => {
           escopoId: "cli-1",
           nomeArquivo: "contrato.pdf",
           tipoArquivo: "pdf",
-          tamanhoKb: 100,
+          tamanhoBytes: 100 * 1024,
         })
       ).rejects.toThrow("AWS_S3_PREFIX não configurado.");
       expect(s3.gerarUrlUpload).not.toHaveBeenCalled();
@@ -188,7 +190,7 @@ describe("documentoService.gerarUrlUpload", () => {
       escopoId: "caso-1",
       nomeArquivo: "peticao.docx",
       tipoArquivo: "docx",
-      tamanhoKb: 200,
+      tamanhoBytes: 200 * 1024,
     });
     expect(casos.obter).toHaveBeenCalledWith(ctx, "caso-1");
   });
@@ -200,7 +202,7 @@ describe("documentoService.confirmarUpload", () => {
     escopoId: "cli-1",
     nomeArquivo: "contrato.pdf",
     tipoArquivo: "pdf" as const,
-    tamanhoKb: 100,
+    tamanhoBytes: 100 * 1024,
   };
 
   beforeEach(() => {
@@ -242,9 +244,25 @@ describe("documentoService.confirmarUpload", () => {
 
   it("recusa confirmar upload maior que 10MB", async () => {
     await expect(
-      documentoService.confirmarUpload(ctx, "doc-1", { ...input, tamanhoKb: 99999 })
+      documentoService.confirmarUpload(ctx, "doc-1", {
+        ...input,
+        tamanhoBytes: 10 * 1024 * 1024 + 1,
+      })
     ).rejects.toThrow(TamanhoInvalidoError);
     expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  // A coluna tamanhoKb é só para exibição/estatística; o valor que precisa bater
+  // byte-a-byte com o PUT real é tamanhoBytes (usado na assinatura da URL do S3).
+  it("arredonda para cima o tamanho em KB armazenado, a partir do tamanho exato em bytes", async () => {
+    repo.create.mockResolvedValue(documentoFake());
+
+    await documentoService.confirmarUpload(ctx, "doc-1", { ...input, tamanhoBytes: 84_887 });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ tamanhoKb: 83 }),
+      expect.anything()
+    );
   });
 
   it("recusa nome de arquivo cuja extensão não casa com o tipo declarado", async () => {

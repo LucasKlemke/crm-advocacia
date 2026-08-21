@@ -111,7 +111,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
     );
@@ -133,7 +133,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
       escopoId: "550e8400-e29b-41d4-a716-446655440000",
       nomeArquivo: "contrato.pdf",
       tipoArquivo: "pdf",
-      tamanhoKb: 100,
+      tamanhoBytes: 100 * 1024,
     });
   });
 
@@ -146,7 +146,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
         storageKey: "development/esc-alheio/documentos/cliente/cli-9/doc-9-segredo.pdf",
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
@@ -168,7 +168,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
           escopoId: "550e8400-e29b-41d4-a716-446655440000",
           nomeArquivo,
           tipoArquivo: "pdf",
-          tamanhoKb: 100,
+          tamanhoBytes: 100 * 1024,
         }),
         { params: Promise.resolve({ id: "doc-1" }) }
       );
@@ -197,7 +197,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
     );
@@ -218,7 +218,7 @@ describe("POST /api/documentos/[id]/confirmar", () => {
         escopoId: "550e8400-e29b-41d4-a716-446655440000",
         nomeArquivo: "contrato.pdf",
         tipoArquivo: "pdf",
-        tamanhoKb: 100,
+        tamanhoBytes: 100 * 1024,
       }),
       { params: Promise.resolve({ id: "doc-1" }) }
     );

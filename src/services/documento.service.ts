@@ -48,7 +48,7 @@ export class DocumentoConflitanteError extends Error {
   }
 }
 
-const TAMANHO_MAXIMO_KB = 10 * 1024;
+const TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024;
 
 const MIME_POR_TIPO_ARQUIVO: Record<TipoArquivo, string> = {
   pdf: "application/pdf",
@@ -63,7 +63,10 @@ export interface UploadUrlInput {
   escopoId: string;
   nomeArquivo: string;
   tipoArquivo: TipoArquivo;
-  tamanhoKb: number;
+  // Bytes exatos, não KB arredondado: o Content-Length é um header assinado pela URL do
+  // S3 (X-Amz-SignedHeaders), então precisa bater byte a byte com o PUT real do
+  // navegador — um valor arredondado quase sempre diverge e o S3 responde 403.
+  tamanhoBytes: number;
 }
 
 export interface UploadUrlResult {
@@ -132,7 +135,7 @@ async function garantirEscopo(
 export const documentoService = {
   async gerarUrlUpload(ctx: TenantContext, input: UploadUrlInput): Promise<UploadUrlResult> {
     validarTipo(input.nomeArquivo, input.tipoArquivo);
-    if (input.tamanhoKb > TAMANHO_MAXIMO_KB) {
+    if (input.tamanhoBytes > TAMANHO_MAXIMO_BYTES) {
       throw new TamanhoInvalidoError();
     }
     await garantirEscopo(ctx, input.escopo, input.escopoId);
@@ -149,7 +152,7 @@ export const documentoService = {
     const uploadUrl = await s3Client.gerarUrlUpload(
       storageKey,
       MIME_POR_TIPO_ARQUIVO[input.tipoArquivo],
-      input.tamanhoKb * 1024
+      input.tamanhoBytes
     );
 
     return { documentoId, uploadUrl, storageKey };
@@ -161,7 +164,7 @@ export const documentoService = {
     input: UploadUrlInput
   ): Promise<Documento> {
     validarTipo(input.nomeArquivo, input.tipoArquivo);
-    if (input.tamanhoKb > TAMANHO_MAXIMO_KB) {
+    if (input.tamanhoBytes > TAMANHO_MAXIMO_BYTES) {
       throw new TamanhoInvalidoError();
     }
 
@@ -209,7 +212,7 @@ export const documentoService = {
             escopoId: input.escopoId,
             nomeOriginal: input.nomeArquivo,
             tipoArquivo: input.tipoArquivo,
-            tamanhoKb: input.tamanhoKb,
+            tamanhoKb: Math.ceil(input.tamanhoBytes / 1024),
             storageKey,
             escritorio: { connect: { id: ctx.escritorioId } },
             autor: { connect: { id: membro.id } },
