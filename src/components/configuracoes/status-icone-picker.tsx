@@ -32,6 +32,9 @@ import {
   Send,
   Eye,
   Loader,
+  UserPlus,
+  FolderOpen,
+  Ban,
   type LucideIcon,
 } from "lucide-react";
 import { ICONES_STATUS_PERMITIDOS } from "@/lib/utils/icones-status";
@@ -73,6 +76,9 @@ export const MAPA_ICONES_STATUS: Record<string, LucideIcon> = {
   Send,
   Eye,
   Loader,
+  UserPlus,
+  FolderOpen,
+  Ban,
 };
 
 export interface StatusIconePickerProps {

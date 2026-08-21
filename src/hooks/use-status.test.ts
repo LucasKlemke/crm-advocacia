@@ -35,7 +35,7 @@ const STATUS: StatusDTO = {
 
 const TIPO: TipoStatusDTO = {
   id: "tipo-1",
-  chave: "analise",
+  chave: "negociacao",
   nome: "Em análise",
   icone: "Search",
   cor: "#f59e0b",

@@ -7,7 +7,7 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 const TIPO_ANALISE: TipoStatusDTO = {
   id: "tipo-analise",
-  chave: "analise",
+  chave: "negociacao",
   nome: "Análise",
   icone: "Search",
   cor: "#f59e0b",

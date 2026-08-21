@@ -33,8 +33,8 @@ function statusFake(over: Partial<Status> = {}): Status {
     id: "status-1",
     escritorioId: "esc-1",
     tipoStatusId: "tipo-1",
-    nome: "Nova conversa",
-    icone: "MessageCircle",
+    nome: "Lead",
+    icone: "UserPlus",
     cor: "#64748b",
     descricao: null,
     ordem: 1,
@@ -47,9 +47,9 @@ function statusFake(over: Partial<Status> = {}): Status {
 function tipoFake(over: Partial<TipoStatus> = {}): TipoStatus {
   return {
     id: "tipo-1",
-    chave: "nova_conversa",
-    nome: "Nova conversa",
-    icone: "MessageCircle",
+    chave: "lead",
+    nome: "Lead",
+    icone: "UserPlus",
     cor: "#64748b",
     descricao: null,
     ordem: 1,
@@ -177,7 +177,7 @@ describe("statusService.atualizar", () => {
     repo.findById.mockResolvedValue(statusFake());
 
     const resultado = await statusService.atualizar(ctx(), "status-1", {
-      nome: "Nova conversa",
+      nome: "Lead",
     });
 
     expect(resultado).toEqual(statusFake());
@@ -203,7 +203,7 @@ describe("statusService.atualizar", () => {
         acao: "atualizar",
         entidade: "status",
         dados: expect.objectContaining({
-          nome: { antes: "Nova conversa", depois: "Renomeado" },
+          nome: { antes: "Lead", depois: "Renomeado" },
         }),
       }),
       expect.anything()
@@ -273,7 +273,7 @@ describe("statusService.excluir", () => {
 });
 
 describe("statusService.criarPadroes", () => {
-  it("cria os 6 status padrão, um por tipo, na ordem esperada", async () => {
+  it("cria os 9 status padrão, um por tipo, na ordem esperada", async () => {
     tipoRepo.findByChave.mockImplementation(async (chave: string) =>
       tipoFake({ id: `tipo-${chave}`, chave })
     );
@@ -281,12 +281,12 @@ describe("statusService.criarPadroes", () => {
 
     const criados = await statusService.criarPadroes("esc-1");
 
-    expect(criados).toHaveLength(6);
-    expect(repo.create).toHaveBeenCalledTimes(6);
+    expect(criados).toHaveLength(9);
+    expect(repo.create).toHaveBeenCalledTimes(9);
     expect(repo.create).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        nome: "Nova conversa",
+        nome: "Lead",
         ordem: 1,
         escritorio: { connect: { id: "esc-1" } },
       }),

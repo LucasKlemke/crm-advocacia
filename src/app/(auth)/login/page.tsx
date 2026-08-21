@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { LogIn, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 // Só aceita path relativo interno ("/rota"), nunca URL absoluta/protocol-relative
 // ("//host" ou "https://host") — evita open redirect via callbackUrl manipulado.
@@ -53,41 +54,58 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full ring-foreground/5 shadow-sm">
-      <CardHeader>
-        <CardTitle className="text-xl">Entrar</CardTitle>
-        <CardDescription>Acesse o CRM com seu e-mail e senha.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="senha">Senha</Label>
-            <Input
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-1 text-center">
+        <h1 className="text-3xl font-medium tracking-tight">Bem-vindo(a) de volta</h1>
+        <p className="text-sm text-muted-foreground">Acesse o CRM com seu e-mail e senha.</p>
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">E-mail</Label>
+          <InputGroup className="h-14 shrink-0 rounded-full border-transparent bg-background shadow-sm">
+            <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
+              <Mail />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+            />
+          </InputGroup>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="senha">Senha</Label>
+          <InputGroup className="h-14 shrink-0 rounded-full border-transparent bg-background shadow-sm">
+            <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
+              <Lock />
+            </InputGroupAddon>
+            <InputGroupInput
               id="senha"
               name="senha"
               type="password"
               autoComplete="current-password"
               required
             />
-          </div>
-          {erro ? (
-            <p role="alert" className="text-sm text-destructive">
-              {erro}
-            </p>
-          ) : null}
-          <Button
-            type="submit"
-            disabled={carregando}
-            className="mt-1 bg-brand text-brand-foreground hover:bg-brand/90"
-          >
-            {carregando ? "Entrando..." : "Entrar"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          </InputGroup>
+        </div>
+        {erro ? (
+          <p role="alert" className="text-sm text-destructive">
+            {erro}
+          </p>
+        ) : null}
+        <Button type="submit" disabled={carregando} className="mt-1 h-14 shrink-0 rounded-full text-base">
+          <LogIn />
+          {carregando ? "Entrando..." : "Entrar"}
+        </Button>
+      </form>
+      <p className="text-center text-sm text-muted-foreground">
+        Ainda não tem conta?{" "}
+        <Link href="/cadastro" className="font-medium text-foreground underline-offset-4 hover:underline">
+          Cadastre-se
+        </Link>
+      </p>
+    </div>
   );
 }

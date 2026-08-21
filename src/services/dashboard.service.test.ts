@@ -22,9 +22,9 @@ const AGORA = new Date("2026-08-01T12:00:00.000Z");
 function tipoStatusFake(over: Partial<TipoStatus> = {}): TipoStatus {
   return {
     id: "tipo-1",
-    chave: "nova_conversa",
-    nome: "Nova conversa",
-    icone: "MessageCircle",
+    chave: "lead",
+    nome: "Lead",
+    icone: "UserPlus",
     cor: "#64748b",
     descricao: null,
     ordem: 1,
@@ -32,13 +32,16 @@ function tipoStatusFake(over: Partial<TipoStatus> = {}): TipoStatus {
   };
 }
 
-const SEIS_TIPOS: TipoStatus[] = [
-  tipoStatusFake({ id: "tipo-1", chave: "nova_conversa", nome: "Nova conversa", ordem: 1 }),
-  tipoStatusFake({ id: "tipo-2", chave: "analise", nome: "Em análise", ordem: 2 }),
-  tipoStatusFake({ id: "tipo-3", chave: "qualificado", nome: "Qualificado", ordem: 3 }),
-  tipoStatusFake({ id: "tipo-4", chave: "proposta", nome: "Proposta enviada", ordem: 4 }),
-  tipoStatusFake({ id: "tipo-5", chave: "sucesso", nome: "Contrato fechado", ordem: 5 }),
-  tipoStatusFake({ id: "tipo-6", chave: "perda", nome: "Não interessado", ordem: 6 }),
+const NOVE_TIPOS: TipoStatus[] = [
+  tipoStatusFake({ id: "tipo-1", chave: "lead", nome: "Lead", ordem: 1 }),
+  tipoStatusFake({ id: "tipo-2", chave: "negociacao", nome: "Negociação", ordem: 2 }),
+  tipoStatusFake({ id: "tipo-3", chave: "fechado", nome: "Fechado", ordem: 3 }),
+  tipoStatusFake({ id: "tipo-4", chave: "preparacao", nome: "Preparação", ordem: 4 }),
+  tipoStatusFake({ id: "tipo-5", chave: "tramitacao", nome: "Tramitação", ordem: 5 }),
+  tipoStatusFake({ id: "tipo-6", chave: "ganho", nome: "Ganho", ordem: 6 }),
+  tipoStatusFake({ id: "tipo-7", chave: "perdido", nome: "Perdido", ordem: 7 }),
+  tipoStatusFake({ id: "tipo-8", chave: "concluido", nome: "Concluído", ordem: 8 }),
+  tipoStatusFake({ id: "tipo-9", chave: "cancelado", nome: "Cancelado", ordem: 9 }),
 ];
 
 function statusFake(over: Partial<Status> = {}): Status {
@@ -46,8 +49,8 @@ function statusFake(over: Partial<Status> = {}): Status {
     id: "status-1",
     escritorioId: "esc-1",
     tipoStatusId: "tipo-1",
-    nome: "Nova conversa",
-    icone: "MessageCircle",
+    nome: "Lead",
+    icone: "UserPlus",
     cor: "#64748b",
     descricao: null,
     ordem: 1,
@@ -59,24 +62,27 @@ function statusFake(over: Partial<Status> = {}): Status {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  tipoStatusRepo.listar.mockResolvedValue(SEIS_TIPOS);
+  tipoStatusRepo.listar.mockResolvedValue(NOVE_TIPOS);
 });
 
 describe("dashboardService.contarPorTipoStatus", () => {
-  it("devolve as 6 categorias mesmo quando o tenant não tem nenhum Status", async () => {
+  it("devolve as 9 categorias mesmo quando o tenant não tem nenhum Status", async () => {
     statusRepo.listar.mockResolvedValue([]);
     repo.contarPorStatus.mockResolvedValue([]);
 
     const resultado = await dashboardService.contarPorTipoStatus(ctx());
 
-    expect(resultado).toHaveLength(6);
+    expect(resultado).toHaveLength(9);
     expect(resultado.map((r) => r.tipoStatus.chave)).toEqual([
-      "nova_conversa",
-      "analise",
-      "qualificado",
-      "proposta",
-      "sucesso",
-      "perda",
+      "lead",
+      "negociacao",
+      "fechado",
+      "preparacao",
+      "tramitacao",
+      "ganho",
+      "perdido",
+      "concluido",
+      "cancelado",
     ]);
     expect(resultado.every((r) => r.total === 0)).toBe(true);
     expect(resultado.every((r) => r.valorTotal === 0)).toBe(true);
@@ -126,130 +132,13 @@ describe("dashboardService.contarPorTipoStatus", () => {
   });
 });
 
-describe("dashboardService.casosPorMes", () => {
-  beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(new Date("2026-08-15T12:00:00.000Z"));
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("devolve exatamente 6 meses em ordem cronológica, zero-filled", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-
-    const resultado = await dashboardService.casosPorMes(ctx());
-
-    expect(resultado).toEqual([
-      { mes: "2026-03", total: 0 },
-      { mes: "2026-04", total: 0 },
-      { mes: "2026-05", total: 0 },
-      { mes: "2026-06", total: 0 },
-      { mes: "2026-07", total: 0 },
-      { mes: "2026-08", total: 0 },
-    ]);
-  });
-
-  it("agrupa as datas de criação por mês", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([
-      new Date("2026-06-01T10:00:00.000Z"),
-      new Date("2026-06-20T10:00:00.000Z"),
-      new Date("2026-08-01T10:00:00.000Z"),
-      new Date("2026-08-31T23:00:00.000Z"),
-      new Date("2026-08-31T23:00:00.000Z"),
-    ]);
-
-    const resultado = await dashboardService.casosPorMes(ctx());
-
-    expect(resultado).toEqual([
-      { mes: "2026-03", total: 0 },
-      { mes: "2026-04", total: 0 },
-      { mes: "2026-05", total: 0 },
-      { mes: "2026-06", total: 2 },
-      { mes: "2026-07", total: 0 },
-      { mes: "2026-08", total: 3 },
-    ]);
-  });
-
-  it("chama o repositório escopado ao escritório e desde 6 meses atrás", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-
-    await dashboardService.casosPorMes(ctx());
-
-    expect(repo.listarDatasCriacao).toHaveBeenCalledWith("esc-1", {
-      dataInicio: expect.any(Date),
-    });
-  });
-
-  it("usa o dataInicio do filtro quando ele encurta a janela de 6 meses", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-    const dataInicioFiltro = new Date("2026-07-15T00:00:00.000Z");
-
-    await dashboardService.casosPorMes(ctx(), { dataInicio: dataInicioFiltro });
-
-    expect(repo.listarDatasCriacao).toHaveBeenCalledWith("esc-1", {
-      dataInicio: dataInicioFiltro,
-    });
-  });
-
-  it("ignora um dataInicio do filtro anterior aos 6 meses (a janela nunca alarga)", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-    const dataInicioFiltro = new Date("2020-01-01T00:00:00.000Z");
-
-    await dashboardService.casosPorMes(ctx(), { dataInicio: dataInicioFiltro });
-
-    const [, filtrosChamados] = repo.listarDatasCriacao.mock.calls[0];
-    expect((filtrosChamados as { dataInicio: Date }).dataInicio.getTime()).toBeGreaterThan(
-      dataInicioFiltro.getTime()
-    );
-  });
-
-  it("repassa clienteIds e responsavelIds do filtro ao repositório", async () => {
-    repo.listarDatasCriacao.mockResolvedValue([]);
-
-    await dashboardService.casosPorMes(ctx(), {
-      clienteIds: ["cli-1"],
-      responsavelIds: ["membro-1"],
-    });
-
-    expect(repo.listarDatasCriacao).toHaveBeenCalledWith("esc-1", {
-      clienteIds: ["cli-1"],
-      responsavelIds: ["membro-1"],
-      dataInicio: expect.any(Date),
-    });
-  });
-});
-
-describe("dashboardService.valorTotalAberto", () => {
-  it("delega ao repositório escopado ao escritório", async () => {
-    repo.somarValorAberto.mockResolvedValue(1234.5);
-
-    const resultado = await dashboardService.valorTotalAberto(ctx());
-
-    expect(resultado).toBe(1234.5);
-    expect(repo.somarValorAberto).toHaveBeenCalledWith("esc-1", {});
-  });
-
-  it("repassa os filtros ao repositório", async () => {
-    repo.somarValorAberto.mockResolvedValue(0);
-
-    await dashboardService.valorTotalAberto(ctx(), { clienteIds: ["cli-1"] });
-
-    expect(repo.somarValorAberto).toHaveBeenCalledWith("esc-1", { clienteIds: ["cli-1"] });
-  });
-});
-
 describe("dashboardService.resumo", () => {
-  it("monta os três campos do resumo", async () => {
+  it("monta o resumo a partir da contagem por tipo de status", async () => {
     statusRepo.listar.mockResolvedValue([]);
     repo.contarPorStatus.mockResolvedValue([]);
-    repo.listarDatasCriacao.mockResolvedValue([]);
-    repo.somarValorAberto.mockResolvedValue(500);
 
     const resultado = await dashboardService.resumo(ctx());
 
-    expect(resultado.porTipoStatus).toHaveLength(6);
-    expect(resultado.porMes).toHaveLength(6);
-    expect(resultado.valorTotalAberto).toBe(500);
+    expect(resultado.porTipoStatus).toHaveLength(9);
   });
 });

@@ -146,14 +146,14 @@ Referência **global** do sistema (não pertence a nenhum escritório): padroniz
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid | PK |
-| chave | varchar(30) | Identificador estável, único (ex.: `nova_conversa`, `proposta`) |
-| nome | varchar(60) | Ex.: "Proposta" |
+| chave | varchar(30) | Identificador estável, único (ex.: `lead`, `tramitacao`) |
+| nome | varchar(60) | Ex.: "Tramitação" |
 | icone | varchar(60) | Nome de um ícone Lucide |
 | cor | varchar(9) | Hex |
 | descricao | varchar(255) | Opcional |
 | ordem | int | Posição sugerida no funil |
 
-Seedada com 6 linhas fixas (Nova conversa, Análise, Qualificado, Proposta, Sucesso, Perda) diretamente no SQL da migration que cria a tabela — garante que ela exista em todo banco novo, sem depender de um script de seed separado.
+Seedada com 9 linhas fixas (Lead, Negociação, Fechado, Preparação, Tramitação, Ganho, Perdido, Concluído, Cancelado) diretamente no SQL da migration que cria a tabela — garante que ela exista em todo banco novo, sem depender de um script de seed separado.
 
 ## `status`
 
@@ -171,7 +171,7 @@ Colunas do kanban, definidas por cada escritório e associadas a um `tipo_status
 | ordem | int | Posição no kanban |
 | created_at / updated_at | timestamp | |
 
-`@@unique([escritorio_id, nome])`. Todo escritório novo já nasce com 6 status básicos (um por `tipo_status`), criados dentro da mesma transação que cria o escritório — não é um seed de banco, é um comportamento do `EscritorioService`/`StatusService` no momento do cadastro.
+`@@unique([escritorio_id, nome])`. Todo escritório novo já nasce com 9 status básicos (um por `tipo_status`), criados dentro da mesma transação que cria o escritório — não é um seed de banco, é um comportamento do `EscritorioService`/`StatusService` no momento do cadastro.
 
 ## `caso`
 
