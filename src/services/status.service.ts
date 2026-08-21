@@ -49,15 +49,18 @@ export type DadosEdicaoStatus = Partial<DadosNovoStatus>;
 
 const CAMPOS_AUDITADOS = ["nome", "tipoStatusId", "icone", "cor", "descricao"] as const;
 
-// Os 6 status padrão criados para todo novo escritório (RN — plano.md), um por
+// Os 9 status padrão criados para todo novo escritório (RN — plano.md), um por
 // TipoStatus, na ordem em que aparecem no kanban recém-criado.
 const STATUS_PADROES: DadosNovoStatus[] = [
-  { nome: "Nova conversa", icone: "MessageCircle", cor: "#64748b", tipoStatusId: "nova_conversa" },
-  { nome: "Em análise", icone: "Search", cor: "#f59e0b", tipoStatusId: "analise" },
-  { nome: "Qualificado", icone: "CircleCheck", cor: "#0ea5e9", tipoStatusId: "qualificado" },
-  { nome: "Proposta enviada", icone: "FileText", cor: "#8b5cf6", tipoStatusId: "proposta" },
-  { nome: "Contrato fechado", icone: "Trophy", cor: "#10b981", tipoStatusId: "sucesso" },
-  { nome: "Não interessado", icone: "CircleX", cor: "#f43f5e", tipoStatusId: "perda" },
+  { nome: "Lead", icone: "UserPlus", cor: "#64748b", tipoStatusId: "lead" },
+  { nome: "Negociação", icone: "FileText", cor: "#f59e0b", tipoStatusId: "negociacao" },
+  { nome: "Fechado", icone: "Handshake", cor: "#0ea5e9", tipoStatusId: "fechado" },
+  { nome: "Preparação", icone: "FolderOpen", cor: "#8b5cf6", tipoStatusId: "preparacao" },
+  { nome: "Tramitação", icone: "Scale", cor: "#6366f1", tipoStatusId: "tramitacao" },
+  { nome: "Ganho", icone: "Trophy", cor: "#10b981", tipoStatusId: "ganho" },
+  { nome: "Perdido", icone: "CircleX", cor: "#f43f5e", tipoStatusId: "perdido" },
+  { nome: "Concluído", icone: "CircleCheck", cor: "#22c55e", tipoStatusId: "concluido" },
+  { nome: "Cancelado", icone: "Ban", cor: "#94a3b8", tipoStatusId: "cancelado" },
 ];
 
 type Db = Pick<PrismaClient, "status" | "caso" | "tipoStatus">;
@@ -208,7 +211,7 @@ export const statusService = {
   },
 
   // Chamado dentro da mesma transação de escritorioService.criarEscritorio para
-  // seedar os 6 status padrão (um por TipoStatus) de um escritório recém-criado.
+  // seedar os 9 status padrão (um por TipoStatus) de um escritório recém-criado.
   async criarPadroes(escritorioId: string, db: Db = prisma): Promise<Status[]> {
     const status: Status[] = [];
     for (const [indice, padrao] of STATUS_PADROES.entries()) {

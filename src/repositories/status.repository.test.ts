@@ -17,7 +17,7 @@ describe("statusRepository", () => {
     escritorioId = escritorio.id;
     const outro = await escritorioRepository.create({ nome: "Outro Escritório Status Repo" });
     outroEscritorioId = outro.id;
-    const tipo = await tipoStatusRepository.findByChave("nova_conversa");
+    const tipo = await tipoStatusRepository.findByChave("lead");
     tipoStatusId = tipo!.id;
   });
 

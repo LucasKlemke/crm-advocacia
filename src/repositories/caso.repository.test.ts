@@ -31,8 +31,8 @@ describe("casoRepository", () => {
     });
     clienteId = cliente.id;
 
-    const tipo1 = await tipoStatusRepository.findByChave("nova_conversa");
-    const tipo2 = await tipoStatusRepository.findByChave("analise");
+    const tipo1 = await tipoStatusRepository.findByChave("lead");
+    const tipo2 = await tipoStatusRepository.findByChave("negociacao");
 
     const status = await statusRepository.create({
       nome: "Status Caso Repo",
@@ -140,7 +140,7 @@ describe("casoRepository", () => {
       cpf: "16899535009",
       escritorio: { connect: { id: outroEscritorioId } },
     });
-    const outroTipo = await tipoStatusRepository.findByChave("nova_conversa");
+    const outroTipo = await tipoStatusRepository.findByChave("lead");
     const outroStatusOutroTenant = await statusRepository.create({
       nome: "Status Outro Tenant",
       icone: "MessageCircle",
@@ -285,7 +285,7 @@ describe("casoRepository", () => {
         cpf: "70706433004",
         escritorio: { connect: { id: outroEscritorioId } },
       });
-      const outroTipo = await tipoStatusRepository.findByChave("nova_conversa");
+      const outroTipo = await tipoStatusRepository.findByChave("lead");
       const outroStatusOutroTenant = await statusRepository.create({
         nome: "Status Outro Tenant Contagem",
         icone: "MessageCircle",

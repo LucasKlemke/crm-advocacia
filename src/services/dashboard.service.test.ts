@@ -22,9 +22,9 @@ const AGORA = new Date("2026-08-01T12:00:00.000Z");
 function tipoStatusFake(over: Partial<TipoStatus> = {}): TipoStatus {
   return {
     id: "tipo-1",
-    chave: "nova_conversa",
-    nome: "Nova conversa",
-    icone: "MessageCircle",
+    chave: "lead",
+    nome: "Lead",
+    icone: "UserPlus",
     cor: "#64748b",
     descricao: null,
     ordem: 1,
@@ -32,13 +32,16 @@ function tipoStatusFake(over: Partial<TipoStatus> = {}): TipoStatus {
   };
 }
 
-const SEIS_TIPOS: TipoStatus[] = [
-  tipoStatusFake({ id: "tipo-1", chave: "nova_conversa", nome: "Nova conversa", ordem: 1 }),
-  tipoStatusFake({ id: "tipo-2", chave: "analise", nome: "Em análise", ordem: 2 }),
-  tipoStatusFake({ id: "tipo-3", chave: "qualificado", nome: "Qualificado", ordem: 3 }),
-  tipoStatusFake({ id: "tipo-4", chave: "proposta", nome: "Proposta enviada", ordem: 4 }),
-  tipoStatusFake({ id: "tipo-5", chave: "sucesso", nome: "Contrato fechado", ordem: 5 }),
-  tipoStatusFake({ id: "tipo-6", chave: "perda", nome: "Não interessado", ordem: 6 }),
+const NOVE_TIPOS: TipoStatus[] = [
+  tipoStatusFake({ id: "tipo-1", chave: "lead", nome: "Lead", ordem: 1 }),
+  tipoStatusFake({ id: "tipo-2", chave: "negociacao", nome: "Negociação", ordem: 2 }),
+  tipoStatusFake({ id: "tipo-3", chave: "fechado", nome: "Fechado", ordem: 3 }),
+  tipoStatusFake({ id: "tipo-4", chave: "preparacao", nome: "Preparação", ordem: 4 }),
+  tipoStatusFake({ id: "tipo-5", chave: "tramitacao", nome: "Tramitação", ordem: 5 }),
+  tipoStatusFake({ id: "tipo-6", chave: "ganho", nome: "Ganho", ordem: 6 }),
+  tipoStatusFake({ id: "tipo-7", chave: "perdido", nome: "Perdido", ordem: 7 }),
+  tipoStatusFake({ id: "tipo-8", chave: "concluido", nome: "Concluído", ordem: 8 }),
+  tipoStatusFake({ id: "tipo-9", chave: "cancelado", nome: "Cancelado", ordem: 9 }),
 ];
 
 function statusFake(over: Partial<Status> = {}): Status {
@@ -46,8 +49,8 @@ function statusFake(over: Partial<Status> = {}): Status {
     id: "status-1",
     escritorioId: "esc-1",
     tipoStatusId: "tipo-1",
-    nome: "Nova conversa",
-    icone: "MessageCircle",
+    nome: "Lead",
+    icone: "UserPlus",
     cor: "#64748b",
     descricao: null,
     ordem: 1,
@@ -59,24 +62,27 @@ function statusFake(over: Partial<Status> = {}): Status {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  tipoStatusRepo.listar.mockResolvedValue(SEIS_TIPOS);
+  tipoStatusRepo.listar.mockResolvedValue(NOVE_TIPOS);
 });
 
 describe("dashboardService.contarPorTipoStatus", () => {
-  it("devolve as 6 categorias mesmo quando o tenant não tem nenhum Status", async () => {
+  it("devolve as 9 categorias mesmo quando o tenant não tem nenhum Status", async () => {
     statusRepo.listar.mockResolvedValue([]);
     repo.contarPorStatus.mockResolvedValue([]);
 
     const resultado = await dashboardService.contarPorTipoStatus(ctx());
 
-    expect(resultado).toHaveLength(6);
+    expect(resultado).toHaveLength(9);
     expect(resultado.map((r) => r.tipoStatus.chave)).toEqual([
-      "nova_conversa",
-      "analise",
-      "qualificado",
-      "proposta",
-      "sucesso",
-      "perda",
+      "lead",
+      "negociacao",
+      "fechado",
+      "preparacao",
+      "tramitacao",
+      "ganho",
+      "perdido",
+      "concluido",
+      "cancelado",
     ]);
     expect(resultado.every((r) => r.total === 0)).toBe(true);
     expect(resultado.every((r) => r.valorTotal === 0)).toBe(true);
@@ -133,6 +139,6 @@ describe("dashboardService.resumo", () => {
 
     const resultado = await dashboardService.resumo(ctx());
 
-    expect(resultado.porTipoStatus).toHaveLength(6);
+    expect(resultado.porTipoStatus).toHaveLength(9);
   });
 });

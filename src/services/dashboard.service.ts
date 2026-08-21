@@ -50,7 +50,7 @@ export const dashboardService = {
       });
     }
 
-    // Sempre as 6 categorias, mesmo com contagem 0 — nunca omitir.
+    // Sempre todas as categorias de tipoStatus, mesmo com contagem 0 — nunca omitir.
     return tiposStatus.map((tipoStatus) => {
       const acumulado = totalPorTipoStatusId.get(tipoStatus.id);
       return {
