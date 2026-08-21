@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth/config";
 import { getTenantContextOuRedirect } from "./_lib/tenant-context-pagina";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default async function DashboardPage() {
   const ctx = await getTenantContextOuRedirect();

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContextOuRedirect } from "../../_lib/tenant-context-pagina";
 import { membroService } from "@/services/membro.service";
 import { conviteService } from "@/services/convite.service";
@@ -6,6 +7,10 @@ import { MembrosTable } from "@/components/configuracoes/membros-table";
 import { ConvitesTable } from "@/components/configuracoes/convites-table";
 import { NovoMembroDrawer } from "@/components/configuracoes/novo-membro-drawer";
 import { Separator } from "@/components/ui/separator";
+
+export const metadata: Metadata = {
+  title: "Membros",
+};
 
 export default async function ConfiguracoesMembrosPage() {
   const ctx = await getTenantContextOuRedirect();

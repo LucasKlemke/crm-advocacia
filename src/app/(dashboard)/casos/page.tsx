@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth/config";
 import { getTenantContextOuRedirect } from "../_lib/tenant-context-pagina";
 import { CasosView } from "@/components/casos/casos-view";
+
+export const metadata: Metadata = {
+  title: "Processos",
+};
 
 export default async function CasosPage() {
   const ctx = await getTenantContextOuRedirect();

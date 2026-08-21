@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { getTenantContextOuRedirect } from "../../_lib/tenant-context-pagina";
 import { escritorioService } from "@/services/escritorio.service";
 import { EscritorioForm } from "@/components/configuracoes/escritorio-form";
 import { PageContainer } from "@/components/shared/page-container";
+
+export const metadata: Metadata = {
+  title: "Escritório",
+};
 
 export default async function ConfiguracoesEscritorioPage() {
   const ctx = await getTenantContextOuRedirect();

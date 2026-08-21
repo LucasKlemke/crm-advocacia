@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth/config";
 import { getTenantContextOuRedirect } from "../_lib/tenant-context-pagina";
 import { ClientesTable } from "@/components/clientes/clientes-table";
+
+export const metadata: Metadata = {
+  title: "Clientes",
+};
 
 export default async function ClientesPage() {
   const ctx = await getTenantContextOuRedirect();

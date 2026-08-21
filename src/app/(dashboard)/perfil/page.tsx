@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 import { usuarioService } from "@/services/usuario.service";
@@ -6,6 +7,10 @@ import { SenhaForm } from "@/components/perfil/senha-form";
 import { AvatarUpload } from "@/components/perfil/avatar-upload";
 import { Separator } from "@/components/ui/separator";
 import { PageContainer } from "@/components/shared/page-container";
+
+export const metadata: Metadata = {
+  title: "Perfil",
+};
 
 export default async function PerfilPage() {
   const session = await auth();

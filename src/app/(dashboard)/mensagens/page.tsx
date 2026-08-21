@@ -1,3 +1,9 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Mensagens",
+};
+
 export default function MensagensPage() {
   return (
     <div className="flex flex-col gap-2">
