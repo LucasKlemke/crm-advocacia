@@ -35,6 +35,9 @@ jest.mock("@/services/status.service", () => {
   class StatusNaoEncontradoError extends Error {}
   return { StatusNaoEncontradoError };
 });
+jest.mock("@/services/usuario.service", () => ({
+  usuarioService: { assinarUrlAvatar: jest.fn() },
+}));
 
 const mockedGetTenantContext = getTenantContext as jest.Mock;
 const service = casoService as jest.Mocked<typeof casoService>;
@@ -75,6 +78,30 @@ describe("GET /api/casos/[id]", () => {
     service.obter.mockRejectedValue(new CasoNaoEncontradoError());
     const response = await get();
     expect(response.status).toBe(404);
+  });
+
+  it("não vaza o senhaHash do responsável e assina o avatar", async () => {
+    const { usuarioService } = jest.requireMock("@/services/usuario.service");
+    usuarioService.assinarUrlAvatar.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+    service.obter.mockResolvedValue({
+      id: "caso-1",
+      responsavel: {
+        id: "membro-1",
+        usuario: {
+          id: "user-1",
+          nome: "Fulano",
+          email: "fulano@teste.com",
+          senhaHash: "hash-nunca-deveria-sair",
+          avatarUrl: "development/avatares/user-1/foto.png",
+        },
+      },
+    } as never);
+
+    const response = await get();
+    const corpo = await response.json();
+
+    expect(JSON.stringify(corpo)).not.toContain("hash-nunca-deveria-sair");
+    expect(corpo.caso.responsavel.usuario.avatarUrl).toBe("https://bucket.s3.amazonaws.com/signed-get");
   });
 });
 

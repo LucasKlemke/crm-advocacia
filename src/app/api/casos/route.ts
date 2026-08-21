@@ -3,6 +3,7 @@ import { novoCasoSchema, parseFiltrosCasoDaQuery } from "@/lib/api/schemas-caso"
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { tratarErroDeContexto, respostaDadosInvalidos, lerJson } from "@/lib/api/erros";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
+import { serializarCasos } from "@/lib/api/serializa-caso";
 import { casoService } from "@/services/caso.service";
 
 const POR_PAGINA = 20;
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
       take: POR_PAGINA,
     });
 
-    return NextResponse.json({ casos, total, pagina, porPagina: POR_PAGINA });
+    return NextResponse.json({ casos: await serializarCasos(casos), total, pagina, porPagina: POR_PAGINA });
   } catch (error) {
     const resposta = tratarErroDeContexto(error);
     if (resposta) return resposta;

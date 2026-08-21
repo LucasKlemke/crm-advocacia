@@ -3,6 +3,7 @@ import { edicaoCasoSchema } from "@/lib/api/schemas-caso";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { tratarErroDeContexto, respostaDadosInvalidos, lerJson } from "@/lib/api/erros";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
+import { serializarCaso } from "@/lib/api/serializa-caso";
 import { casoService } from "@/services/caso.service";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
 
     const caso = await casoService.obter(ctx, id);
-    return NextResponse.json({ caso });
+    return NextResponse.json({ caso: await serializarCaso(caso) });
   } catch (error) {
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;

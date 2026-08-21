@@ -19,9 +19,13 @@ jest.mock("@/lib/auth/tenant-context", () => {
 jest.mock("@/services/caso.service", () => ({
   casoService: { listarKanban: jest.fn() },
 }));
+jest.mock("@/services/usuario.service", () => ({
+  usuarioService: { assinarUrlAvatar: jest.fn() },
+}));
 
 const mockedGetTenantContext = getTenantContext as jest.Mock;
 const service = casoService as jest.Mocked<typeof casoService>;
+const { usuarioService } = jest.requireMock("@/services/usuario.service");
 
 const ctx = { usuarioId: "user-1", escritorioId: "esc-1", role: "padrao" as const };
 
@@ -43,6 +47,40 @@ describe("GET /api/casos/kanban", () => {
     expect(service.listarKanban).toHaveBeenCalledWith(
       ctx,
       expect.objectContaining({ busca: "cobrança" })
+    );
+  });
+
+  it("serializa os casos de cada coluna, sem vazar senhaHash e assinando o avatar", async () => {
+    usuarioService.assinarUrlAvatar.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
+    const colunas = [
+      {
+        status: { id: "status-1" },
+        total: 1,
+        casos: [
+          {
+            id: "caso-1",
+            responsavel: {
+              id: "membro-1",
+              usuario: {
+                id: "user-1",
+                nome: "Fulano",
+                email: "fulano@teste.com",
+                senhaHash: "hash-nunca-deveria-sair",
+                avatarUrl: "development/avatares/user-1/foto.png",
+              },
+            },
+          },
+        ],
+      },
+    ];
+    service.listarKanban.mockResolvedValue(colunas as never);
+
+    const response = await GET(new Request("http://localhost/api/casos/kanban"));
+    const corpo = await response.json();
+
+    expect(JSON.stringify(corpo)).not.toContain("hash-nunca-deveria-sair");
+    expect(corpo.colunas[0].casos[0].responsavel.usuario.avatarUrl).toBe(
+      "https://bucket.s3.amazonaws.com/signed-get"
     );
   });
 

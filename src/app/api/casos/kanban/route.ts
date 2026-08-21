@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseFiltrosCasoDaQuery } from "@/lib/api/schemas-caso";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { tratarErroDeContexto } from "@/lib/api/erros";
+import { serializarCasos } from "@/lib/api/serializa-caso";
 import { casoService } from "@/services/caso.service";
 
 export async function GET(request: Request) {
@@ -11,7 +12,10 @@ export async function GET(request: Request) {
     const filtros = parseFiltrosCasoDaQuery(searchParams);
 
     const colunas = await casoService.listarKanban(ctx, filtros);
-    return NextResponse.json({ colunas });
+    const colunasSerializadas = await Promise.all(
+      colunas.map(async (coluna) => ({ ...coluna, casos: await serializarCasos(coluna.casos) }))
+    );
+    return NextResponse.json({ colunas: colunasSerializadas });
   } catch (error) {
     const resposta = tratarErroDeContexto(error);
     if (resposta) return resposta;

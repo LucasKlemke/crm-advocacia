@@ -35,6 +35,9 @@ jest.mock("@/services/status.service", () => {
   class StatusNaoEncontradoError extends Error {}
   return { StatusNaoEncontradoError };
 });
+jest.mock("@/lib/api/serializa-caso", () => ({
+  serializarCasos: jest.fn(async (casos: unknown[]) => casos.map((c) => ({ ...(c as object), serializado: true }))),
+}));
 
 const mockedGetTenantContext = getTenantContext as jest.Mock;
 const service = casoService as jest.Mocked<typeof casoService>;
@@ -67,6 +70,17 @@ describe("GET /api/casos", () => {
       ctx,
       expect.objectContaining({ busca: "cobrança", statusIds: [STATUS_ID], skip: 20, take: 20 })
     );
+  });
+
+  // Garante que a rota nunca devolve o resultado bruto do service: precisa passar
+  // pelo serializador (que tira o senhaHash do responsável e assina o avatar).
+  it("serializa os casos antes de responder", async () => {
+    service.listar.mockResolvedValue({ casos: [{ id: "caso-1" }], total: 1 } as never);
+
+    const response = await GET(new Request("http://localhost/api/casos"));
+    const corpo = await response.json();
+
+    expect(corpo.casos).toEqual([{ id: "caso-1", serializado: true }]);
   });
 
   it("responde 401 sem sessão", async () => {
