@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { ChevronsUpDown, LogOut, Settings2 } from "lucide-react";
@@ -12,9 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { iniciais } from "@/lib/utils/nome";
 
 export interface NavUsuarioProps {
   usuario: { nome: string; email: string };
@@ -22,6 +22,15 @@ export interface NavUsuarioProps {
 
 // Card de usuário no rodapé da sidebar: "Configurações" leva a /perfil, "Sair" desloga.
 export function NavUsuario({ usuario }: NavUsuarioProps) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/perfil/avatar/download-url")
+      .then((resposta) => resposta.json())
+      .then((dados) => setAvatarUrl(dados?.downloadUrl ?? null))
+      .catch(() => {});
+  }, []);
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -29,9 +38,7 @@ export function NavUsuario({ usuario }: NavUsuarioProps) {
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton size="lg">
-                <Avatar className="size-7 rounded-md">
-                  <AvatarFallback className="rounded-md">{iniciais(usuario.nome)}</AvatarFallback>
-                </Avatar>
+                <AvatarIniciais nome={usuario.nome} avatarUrl={avatarUrl} className="size-7 rounded-md" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{usuario.nome}</span>
                   <span className="truncate text-xs text-muted-foreground">{usuario.email}</span>

@@ -14,6 +14,10 @@ jest.mock("next-auth/react", () => ({
 const mockedUsePathname = usePathname as jest.Mock;
 
 describe("AppSidebar", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ downloadUrl: null }) });
+  });
+
   it("lista os itens de navegação do app", () => {
     mockedUsePathname.mockReturnValue("/clientes");
 
