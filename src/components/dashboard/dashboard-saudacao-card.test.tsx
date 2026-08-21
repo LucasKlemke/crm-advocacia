@@ -1,11 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import { DashboardSaudacaoCard } from "./dashboard-saudacao-card";
+import { SAUDACOES, SUBTITULOS } from "@/hooks/use-saudacao-rotativa";
 
 describe("DashboardSaudacaoCard", () => {
-  it("cumprimenta o usuário pelo nome", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("cumprimenta o usuário pelo nome com uma saudação e subtítulo válidos", () => {
     render(<DashboardSaudacaoCard nome="Ana" />);
 
-    expect(screen.getByText("Olá, Ana")).toBeInTheDocument();
-    expect(screen.getByText("Aqui está o seu relatório.")).toBeInTheDocument();
+    const saudacaoEncontrada = SAUDACOES.find((saudacao) =>
+      screen.queryByText(`${saudacao}, Ana`)
+    );
+    expect(saudacaoEncontrada).toBeDefined();
+
+    const subtituloEncontrado = SUBTITULOS.find((subtitulo) => screen.queryByText(subtitulo));
+    expect(subtituloEncontrado).toBeDefined();
   });
 });
