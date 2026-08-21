@@ -25,5 +25,8 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api/|login|cadastro|icon|_next/static|_next/image|favicon.ico).*)"],
+  // O `.*\..*` no fim exclui qualquer caminho com extensão de arquivo (ex.:
+  // /images/foo.webp em public/) — arquivos estáticos nunca precisam de sessão,
+  // e a tela de login/cadastro (não autenticada) depende de poder carregá-los.
+  matcher: ["/((?!api/|login|cadastro|icon|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
