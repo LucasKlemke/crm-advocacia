@@ -49,4 +49,4 @@ Em produção/staging, usar **`npx prisma migrate deploy`**, nunca `migrate dev`
 
 - `migrate deploy` só aplica migrations já existentes em `prisma/migrations/`, sem tentar gerar novas nem perguntar nada interativamente — seguro para pipeline automatizado.
 - `migrate dev` é exclusivo do fluxo de desenvolvimento local (gera novas migrations a partir de mudanças no schema).
-- O passo `prisma migrate deploy` roda como etapa do pipeline de CI/CD (GitHub Actions), antes do deploy da nova versão da aplicação no AWS Amplify, garantindo que o schema do banco sempre esteja compatível com o código que está subindo.
+- O passo `prisma migrate deploy` roda dentro do próprio `npm run build` (`prisma migrate deploy && next build`), executado pela Vercel em cada um dos dois Projects de produção — ver [../deploy/deploy.md](../deploy/deploy.md) — garantindo que o schema do banco daquele ambiente sempre esteja compatível com o código que está subindo.

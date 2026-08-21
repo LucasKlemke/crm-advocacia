@@ -34,7 +34,7 @@
 
 ## Deploy
 
-- [deploy/deploy.md](deploy/deploy.md) — ambientes (local vs. produção), o que exatamente roda no AWS Amplify, variáveis de ambiente, pipeline de deploy (CI → migrations → build → publish), rollback.
+- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica em RDS+S3, produção real em Supabase), por que dois deploys Vercel a partir do mesmo repositório, o S3Client compatível com múltiplos provedores, variáveis de ambiente por Project, pipeline de deploy, rollback.
 
 ## Git
 
