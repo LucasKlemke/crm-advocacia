@@ -9,10 +9,15 @@ jest.mock("next-auth/react", () => ({
 
 const mockedSignIn = signIn as jest.Mock;
 
-async function preencherFormulario(user: ReturnType<typeof userEvent.setup>) {
+async function preencherFormulario(
+  user: ReturnType<typeof userEvent.setup>,
+  senha = "senha-forte-123",
+  confirmarSenha = senha
+) {
   await user.type(screen.getByLabelText("Seu nome"), "Fulano de Tal");
   await user.type(screen.getByLabelText("E-mail"), "fulano@teste.com");
-  await user.type(screen.getByLabelText("Senha"), "senha-forte-123");
+  await user.type(screen.getByLabelText("Senha"), senha);
+  await user.type(screen.getByLabelText("Confirmar senha"), confirmarSenha);
 }
 
 describe("CadastroPage", () => {
@@ -29,6 +34,26 @@ describe("CadastroPage", () => {
 
   afterAll(() => {
     window.location = originalLocation as never;
+  });
+
+  it("exibe erro e não envia o formulário quando a confirmação de senha não bate", async () => {
+    const user = userEvent.setup();
+
+    render(<CadastroPage />);
+    await preencherFormulario(user, "senha-forte-123", "senha-diferente-456");
+    await user.click(screen.getByRole("button", { name: /cadastrar/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/senhas não coincidem/i);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("mostra o medidor de força conforme a senha é digitada", async () => {
+    const user = userEvent.setup();
+
+    render(<CadastroPage />);
+    await user.type(screen.getByLabelText("Senha"), "Abcdefgh1!");
+
+    expect(await screen.findByText(/força da senha: forte/i)).toBeInTheDocument();
   });
 
   it("exibe erro quando e-mail já está cadastrado", async () => {
