@@ -42,6 +42,8 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-muted: var(--brand-muted);
+  --color-valor: var(--valor);
+  --color-valor-muted: var(--valor-muted);
   --color-gold-soft: var(--gold-soft);
   --color-gold: var(--gold);
   --color-overlay: var(--overlay);
@@ -90,6 +92,8 @@
   --brand: oklch(0.58 0.13 75);
   --brand-foreground: oklch(0.985 0 0);
   --brand-muted: oklch(0.95 0.035 80);
+  --valor: oklch(0.52 0.13 150);
+  --valor-muted: oklch(0.95 0.045 150);
   --gold-soft: oklch(0.955 0.008 90);
   --gold: oklch(0.875 0.06 88);
   --overlay: oklch(0.145 0 0);
@@ -130,6 +134,8 @@
   --brand: oklch(0.65 0.12 75);
   --brand-foreground: oklch(0.985 0 0);
   --brand-muted: oklch(0.32 0.035 80);
+  --valor: oklch(0.78 0.13 150);
+  --valor-muted: oklch(0.3 0.05 150);
   --gold-soft: oklch(0.26 0.006 90);
   --gold: oklch(0.36 0.035 85);
   --overlay: oklch(0.145 0 0);
