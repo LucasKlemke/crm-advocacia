@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { casoRepository, type CasoComRelacoes, type FiltrosCaso } from "@/repositories/caso.repository";
 import { statusRepository } from "@/repositories/status.repository";
 import { membroRepository } from "@/repositories/membro.repository";
+import { comentarioRepository } from "@/repositories/comentario.repository";
+import { documentoRepository } from "@/repositories/documento.repository";
 import { clienteService } from "@/services/cliente.service";
 import { statusService } from "@/services/status.service";
 import { logService } from "@/services/log.service";
@@ -56,6 +58,12 @@ const CAMPOS_AUDITADOS = [
 
 const CASOS_POR_COLUNA_KANBAN = 20;
 
+// Card do kanban mostra quantos documentos e comentários o caso já tem.
+export type CasoKanban = CasoComRelacoes & {
+  totalDocumentos: number;
+  totalComentarios: number;
+};
+
 // Cliente precisa existir no tenant (clienteService.obter já garante isso) e estar
 // ativo — um cliente desativado não pode ganhar caso novo nem ser realocado.
 async function validarCliente(ctx: TenantContext, clienteId: string): Promise<void> {
@@ -90,7 +98,7 @@ export const casoService = {
   async listarKanban(
     ctx: TenantContext,
     filtros: Omit<FiltrosCaso, "skip" | "take"> = {}
-  ): Promise<{ status: Status; total: number; casos: CasoComRelacoes[] }[]> {
+  ): Promise<{ status: Status; total: number; casos: CasoKanban[] }[]> {
     const todosStatus = await statusRepository.listar(ctx.escritorioId);
     const status = todosStatus.filter((coluna) => {
       if (filtros.statusIds && filtros.statusIds.length > 0 && !filtros.statusIds.includes(coluna.id)) {
@@ -106,7 +114,7 @@ export const casoService = {
       return true;
     });
 
-    return Promise.all(
+    const colunas = await Promise.all(
       status.map(async (coluna) => {
         const filtrosColuna: FiltrosCaso = { ...filtros, statusIds: [coluna.id] };
         const [casos, total] = await Promise.all([
@@ -116,6 +124,23 @@ export const casoService = {
         return { status: coluna, total, casos };
       })
     );
+
+    // Contagens de documentos/comentários em duas queries agregadas para o kanban
+    // inteiro — nunca uma por card (N+1).
+    const ids = colunas.flatMap((coluna) => coluna.casos.map((caso) => caso.id));
+    const [documentos, comentarios] = await Promise.all([
+      documentoRepository.contarPorEscopos(ctx.escritorioId, "caso", ids),
+      comentarioRepository.contarPorEscopos(ctx.escritorioId, "caso", ids),
+    ]);
+
+    return colunas.map((coluna) => ({
+      ...coluna,
+      casos: coluna.casos.map((caso) => ({
+        ...caso,
+        totalDocumentos: documentos[caso.id] ?? 0,
+        totalComentarios: comentarios[caso.id] ?? 0,
+      })),
+    }));
   },
 
   async obter(ctx: TenantContext, id: string): Promise<CasoComRelacoes> {

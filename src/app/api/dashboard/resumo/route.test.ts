@@ -38,8 +38,6 @@ describe("GET /api/dashboard/resumo", () => {
   it("devolve o resumo montado pelo Service", async () => {
     const resumo = {
       porTipoStatus: [{ tipoStatus: { id: "tipo-1" }, total: 2 }],
-      porMes: [{ mes: "2026-08", total: 2 }],
-      valorTotalAberto: 1000,
     };
     service.resumo.mockResolvedValue(resumo as never);
 
@@ -57,7 +55,7 @@ describe("GET /api/dashboard/resumo", () => {
   });
 
   it("repassa os filtros de cliente, responsável e período da query ao Service", async () => {
-    service.resumo.mockResolvedValue({ porTipoStatus: [], porMes: [], valorTotalAberto: 0 } as never);
+    service.resumo.mockResolvedValue({ porTipoStatus: [] } as never);
 
     await GET(
       requisicao(

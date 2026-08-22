@@ -72,6 +72,29 @@ describe("comentarioRepository", () => {
     expect(Object.keys(comentarios[0].autor).sort()).toEqual(["avatarUrl", "email", "id", "nome"]);
   });
 
+  it("contarPorEscopos agrupa por escopoId e ignora soft-deletados", async () => {
+    await criar(escritorioId, "cliente-1", "Um");
+    await criar(escritorioId, "cliente-1", "Dois");
+    await criar(escritorioId, "cliente-2", "Três");
+    const removido = await criar(escritorioId, "cliente-2", "Removido");
+    await comentarioRepository.marcarExcluido(removido.id, new Date());
+    await criar(outroEscritorioId, "cliente-1", "De outro tenant");
+
+    const contagens = await comentarioRepository.contarPorEscopos(escritorioId, "cliente", [
+      "cliente-1",
+      "cliente-2",
+      "cliente-3",
+    ]);
+
+    expect(contagens).toEqual({ "cliente-1": 2, "cliente-2": 1 });
+  });
+
+  it("contarPorEscopos devolve objeto vazio sem ids", async () => {
+    await expect(
+      comentarioRepository.contarPorEscopos(escritorioId, "cliente", [])
+    ).resolves.toEqual({});
+  });
+
   it("não mistura comentários de escopos diferentes", async () => {
     await criar(escritorioId, "cliente-1", "Do cliente 1");
     await criar(escritorioId, "cliente-2", "Do cliente 2");

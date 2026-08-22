@@ -7,6 +7,8 @@ import {
 import { casoRepository, type CasoComRelacoes } from "@/repositories/caso.repository";
 import { statusRepository } from "@/repositories/status.repository";
 import { membroRepository } from "@/repositories/membro.repository";
+import { comentarioRepository } from "@/repositories/comentario.repository";
+import { documentoRepository } from "@/repositories/documento.repository";
 import { clienteService, ClienteNaoEncontradoError } from "@/services/cliente.service";
 import { statusService, StatusNaoEncontradoError } from "@/services/status.service";
 import { logService } from "@/services/log.service";
@@ -16,6 +18,8 @@ import type { Cliente, Membro, Status } from "@prisma/client";
 jest.mock("@/repositories/caso.repository");
 jest.mock("@/repositories/status.repository");
 jest.mock("@/repositories/membro.repository");
+jest.mock("@/repositories/comentario.repository");
+jest.mock("@/repositories/documento.repository");
 jest.mock("@/services/cliente.service", () => {
   class ClienteNaoEncontradoError extends Error {}
   return {
@@ -39,6 +43,8 @@ jest.mock("@/lib/prisma", () => ({
 const repo = casoRepository as jest.Mocked<typeof casoRepository>;
 const statusRepo = statusRepository as jest.Mocked<typeof statusRepository>;
 const membroRepo = membroRepository as jest.Mocked<typeof membroRepository>;
+const comentarioRepo = comentarioRepository as jest.Mocked<typeof comentarioRepository>;
+const documentoRepo = documentoRepository as jest.Mocked<typeof documentoRepository>;
 const clientes = clienteService as jest.Mocked<typeof clienteService>;
 const status = statusService as jest.Mocked<typeof statusService>;
 const logs = logService as jest.Mocked<typeof logService>;
@@ -161,6 +167,11 @@ describe("casoService.listar", () => {
 });
 
 describe("casoService.listarKanban", () => {
+  beforeEach(() => {
+    comentarioRepo.contarPorEscopos.mockResolvedValue({});
+    documentoRepo.contarPorEscopos.mockResolvedValue({});
+  });
+
   it("monta uma coluna por status, com total e primeira página de casos", async () => {
     const colunaUm = statusFake({ id: "status-1", ordem: 1 });
     const colunaDois = statusFake({ id: "status-2", ordem: 2, nome: "Em análise" });
@@ -171,7 +182,11 @@ describe("casoService.listarKanban", () => {
     const colunas = await casoService.listarKanban(ctx());
 
     expect(colunas).toEqual([
-      { status: colunaUm, total: 1, casos: [casoFake()] },
+      {
+        status: colunaUm,
+        total: 1,
+        casos: [{ ...casoFake(), totalDocumentos: 0, totalComentarios: 0 }],
+      },
       { status: colunaDois, total: 0, casos: [] },
     ]);
     expect(repo.listar).toHaveBeenNthCalledWith(
@@ -203,6 +218,30 @@ describe("casoService.listarKanban", () => {
     const colunas = await casoService.listarKanban(ctx(), { tipoStatusIds: ["tipo-2"] });
 
     expect(colunas).toEqual([{ status: colunaDois, total: 0, casos: [] }]);
+  });
+
+  it("anexa as contagens de documentos e comentários de cada caso", async () => {
+    statusRepo.listar.mockResolvedValue([statusFake({ id: "status-1", ordem: 1 })]);
+    repo.listar.mockResolvedValue([casoFake()]);
+    repo.contar.mockResolvedValue(1);
+    documentoRepo.contarPorEscopos.mockResolvedValue({ "caso-1": 3 });
+    comentarioRepo.contarPorEscopos.mockResolvedValue({ "caso-1": 5 });
+
+    const colunas = await casoService.listarKanban(ctx());
+
+    expect(colunas[0].casos[0]).toMatchObject({ totalDocumentos: 3, totalComentarios: 5 });
+    expect(documentoRepo.contarPorEscopos).toHaveBeenCalledWith("esc-1", "caso", ["caso-1"]);
+    expect(comentarioRepo.contarPorEscopos).toHaveBeenCalledWith("esc-1", "caso", ["caso-1"]);
+  });
+
+  it("usa zero quando o caso não tem documento nem comentário", async () => {
+    statusRepo.listar.mockResolvedValue([statusFake({ id: "status-1", ordem: 1 })]);
+    repo.listar.mockResolvedValue([casoFake()]);
+    repo.contar.mockResolvedValue(1);
+
+    const colunas = await casoService.listarKanban(ctx());
+
+    expect(colunas[0].casos[0]).toMatchObject({ totalDocumentos: 0, totalComentarios: 0 });
   });
 });
 

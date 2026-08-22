@@ -80,13 +80,51 @@ describe("CasoCard", () => {
     expect(screen.getByText("0001234-56.2026.8.24.0001")).toBeInTheDocument();
   });
 
+  it("prefixa o número do processo com \"nº\"", () => {
+    renderCard(casoFake({ numeroProcesso: "0001234-56.2026.8.24.0001" }));
+
+    expect(screen.getByText("nº")).toBeInTheDocument();
+  });
+
+  it("não mostra o prefixo \"nº\" quando o processo não tem número", () => {
+    renderCard(casoFake());
+
+    expect(screen.queryByText("nº")).not.toBeInTheDocument();
+  });
+
+  it("mostra um ícone ao lado do nome do cliente", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByTestId("icone-cliente")).toBeInTheDocument();
+  });
+
+  it("mostra um aviso no lugar do número quando o processo não tem número", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByText("Sem número")).toBeInTheDocument();
+  });
+
+  it("mostra as contagens de documentos e comentários", () => {
+    renderCard(casoFake({ totalDocumentos: 3, totalComentarios: 5 }));
+
+    expect(screen.getByLabelText("3 documentos")).toBeInTheDocument();
+    expect(screen.getByLabelText("5 comentários")).toBeInTheDocument();
+  });
+
+  it("mostra zero nas contagens quando elas não vêm da API", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByLabelText("0 documentos")).toBeInTheDocument();
+    expect(screen.getByLabelText("0 comentários")).toBeInTheDocument();
+  });
+
   it("mostra 'Sem responsável' quando não há responsável", () => {
     renderCard(casoFake());
 
     expect(screen.getByText("Sem responsável")).toBeInTheDocument();
   });
 
-  it("mostra o nome do responsável quando há um", () => {
+  it("mostra o avatar do responsável quando há um", () => {
     renderCard(
       casoFake({
         responsavelMembroId: "membro-1",
@@ -97,7 +135,7 @@ describe("CasoCard", () => {
       })
     );
 
-    expect(screen.getByText("Ana Advogada")).toBeInTheDocument();
+    expect(screen.getByTestId("avatar-Ana Advogada")).toBeInTheDocument();
   });
 
   it("repassa o avatarUrl do responsável pro AvatarIniciais", () => {

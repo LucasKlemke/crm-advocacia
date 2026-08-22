@@ -12,7 +12,7 @@ const ctx: TenantContext = { usuarioId: "user-1", escritorioId: "esc-1", role: "
 function tipoFake(over: Partial<TipoStatus> = {}): TipoStatus {
   return {
     id: "tipo-1",
-    chave: "nova_conversa",
+    chave: "lead",
     nome: "Nova conversa",
     icone: "MessageCircle",
     cor: "#64748b",

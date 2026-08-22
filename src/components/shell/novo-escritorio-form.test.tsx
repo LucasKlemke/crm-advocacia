@@ -22,7 +22,7 @@ describe("NovoEscritorioForm", () => {
     const user = userEvent.setup();
 
     render(<NovoEscritorioForm />);
-    await user.type(screen.getByLabelText("Nome do escritório"), "Escritório Teste");
+    await user.type(screen.getByLabelText(/nome do escritório/i), "Escritório Teste");
     await user.click(screen.getByRole("button", { name: /criar escritório/i }));
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -40,7 +40,7 @@ describe("NovoEscritorioForm", () => {
     const user = userEvent.setup();
 
     render(<NovoEscritorioForm />);
-    await user.type(screen.getByLabelText("Nome do escritório"), "Escritório Teste");
+    await user.type(screen.getByLabelText(/nome do escritório/i), "Escritório Teste");
     await user.click(screen.getByRole("button", { name: /criar escritório/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível/i);

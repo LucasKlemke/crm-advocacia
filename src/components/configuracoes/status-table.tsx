@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { BadgeStatus } from "@/components/shared/badge-status";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -126,24 +126,7 @@ export function StatusTable({ somenteLeitura }: StatusTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {tipo ? (
-                        <Badge
-                          variant="outline"
-                          className="gap-1.5 font-normal"
-                          style={{
-                            borderColor: `color-mix(in oklch, ${tipo.cor}, transparent 50%)`,
-                            color: tipo.cor,
-                            backgroundColor: `color-mix(in oklch, ${tipo.cor}, transparent 92%)`,
-                          }}
-                        >
-                          <span
-                            aria-hidden
-                            className="size-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: tipo.cor }}
-                          />
-                          {tipo.nome}
-                        </Badge>
-                      ) : null}
+                      {tipo ? <BadgeStatus nome={tipo.nome} cor={tipo.cor} /> : null}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {item.descricao ?? "–"}

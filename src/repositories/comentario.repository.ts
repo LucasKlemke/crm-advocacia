@@ -26,6 +26,23 @@ export const comentarioRepository = {
     });
   },
 
+  // Contagem em lote para telas de lista (cards do kanban): um groupBy só, em vez de
+  // um count por caso — `escopoId` não tem FK, então não dá para usar `_count` do Prisma.
+  async contarPorEscopos(
+    escritorioId: string,
+    escopo: EscopoComentario,
+    escopoIds: string[],
+    db: Db = prisma
+  ): Promise<Record<string, number>> {
+    if (escopoIds.length === 0) return {};
+    const grupos = await db.comentario.groupBy({
+      by: ["escopoId"],
+      where: { escritorioId, escopo, escopoId: { in: escopoIds }, softDeletedAt: null },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(grupos.map((g) => [g.escopoId, g._count._all]));
+  },
+
   async update(
     id: string,
     data: Prisma.ComentarioUpdateInput,

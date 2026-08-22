@@ -18,9 +18,20 @@ const RESUMO: ResumoDashboardDTO = {
       total: 3,
       valorTotal: 4500,
     },
+    {
+      tipoStatus: {
+        id: "tipo-2",
+        chave: "fechado",
+        nome: "Fechado",
+        icone: "Trophy",
+        cor: "#22c55e",
+        descricao: null,
+        ordem: 2,
+      },
+      total: 2,
+      valorTotal: 9000,
+    },
   ],
-  porMes: [{ mes: "2026-08", total: 3 }],
-  valorTotalAberto: 15000,
 };
 
 beforeEach(() => {
@@ -31,9 +42,7 @@ describe("DashboardView", () => {
   it("mostra um estado de carregamento antes da resposta", () => {
     global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
 
-    renderComQuery(
-      <DashboardView atorUsuarioId="usuario-1" atorNome="Ana" atorRole="owner" />
-    );
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
 
     expect(document.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
   });
@@ -45,15 +54,13 @@ describe("DashboardView", () => {
       json: async () => RESUMO,
     } as Response);
 
-    renderComQuery(
-      <DashboardView atorUsuarioId="usuario-1" atorNome="Ana" atorRole="owner" />
-    );
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
 
-    await waitFor(() => expect(screen.getByText("Contato")).toBeInTheDocument());
-    expect(screen.getByText("Valor total em aberto")).toBeInTheDocument();
-    expect(screen.getByText("R$ 15.000,00")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
+    );
+    expect(screen.getByText("R$ 4.500,00")).toBeInTheDocument();
     expect(screen.getByText("Processos por status")).toBeInTheDocument();
-    expect(screen.getByText("Processos criados nos últimos 6 meses")).toBeInTheDocument();
   });
 
   it("mostra uma mensagem de erro quando a busca falha", async () => {
@@ -63,16 +70,14 @@ describe("DashboardView", () => {
       json: async () => ({ error: "Falhou" }),
     } as Response);
 
-    renderComQuery(
-      <DashboardView atorUsuarioId="usuario-1" atorNome="Ana" atorRole="owner" />
-    );
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
 
     await waitFor(() =>
       expect(screen.getByText("Não foi possível carregar o painel.")).toBeInTheDocument()
     );
   });
 
-  it("filtra a tabela de casos abaixo dos gráficos ao clicar em um card de status", async () => {
+  it("filtra a tabela simplificada de processos ao clicar em um card de status", async () => {
     let ultimaUrlCasos = "";
     global.fetch = jest.fn().mockImplementation((url: string) => {
       if (url.startsWith("/api/dashboard/resumo")) {
@@ -96,24 +101,67 @@ describe("DashboardView", () => {
       return Promise.reject(new Error(`URL não mockada: ${url}`));
     });
 
-    renderComQuery(
-      <DashboardView atorUsuarioId="usuario-1" atorNome="Ana" atorRole="owner" />
-    );
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
 
-    await waitFor(() => expect(screen.getByText("Contato")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
+    );
     expect(ultimaUrlCasos).not.toContain("tipoStatusId=tipo-1");
 
     await userEvent.click(screen.getByRole("button", { name: /ver processos de contato/i }));
-
-    expect(screen.getByText("Processos — Contato")).toBeInTheDocument();
     await waitFor(() => expect(ultimaUrlCasos).toContain("tipoStatusId=tipo-1"));
 
-    await userEvent.click(screen.getByRole("button", { name: /limpar filtro/i }));
-    expect(screen.queryByText("Processos — Contato")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /ver processos de contato/i }));
     await waitFor(() => expect(ultimaUrlCasos).not.toContain("tipoStatusId=tipo-1"));
   });
 
-  it("aplica o filtro de responsável e cliente do topo a todo o painel, não só à tabela", async () => {
+  it("permite selecionar múltiplos cards de status e filtra a tabela por todos eles", async () => {
+    let ultimaUrlCasos = "";
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.startsWith("/api/dashboard/resumo")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => RESUMO } as Response);
+      }
+      if (url.startsWith("/api/casos/filtros")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ clientes: [], membros: [], status: [], tipos: [] }),
+        } as unknown as Response);
+      }
+      if (url.startsWith("/api/casos")) {
+        ultimaUrlCasos = url;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ casos: [], total: 0, pagina: 1, porPagina: 20 }),
+        } as unknown as Response);
+      }
+      return Promise.reject(new Error(`URL não mockada: ${url}`));
+    });
+
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /ver processos de contato/i }));
+    await waitFor(() => expect(ultimaUrlCasos).toContain("tipoStatusId=tipo-1"));
+
+    await userEvent.click(screen.getByRole("button", { name: /ver processos de fechado/i }));
+    await waitFor(() =>
+      expect(ultimaUrlCasos).toContain(`tipoStatusId=${encodeURIComponent("tipo-1,tipo-2")}`)
+    );
+
+    expect(screen.getByRole("button", { name: /ver processos de contato/i })).toHaveClass(
+      "opacity-100"
+    );
+    expect(screen.getByRole("button", { name: /ver processos de fechado/i })).toHaveClass(
+      "opacity-100"
+    );
+  });
+
+  it("aplica o filtro de responsável e cliente do topo a todo o painel", async () => {
     let ultimaUrlCasos = "";
     let ultimaUrlResumo = "";
     global.fetch = jest.fn().mockImplementation((url: string) => {
@@ -144,11 +192,11 @@ describe("DashboardView", () => {
       return Promise.reject(new Error(`URL não mockada: ${url}`));
     });
 
-    renderComQuery(
-      <DashboardView atorUsuarioId="usuario-1" atorNome="Ana" atorRole="owner" />
-    );
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
 
-    await waitFor(() => expect(screen.getByText("Contato")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
+    );
     expect(ultimaUrlResumo).not.toContain("responsavelId");
 
     await userEvent.click(screen.getByRole("button", { name: "Responsável" }));

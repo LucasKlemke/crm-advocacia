@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   MessageCircle,
   Settings,
+  Smartphone,
   Users,
 } from "lucide-react";
 import {
@@ -33,7 +34,10 @@ const NAV_GROUPS = [
   },
   {
     label: "Disparo",
-    items: [{ href: "/mensagens", label: "Mensagens", icon: MessageCircle }],
+    items: [
+      { href: "/mensagens", label: "Mensagens", icon: MessageCircle },
+      { href: "/instancias", label: "Instâncias", icon: Smartphone },
+    ],
   },
   {
     label: "Configurações",

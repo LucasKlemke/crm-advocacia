@@ -36,6 +36,9 @@ export interface CasoDTO {
   cliente: CasoClienteDTO;
   status: StatusDTO;
   responsavel: CasoResponsavelDTO | null;
+  // Só o kanban preenche: a listagem em tabela não precisa das contagens.
+  totalDocumentos?: number;
+  totalComentarios?: number;
 }
 
 export interface ListaCasos {
@@ -71,6 +74,7 @@ export interface OpcaoStatusFiltro {
   id: string;
   nome: string;
   cor: string;
+  descricao: string | null;
 }
 
 export interface OpcaoTipoStatusFiltro {
@@ -78,6 +82,7 @@ export interface OpcaoTipoStatusFiltro {
   nome: string;
   chave: string;
   cor: string;
+  descricao: string | null;
 }
 
 export interface FiltrosCasoOpcoes {

@@ -31,8 +31,14 @@ export async function GET() {
     return NextResponse.json({
       clientes: clientes.map((c) => ({ id: c.id, nome: c.nome, cpf: c.cpf })),
       membros: membrosComAvatar,
-      status: status.map((s) => ({ id: s.id, nome: s.nome, cor: s.cor })),
-      tipos: tipos.map((t) => ({ id: t.id, nome: t.nome, chave: t.chave, cor: t.cor })),
+      status: status.map((s) => ({ id: s.id, nome: s.nome, cor: s.cor, descricao: s.descricao })),
+      tipos: tipos.map((t) => ({
+        id: t.id,
+        nome: t.nome,
+        chave: t.chave,
+        cor: t.cor,
+        descricao: t.descricao,
+      })),
     });
   } catch (error) {
     const resposta = tratarErroDeContexto(error);

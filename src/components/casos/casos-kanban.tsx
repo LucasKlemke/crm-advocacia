@@ -12,12 +12,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { Info } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { useAtualizarCaso, useCasosKanban } from "@/hooks/use-casos";
 import { CasoCard, CasoCardOverlay } from "@/components/casos/caso-card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
 import type { CasoDTO, ColunaKanban, FiltrosCasos, KanbanCasos, ListaCasos } from "@/types/caso";
 
@@ -237,6 +239,26 @@ function ColunaKanbanView({
       <div className="flex items-center gap-1.5 px-2 py-2">
         {Icone ? <Icone className="size-4" style={{ color: coluna.status.cor }} /> : null}
         <span className="text-sm font-medium text-foreground">{coluna.status.nome}</span>
+        {coluna.status.descricao ? (
+          // Mesma leitura da descrição já usada nos cards do dashboard e no filtro:
+          // `delay={0}` sobrescreve os 600ms padrão do Base UI. O ícone só existe
+          // quando o status tem descrição cadastrada.
+          <Tooltip>
+            <TooltipTrigger
+              delay={0}
+              render={
+                <button
+                  type="button"
+                  aria-label={`Sobre ${coluna.status.nome}`}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                />
+              }
+            >
+              <Info className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>{coluna.status.descricao}</TooltipContent>
+          </Tooltip>
+        ) : null}
         <span className="ml-auto text-xs text-muted-foreground">{coluna.total}</span>
       </div>
 

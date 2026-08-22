@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputGroup } from "@/components/ui/input-group";
+import { InputGroupPasswordInput } from "@/components/ui/input-group-password";
 import { Label } from "@/components/ui/label";
 
 export function SenhaForm() {
@@ -46,18 +47,26 @@ export function SenhaForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="senhaAtual">Senha atual</Label>
-        <Input id="senhaAtual" name="senhaAtual" type="password" autoComplete="current-password" required />
+        <InputGroup>
+          <InputGroupPasswordInput
+            id="senhaAtual"
+            name="senhaAtual"
+            autoComplete="current-password"
+            required
+          />
+        </InputGroup>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="novaSenha">Nova senha</Label>
-        <Input
-          id="novaSenha"
-          name="novaSenha"
-          type="password"
-          autoComplete="new-password"
-          minLength={8}
-          required
-        />
+        <InputGroup>
+          <InputGroupPasswordInput
+            id="novaSenha"
+            name="novaSenha"
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+        </InputGroup>
       </div>
       {erro ? (
         <p role="alert" className="text-sm text-destructive">

@@ -59,7 +59,7 @@ describe("GET /api/casos/filtros", () => {
     ] as never);
     status.listar.mockResolvedValue([{ id: "status-1", nome: "Novo", cor: "#000" }] as never);
     tipos.listar.mockResolvedValue([
-      { id: "tipo-1", nome: "Novo", chave: "nova_conversa", cor: "#111" },
+      { id: "tipo-1", nome: "Lead", chave: "lead", cor: "#111" },
     ] as never);
     usuarioService.assinarUrlAvatar.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-get");
 
@@ -73,7 +73,7 @@ describe("GET /api/casos/filtros", () => {
         { id: "membro-1", nome: "Advogado", avatarUrl: "https://bucket.s3.amazonaws.com/signed-get" },
       ],
       status: [{ id: "status-1", nome: "Novo", cor: "#000" }],
-      tipos: [{ id: "tipo-1", nome: "Novo", chave: "nova_conversa", cor: "#111" }],
+      tipos: [{ id: "tipo-1", nome: "Lead", chave: "lead", cor: "#111" }],
     });
     expect(clientes.listar).toHaveBeenCalledWith("esc-1");
     expect(usuarioService.assinarUrlAvatar).toHaveBeenCalledWith("development/avatares/user-1/foto.png");

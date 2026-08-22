@@ -128,27 +128,4 @@ export const casoRepository = {
     }));
   },
 
-  async listarDatasCriacao(
-    escritorioId: string,
-    filtros: FiltrosCaso,
-    db: Db = prisma
-  ): Promise<Date[]> {
-    const casos = await db.caso.findMany({
-      where: where(escritorioId, filtros),
-      select: { createdAt: true },
-    });
-    return casos.map((c) => c.createdAt);
-  },
-
-  async somarValorAberto(
-    escritorioId: string,
-    filtros: FiltrosCaso = {},
-    db: Db = prisma
-  ): Promise<number> {
-    const resultado = await db.caso.aggregate({
-      where: where(escritorioId, filtros),
-      _sum: { valor: true },
-    });
-    return resultado._sum.valor ? Number(resultado._sum.valor) : 0;
-  },
 };

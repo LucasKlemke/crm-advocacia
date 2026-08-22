@@ -34,4 +34,7 @@ export const ICONES_STATUS_PERMITIDOS: string[] = [
   "Send",
   "Eye",
   "Loader",
+  "UserPlus",
+  "FolderOpen",
+  "Ban",
 ];

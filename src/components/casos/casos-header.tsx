@@ -126,7 +126,12 @@ export function CasosHeader({
       <FiltroMultiSelect
         label="Status"
         icone={Tag}
-        opcoes={(opcoes?.status ?? []).map((s) => ({ id: s.id, nome: s.nome, cor: s.cor }))}
+        opcoes={(opcoes?.status ?? []).map((s) => ({
+          id: s.id,
+          nome: s.nome,
+          cor: s.cor,
+          descricao: s.descricao,
+        }))}
         selecionados={filtros.statusIds}
         onChange={(statusIds) => onFiltrosChange({ ...filtros, statusIds, pagina: 1 })}
         buscaPlaceholder="Buscar status..."
@@ -134,7 +139,12 @@ export function CasosHeader({
 
       <FiltroMultiSelect
         label="Tipo de status"
-        opcoes={(opcoes?.tipos ?? []).map((t) => ({ id: t.id, nome: t.nome, cor: t.cor }))}
+        opcoes={(opcoes?.tipos ?? []).map((t) => ({
+          id: t.id,
+          nome: t.nome,
+          cor: t.cor,
+          descricao: t.descricao,
+        }))}
         selecionados={filtros.tipoStatusIds}
         onChange={(tipoStatusIds) => onFiltrosChange({ ...filtros, tipoStatusIds, pagina: 1 })}
         buscaPlaceholder="Buscar tipo de status..."
