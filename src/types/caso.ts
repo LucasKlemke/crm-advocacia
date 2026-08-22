@@ -71,6 +71,7 @@ export interface OpcaoStatusFiltro {
   id: string;
   nome: string;
   cor: string;
+  descricao: string | null;
 }
 
 export interface OpcaoTipoStatusFiltro {
@@ -78,6 +79,7 @@ export interface OpcaoTipoStatusFiltro {
   nome: string;
   chave: string;
   cor: string;
+  descricao: string | null;
 }
 
 export interface FiltrosCasoOpcoes {

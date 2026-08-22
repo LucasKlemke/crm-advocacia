@@ -45,4 +45,48 @@ describe("FiltroMultiSelect", () => {
 
     expect(screen.queryByTestId("avatar-Maria Silva")).not.toBeInTheDocument();
   });
+
+  it("mostra a descrição da opção em tooltip ao passar o mouse sobre o item", async () => {
+    const usuario = userEvent.setup();
+    render(
+      <FiltroMultiSelect
+        label="Status"
+        opcoes={[
+          {
+            id: "status-1",
+            nome: "Em análise",
+            cor: "#f59e0b",
+            descricao: "Processo em estudo inicial pelo escritório.",
+          },
+        ]}
+        selecionados={[]}
+        onChange={jest.fn()}
+      />
+    );
+
+    await usuario.click(screen.getByRole("button", { name: "Status" }));
+    await usuario.hover(await screen.findByRole("option", { name: /em análise/i }));
+
+    expect(
+      await screen.findByText("Processo em estudo inicial pelo escritório.")
+    ).toBeInTheDocument();
+  });
+
+  it("não quebra a seleção de uma opção que tem descrição", async () => {
+    const usuario = userEvent.setup();
+    const onChange = jest.fn();
+    render(
+      <FiltroMultiSelect
+        label="Status"
+        opcoes={[{ id: "status-1", nome: "Em análise", descricao: "Processo em estudo inicial." }]}
+        selecionados={[]}
+        onChange={onChange}
+      />
+    );
+
+    await usuario.click(screen.getByRole("button", { name: "Status" }));
+    await usuario.click(await screen.findByRole("option", { name: /em análise/i }));
+
+    expect(onChange).toHaveBeenCalledWith(["status-1"]);
+  });
 });

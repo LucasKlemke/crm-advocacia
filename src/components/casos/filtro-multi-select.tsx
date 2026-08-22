@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Command,
   CommandEmpty,
@@ -24,6 +25,9 @@ export interface OpcaoMultiSelect {
   cor?: string;
   // Linha secundária abaixo do nome (ex.: CPF do cliente), como no combobox de cliente.
   subtitulo?: string;
+  // Texto explicativo do item (descrição do status/tipo de status) — mostrado em
+  // tooltip ao passar o mouse sobre a opção, como nos cards do dashboard.
+  descricao?: string | null;
   avatarUrl?: string | null;
 }
 
@@ -108,9 +112,8 @@ export function FiltroMultiSelect({
             <CommandGroup>
               {opcoes.map((opcao) => {
                 const marcado = selecionados.includes(opcao.id);
-                return (
+                const item = (
                   <CommandItem
-                    key={opcao.id}
                     value={opcao.nome}
                     onSelect={() => alternar(opcao.id)}
                   >
@@ -140,6 +143,20 @@ export function FiltroMultiSelect({
                       opcao.nome
                     )}
                   </CommandItem>
+                );
+
+                if (!opcao.descricao) {
+                  return <Fragment key={opcao.id}>{item}</Fragment>;
+                }
+
+                // A linha inteira é o gatilho e `delay={0}` sobrescreve os 600ms padrão do
+                // Base UI: a descrição aparece assim que o mouse entra na opção. Fica ao
+                // lado da lista para não cobrir os itens vizinhos do popover.
+                return (
+                  <Tooltip key={opcao.id}>
+                    <TooltipTrigger delay={0} render={item} />
+                    <TooltipContent side="right">{opcao.descricao}</TooltipContent>
+                  </Tooltip>
                 );
               })}
             </CommandGroup>
