@@ -104,8 +104,13 @@ export function StatusIconePicker({ value, onChange, disabled }: StatusIconePick
           />
         }
       >
-        {IconeSelecionado ? (
-          <IconeSelecionado className="size-4" />
+        {/* O nome acompanha o ícone: sem ele, quem usa leitor de tela ouve só
+            "Selecionar ícone" e não sabe qual está escolhido. */}
+        {IconeSelecionado && value ? (
+          <>
+            <IconeSelecionado className="size-4" />
+            {value}
+          </>
         ) : (
           "Selecione um ícone"
         )}
