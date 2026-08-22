@@ -2,13 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import { chaveDashboardResumo } from "@/lib/query/chaves";
 import { filtrosDashboardPadrao } from "@/types/dashboard";
 import type { FiltrosDashboard, ResumoDashboardDTO } from "@/types/dashboard";
 
-const RAIZ = ["dashboard"] as const;
-
-export const chaveDashboardResumo = (filtros: FiltrosDashboard = filtrosDashboardPadrao) =>
-  [...RAIZ, "resumo", filtros] as const;
+export { chaveDashboardResumo };
 
 function urlResumo(filtros: FiltrosDashboard): string {
   const params = new URLSearchParams();
