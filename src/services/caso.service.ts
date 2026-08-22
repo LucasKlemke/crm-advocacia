@@ -193,7 +193,11 @@ export const casoService = {
     });
   },
 
-  async atualizar(ctx: TenantContext, id: string, dados: DadosEdicaoCaso): Promise<Caso> {
+  async atualizar(
+    ctx: TenantContext,
+    id: string,
+    dados: DadosEdicaoCaso
+  ): Promise<CasoComRelacoes> {
     const atual = await this.obter(ctx, id);
 
     if (dados.clienteId !== undefined) {
@@ -278,7 +282,7 @@ export const casoService = {
 
   // Arquivar/desarquivar não são exclusões: o caso continua existindo no histórico
   // (RN08/RN09), só sai da visão padrão do kanban/tabela.
-  async arquivar(ctx: TenantContext, id: string): Promise<Caso> {
+  async arquivar(ctx: TenantContext, id: string): Promise<CasoComRelacoes> {
     const atual = await this.obter(ctx, id);
     if (atual.arquivado) {
       return atual;
@@ -300,7 +304,7 @@ export const casoService = {
     });
   },
 
-  async desarquivar(ctx: TenantContext, id: string): Promise<Caso> {
+  async desarquivar(ctx: TenantContext, id: string): Promise<CasoComRelacoes> {
     const atual = await this.obter(ctx, id);
     if (!atual.arquivado) {
       return atual;

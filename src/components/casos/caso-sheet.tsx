@@ -94,7 +94,7 @@ export function CasoSheet({
           <SheetHeader className="gap-3 border-b border-border">
             <div className="flex flex-col gap-0.5">
               <SheetTitle className="flex items-center gap-2">
-                {modo === "criar" ? "Novo processo" : (exibido?.tipoProcesso.nome ?? "Processo")}
+                {modo === "criar" ? "Novo processo" : (exibido?.tipoProcesso?.nome ?? "Processo")}
                 {arquivado ? <Badge variant="outline">Arquivado</Badge> : null}
               </SheetTitle>
               <SheetDescription>

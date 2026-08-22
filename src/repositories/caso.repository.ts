@@ -112,8 +112,14 @@ export const casoRepository = {
     return db.caso.count({ where: where(escritorioId, filtros) });
   },
 
-  async update(id: string, data: Prisma.CasoUpdateInput, db: Db = prisma): Promise<Caso> {
-    return db.caso.update({ where: { id }, data });
+  // Devolve as relações como o findById: quem edita um caso (rotas PATCH/DELETE)
+  // responde o CasoDTO completo, que promete cliente/status/tipoProcesso.
+  async update(
+    id: string,
+    data: Prisma.CasoUpdateInput,
+    db: Db = prisma
+  ): Promise<CasoComRelacoes> {
+    return db.caso.update({ where: { id }, data, include: CASO_INCLUDE });
   },
 
   async contarPorStatus(
