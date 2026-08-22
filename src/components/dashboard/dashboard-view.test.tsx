@@ -42,9 +42,22 @@ describe("DashboardView", () => {
   it("mostra um estado de carregamento antes da resposta", () => {
     global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
 
-    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" dataHoje="22 de agosto de 2026" />);
 
     expect(document.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+    // O esqueleto espelha a interface real: cabeçalho da tabela e título do gráfico já
+    // aparecem, só os dados é que faltam.
+    expect(screen.getByText("Nº do processo")).toBeInTheDocument();
+  });
+
+  it("mostra a saudação de imediato, sem esperar o resumo", () => {
+    global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana Souza" atorRole="owner" dataHoje="22 de agosto de 2026" />);
+
+    // O nome vem da sessão pelo servidor: prendê-lo ao resumo fazia o topo da página
+    // nascer vazio e "pular" quando o dado chegasse.
+    expect(screen.getByText("Ana")).toBeInTheDocument();
   });
 
   it("mostra os cards e gráficos após carregar o resumo", async () => {
@@ -54,7 +67,7 @@ describe("DashboardView", () => {
       json: async () => RESUMO,
     } as Response);
 
-    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" dataHoje="22 de agosto de 2026" />);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
@@ -70,7 +83,7 @@ describe("DashboardView", () => {
       json: async () => ({ error: "Falhou" }),
     } as Response);
 
-    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" dataHoje="22 de agosto de 2026" />);
 
     await waitFor(() =>
       expect(screen.getByText("Não foi possível carregar o painel.")).toBeInTheDocument()
@@ -101,7 +114,7 @@ describe("DashboardView", () => {
       return Promise.reject(new Error(`URL não mockada: ${url}`));
     });
 
-    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" dataHoje="22 de agosto de 2026" />);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
@@ -139,7 +152,7 @@ describe("DashboardView", () => {
       return Promise.reject(new Error(`URL não mockada: ${url}`));
     });
 
-    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" dataHoje="22 de agosto de 2026" />);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()
@@ -192,7 +205,7 @@ describe("DashboardView", () => {
       return Promise.reject(new Error(`URL não mockada: ${url}`));
     });
 
-    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" />);
+    renderComQuery(<DashboardView atorUsuarioId="usr-1" atorNome="Ana" atorRole="owner" dataHoje="22 de agosto de 2026" />);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /ver processos de contato/i })).toBeInTheDocument()

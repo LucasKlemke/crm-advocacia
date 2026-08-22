@@ -5,18 +5,24 @@ import { Plus, User, Users } from "lucide-react";
 import { useDashboardResumo } from "@/hooks/use-dashboard";
 import { useCasoFiltroOpcoes } from "@/hooks/use-casos";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardSaudacaoCard } from "@/components/dashboard/dashboard-saudacao-card";
+import {
+  CasosStatusDonutChartSkeleton,
+  StatusStatCardsSkeleton,
+} from "@/components/dashboard/dashboard-skeleton";
 import { StatusStatCards } from "@/components/dashboard/status-stat-cards";
-import { CasosTabelaSimplificada } from "@/components/dashboard/casos-tabela-simplificada";
+import {
+  CasosTabelaSimplificada,
+  CasosTabelaSimplificadaSkeleton,
+} from "@/components/dashboard/casos-tabela-simplificada";
 import { CasosStatusDonutChart } from "@/components/dashboard/casos-status-donut-chart";
+import { filtrosTabelaDashboard } from "@/components/dashboard/filtros-tabela";
 import { CasoSheet } from "@/components/casos/caso-sheet";
 import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
 import { formatarCpf } from "@/lib/utils/cpf";
-import { filtrosCasosPadrao, SEM_RESPONSAVEL } from "@/types/caso";
+import { SEM_RESPONSAVEL } from "@/types/caso";
 import { filtrosDashboardPadrao } from "@/types/dashboard";
-import type { FiltrosCasos } from "@/types/caso";
 import type { ContagemPorTipoStatusDTO, FiltrosDashboard } from "@/types/dashboard";
 import type { RoleMembro } from "@prisma/client";
 
@@ -24,12 +30,19 @@ export interface DashboardViewProps {
   atorUsuarioId: string;
   atorNome: string;
   atorRole: RoleMembro;
+  /** Data formatada no servidor — ver DashboardSaudacaoCard. */
+  dataHoje: string;
 }
 
 // Boundary cliente da tela /: o filtro de responsável/cliente/período no topo se
 // aplica a tudo (cards, gráficos e tabela de preview) — vale dizer, ao próprio
 // useDashboardResumo, não só à tabela.
-export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardViewProps) {
+export function DashboardView({
+  atorUsuarioId,
+  atorNome,
+  atorRole,
+  dataHoje,
+}: DashboardViewProps) {
   const [filtrosDashboard, setFiltrosDashboard] = useState<FiltrosDashboard>(filtrosDashboardPadrao);
   const { data, isLoading, isError } = useDashboardResumo(filtrosDashboard);
   const { data: opcoes } = useCasoFiltroOpcoes();
@@ -52,19 +65,14 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
     return { dataInicio: filtrosDashboard.dataInicio, dataFim: filtrosDashboard.dataFim };
   }
 
-  const filtrosTabela: FiltrosCasos = {
-    ...filtrosCasosPadrao,
-    tipoStatusIds: selecionadosIds,
-    clienteIds: filtrosDashboard.clienteIds,
-    responsavelIds: filtrosDashboard.responsavelIds,
-    dataInicio: filtrosDashboard.dataInicio,
-    dataFim: filtrosDashboard.dataFim,
-  };
+  const filtrosTabela = filtrosTabelaDashboard(filtrosDashboard, selecionadosIds);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        {!isLoading && !isError && data ? <DashboardSaudacaoCard nome={atorNome} /> : <div />}
+        {/* Não depende do resumo — o nome vem da sessão, então a saudação nunca espera
+            uma consulta nem "pula" quando o dado chega. */}
+        <DashboardSaudacaoCard nome={atorNome} data={dataHoje} />
 
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => setCriandoCaso(true)}>
@@ -105,15 +113,13 @@ export function DashboardView({ atorUsuarioId, atorNome, atorRole }: DashboardVi
       </div>
 
       {isLoading ? (
+        // Caminho raro: no primeiro carregamento o resumo já chega hidratado do servidor.
+        // Sobra para cache frio — troca de escritório, por exemplo.
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {Array.from({ length: 9 }).map((_, indice) => (
-              <Skeleton key={indice} className="h-24 w-full" />
-            ))}
-          </div>
+          <StatusStatCardsSkeleton />
           <div className="grid gap-4 lg:grid-cols-2">
-            <Skeleton className="h-72 w-full" />
-            <Skeleton className="h-72 w-full" />
+            <CasosTabelaSimplificadaSkeleton />
+            <CasosStatusDonutChartSkeleton />
           </div>
         </div>
       ) : isError || !data ? (

@@ -16,6 +16,10 @@ const config: Config = {
     "src/services/**/*.{ts,tsx}",
     "src/repositories/**/*.{ts,tsx}",
     "src/app/api/**/*.{ts,tsx}",
+    // Montagem de payload e query keys compartilhadas entre as rotas HTTP e o prefetch
+    // no servidor — lógica de backend, mesmo morando fora de src/app/api.
+    "src/lib/api/**/*.{ts,tsx}",
+    "src/lib/query/**/*.{ts,tsx}",
     "src/lib/external/**/*.{ts,tsx}",
     "src/lib/auth/**/*.{ts,tsx}",
     "src/components/**/*.{ts,tsx}",

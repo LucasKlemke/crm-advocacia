@@ -3,10 +3,8 @@ import { novoCasoSchema, parseFiltrosCasoDaQuery } from "@/lib/api/schemas-caso"
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { tratarErroDeContexto, respostaDadosInvalidos, lerJson } from "@/lib/api/erros";
 import { tratarErroDeCaso } from "@/lib/api/erros-caso";
-import { serializarCasos } from "@/lib/api/serializa-caso";
+import { montarListaCasos } from "@/lib/api/payloads/casos-lista";
 import { casoService } from "@/services/caso.service";
-
-const POR_PAGINA = 20;
 
 export async function GET(request: Request) {
   try {
@@ -14,13 +12,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1") || 1);
 
-    const { casos, total } = await casoService.listar(ctx, {
-      ...parseFiltrosCasoDaQuery(searchParams),
-      skip: (pagina - 1) * POR_PAGINA,
-      take: POR_PAGINA,
-    });
-
-    return NextResponse.json({ casos: await serializarCasos(casos), total, pagina, porPagina: POR_PAGINA });
+    return NextResponse.json(
+      await montarListaCasos(ctx, parseFiltrosCasoDaQuery(searchParams), pagina)
+    );
   } catch (error) {
     const resposta = tratarErroDeContexto(error);
     if (resposta) return resposta;
