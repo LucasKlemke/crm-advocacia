@@ -93,6 +93,17 @@ describe("StatusStatCards", () => {
     expect(screen.getByRole("button", { name: /fechado/i })).toHaveClass("opacity-40");
   });
 
+  it("aplica um gradiente com a cor do tipo de status como fundo do card", () => {
+    render(<StatusStatCards porTipoStatus={POR_TIPO_STATUS} selecionadosIds={[]} onSelect={jest.fn()} />);
+
+    const card = screen.getByRole("button", { name: /contato/i });
+
+    expect(card).toHaveStyle({
+      backgroundImage:
+        "linear-gradient(to bottom right, color-mix(in oklab, #f59e0b 15%, transparent), color-mix(in oklab, #f59e0b 5%, transparent) 50%, transparent)",
+    });
+  });
+
   it("mostra a descrição do tipo de status ao passar o mouse sobre o card", async () => {
     render(<StatusStatCards porTipoStatus={COM_DESCRICAO} selecionadosIds={[]} onSelect={jest.fn()} />);
 

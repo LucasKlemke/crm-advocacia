@@ -23,6 +23,19 @@ export interface StatusStatCardsProps {
 // restaurando a opacidade via seu :hover). Seleção é multi (clicar alterna dentro/fora
 // de `selecionadosIds`) — com um ou mais cards selecionados, os demais ficam apagados
 // de forma persistente, mesmo sem hover.
+//
+// Mesmo gradiente diagonal do DashboardSaudacaoCard (`from-brand/15 via-brand/5 to-transparent`),
+// só que tingido pela cor do tipo de status. Como `cor` é hex vindo do banco, o gradiente é
+// montado em `style` com `color-mix` em vez de classe Tailwind literal.
+function gradienteDaCor(cor: string): string {
+  return [
+    "linear-gradient(to bottom right,",
+    `color-mix(in oklab, ${cor} 15%, transparent),`,
+    `color-mix(in oklab, ${cor} 5%, transparent) 50%,`,
+    "transparent)",
+  ].join(" ");
+}
+
 export function StatusStatCards({ porTipoStatus, selecionadosIds, onSelect }: StatusStatCardsProps) {
   const somaValorTotal = porTipoStatus.reduce((acc, contagem) => acc + contagem.valorTotal, 0);
   const temSelecao = selecionadosIds.length > 0;
@@ -45,8 +58,9 @@ export function StatusStatCards({ porTipoStatus, selecionadosIds, onSelect }: St
             onKeyDown={(evento) => {
               if (evento.key === "Enter") onSelect(contagem);
             }}
+            style={{ backgroundImage: gradienteDaCor(tipoStatus.cor) }}
             className={cn(
-              "cursor-pointer transition-opacity hover:bg-accent/50",
+              "cursor-pointer overflow-hidden transition-opacity hover:bg-accent/50",
               !temSelecao
                 ? "opacity-100 hover:opacity-100 group-hover/cards:opacity-40"
                 : selecionado
