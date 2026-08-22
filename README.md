@@ -1,7 +1,12 @@
 # CRM Advocacia
 
 CRM multi-tenant para escritórios de advocacia. Visão de produto, stack e regras de negócio: **[CLAUDE.md](CLAUDE.md)**. Documentação técnica detalhada por área: **[docs/README.md](docs/README.md)**.
-Projeto TCC Católica SC (Projeto trabalho de conclusão de curso)
+
+## Contexto acadêmico
+
+> **Projeto sem fins lucrativos.** Este é um projeto de portfólio desenvolvido como **Trabalho de Conclusão de Curso (TCC) — 2026, 8º semestre**, no **Centro Universitário Católica de Santa Catarina**, por Lucas Affonso Klemke.
+
+Não há qualquer finalidade comercial: o sistema não é vendido, licenciado ou monetizado. Ele nasceu de uma necessidade real (o escritório do Dr. Lucas Quintino, OAB/SC 71.025) e é mantido exclusivamente como exercício acadêmico e demonstração técnica de portfólio.
 
 ## Setup local
 
