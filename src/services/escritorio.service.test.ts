@@ -6,12 +6,14 @@ import {
 import { escritorioRepository } from "@/repositories/escritorio.repository";
 import { membroRepository } from "@/repositories/membro.repository";
 import { statusService } from "@/services/status.service";
+import { tipoProcessoService } from "@/services/tipo-processo.service";
 import { prisma } from "@/lib/prisma";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 
 jest.mock("@/repositories/escritorio.repository");
 jest.mock("@/repositories/membro.repository");
 jest.mock("@/services/status.service");
+jest.mock("@/services/tipo-processo.service");
 jest.mock("@/lib/prisma", () => ({
   prisma: { $transaction: jest.fn() },
 }));
@@ -19,6 +21,7 @@ jest.mock("@/lib/prisma", () => ({
 const mockedEscritorioRepo = escritorioRepository as jest.Mocked<typeof escritorioRepository>;
 const mockedMembroRepo = membroRepository as jest.Mocked<typeof membroRepository>;
 const mockedStatusService = statusService as jest.Mocked<typeof statusService>;
+const mockedTipoProcessoService = tipoProcessoService as jest.Mocked<typeof tipoProcessoService>;
 const mockedPrisma = prisma as unknown as { $transaction: jest.Mock };
 
 function ctx(role: TenantContext["role"]): TenantContext {
@@ -37,6 +40,7 @@ describe("escritorioService.criarEscritorio", () => {
     mockedEscritorioRepo.create.mockResolvedValue({ id: "esc-1", nome: "Escritório Teste" } as never);
     mockedMembroRepo.create.mockResolvedValue({ id: "membro-1", role: "owner" } as never);
     mockedStatusService.criarPadroes.mockResolvedValue([]);
+    mockedTipoProcessoService.criarPadroes.mockResolvedValue([]);
 
     const resultado = await escritorioService.criarEscritorio("user-1", {
       nome: "Escritório Teste",
@@ -63,6 +67,7 @@ describe("escritorioService.criarEscritorio", () => {
     mockedEscritorioRepo.create.mockResolvedValue({ id: "esc-1", nome: "Escritório Teste" } as never);
     mockedMembroRepo.create.mockResolvedValue({ id: "membro-1", role: "owner" } as never);
     mockedStatusService.criarPadroes.mockResolvedValue([]);
+    mockedTipoProcessoService.criarPadroes.mockResolvedValue([]);
 
     await escritorioService.criarEscritorio("user-1", { nome: "Escritório Teste" });
 
