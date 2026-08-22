@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Scale } from "lucide-react";
 import { auth } from "@/lib/auth/config";
 import { NovoEscritorioForm } from "@/components/shell/novo-escritorio-form";
 
@@ -17,12 +18,21 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold">Crie seu escritório</h1>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Você poderá convidar colegas e criar outros escritórios depois.
-        </p>
+    <div className="flex min-h-screen flex-col justify-center bg-background px-4 py-8">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <span className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-brand">
+            <Scale className="size-4" />
+            CRM Advocacia
+          </span>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            Conte-nos sobre o seu escritório
+          </h1>
+          <p className="max-w-md text-balance text-muted-foreground">
+            Essas informações ajudam colegas e clientes a identificar o seu escritório dentro do CRM.
+          </p>
+        </div>
+
         <NovoEscritorioForm />
       </div>
     </div>

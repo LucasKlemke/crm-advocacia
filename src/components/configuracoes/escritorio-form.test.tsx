@@ -53,9 +53,43 @@ describe("EscritorioForm", () => {
     const [, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(JSON.parse(init.body as string)).toEqual({
       nome: escritorio.nome,
-      oabResponsavel: escritorio.oabResponsavel,
+      // Valor já salvo é remascarado na montagem — sai formatado no PATCH.
+      oabResponsavel: "SC 12.345",
       telefoneWhatsapp: escritorio.telefoneWhatsapp,
     });
+  });
+
+  it("aplica a máscara de OAB enquanto o usuário digita", async () => {
+    const user = userEvent.setup();
+    render(<EscritorioForm escritorio={escritorio} somenteLeitura={false} />);
+
+    const campo = screen.getByLabelText("OAB responsável");
+    await user.clear(campo);
+    await user.type(campo, "sc71025");
+
+    expect(campo).toHaveValue("SC 71.025");
+  });
+
+  it("aplica a máscara de telefone enquanto o usuário digita", async () => {
+    const user = userEvent.setup();
+    render(<EscritorioForm escritorio={escritorio} somenteLeitura={false} />);
+
+    const campo = screen.getByLabelText("WhatsApp");
+    await user.clear(campo);
+    await user.type(campo, "5548999998888");
+
+    expect(campo).toHaveValue("+55 (48) 99999-8888");
+  });
+
+  it("mostra o telefone já salvo formatado ao abrir o formulário", () => {
+    render(
+      <EscritorioForm
+        escritorio={{ ...escritorio, telefoneWhatsapp: "5548999998888" }}
+        somenteLeitura={false}
+      />
+    );
+
+    expect(screen.getByLabelText("WhatsApp")).toHaveValue("+55 (48) 99999-8888");
   });
 
   it("salva alterações quando não é somente leitura", async () => {
