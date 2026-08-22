@@ -12,7 +12,7 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
     clienteId: "cli-1",
     statusId: "status-1",
     responsavelMembroId: null,
-    titulo: "Ação de cobrança",
+    tipoProcessoId: "tipo-processo-1",
     numeroProcesso: null,
     descricao: null,
     valor: null,
@@ -42,6 +42,17 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
       createdAt: "2026-08-01T12:00:00.000Z",
       updatedAt: "2026-08-01T12:00:00.000Z",
     },
+    tipoProcesso: {
+      id: "tipo-processo-1",
+      escritorioId: "esc-1",
+      nome: "Ação de cobrança",
+      icone: "Briefcase",
+      cor: "#6366f1",
+      descricao: null,
+      ordem: 1,
+      createdAt: "2026-08-01T12:00:00.000Z",
+      updatedAt: "2026-08-01T12:00:00.000Z",
+    },
     responsavel: null,
     ...over,
   };
@@ -65,6 +76,9 @@ function mockarFetch() {
           membros: [],
           status: [{ id: "status-1", nome: "Em análise", cor: "#f59e0b" }],
           tipos: [],
+          tiposProcesso: [
+            { id: "tipo-processo-1", nome: "Ação de cobrança", cor: "#6366f1", icone: "Briefcase" },
+          ],
         }),
       } as unknown as Response);
     }
@@ -110,7 +124,9 @@ describe("CasoSheet", () => {
     renderSheet();
 
     expect(await screen.findByRole("heading", { name: /Ação de cobrança/ })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Ação de cobrança")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /Tipo de processo/ })).toHaveTextContent(
+      "Ação de cobrança"
+    );
   });
 
   it("mostra o formulário de criação no modo criar", async () => {
@@ -131,7 +147,7 @@ describe("CasoSheet", () => {
     const usuario = userEvent.setup();
     const onOpenChange = jest.fn();
     renderSheet({ onOpenChange });
-    await screen.findByDisplayValue("Ação de cobrança");
+    await screen.findByRole("combobox", { name: /Tipo de processo/ });
 
     await usuario.click(screen.getByRole("button", { name: "Arquivar processo" }));
 
@@ -189,7 +205,7 @@ describe("CasoSheet", () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: async () => ({ clientes: [], membros: [], status: [], tipos: [] }),
+          json: async () => ({ clientes: [], membros: [], status: [], tipos: [], tiposProcesso: [] }),
         } as Response);
       }
       if (url === "/api/documentos?escopo=caso&escopoId=caso-1") {
