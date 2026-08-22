@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 
 export const SAUDACOES = [
   "Olá",
@@ -55,8 +55,32 @@ function lerOuSortear(): SaudacaoArmazenada {
   return nova;
 }
 
+// O par sorteado vive no localStorage — uma store do navegador, que o servidor não tem
+// como consultar. Renderizar direto o valor sorteado quebraria a hidratação (o card agora
+// vem no HTML do servidor), então o snapshot do servidor é fixo e o do navegador entra
+// logo depois de hidratar: mesmo texto, mesma largura, sem deslocar o layout.
+const PAR_INICIAL: SaudacaoArmazenada = {
+  saudacaoIndice: 0,
+  subtituloIndice: 0,
+  sorteadoEm: 0,
+};
+
+// O par não muda enquanto a tela está aberta: nada a notificar.
+const assinar = () => () => {};
+
+const snapshotServidor = () => PAR_INICIAL;
+
 export function useSaudacaoRotativa() {
-  const [{ saudacaoIndice, subtituloIndice }] = useState(lerOuSortear);
+  // useSyncExternalStore exige um snapshot estável entre chamadas — sortear a cada
+  // leitura devolveria um objeto novo e renderizaria em laço.
+  const cache = useRef<SaudacaoArmazenada | null>(null);
+  const snapshotNavegador = useCallback(() => (cache.current ??= lerOuSortear()), []);
+
+  const { saudacaoIndice, subtituloIndice } = useSyncExternalStore(
+    assinar,
+    snapshotNavegador,
+    snapshotServidor
+  );
 
   return {
     saudacao: SAUDACOES[saudacaoIndice],
