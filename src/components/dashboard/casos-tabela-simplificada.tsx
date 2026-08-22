@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Banknote, Hash, History, Tag, User } from "lucide-react";
 import { formatarDataHoraCurta } from "@/lib/utils/data";
-import { formatarValorBrl } from "@/lib/utils/valor";
 import { useCasos } from "@/hooks/use-casos";
 import { CasoSheet } from "@/components/casos/caso-sheet";
+import { BadgeStatus } from "@/components/shared/badge-status";
+import { BadgeValor } from "@/components/shared/badge-valor";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -123,16 +124,9 @@ export function CasosTabelaSimplificada({
               </TableCell>
               <TableCell className="max-w-40 truncate">{caso.cliente.nome}</TableCell>
               <TableCell>
-                <span className="flex items-center gap-1.5">
-                  <span
-                    aria-hidden
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: caso.status.cor }}
-                  />
-                  {caso.status.nome}
-                </span>
+                <BadgeStatus nome={caso.status.nome} cor={caso.status.cor} />
               </TableCell>
-              <TableCell>{formatarValorBrl(caso.valor)}</TableCell>
+              <TableCell>{caso.valor !== null ? <BadgeValor valor={caso.valor} /> : "–"}</TableCell>
               <TableCell className="text-muted-foreground">
                 {formatarDataHoraCurta(caso.updatedAt)}
               </TableCell>
