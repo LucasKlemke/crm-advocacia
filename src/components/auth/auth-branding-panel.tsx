@@ -12,7 +12,6 @@ export function AuthBrandingPanel({ className }: { className?: string }) {
           fill
           sizes="(min-width: 1024px) 50vw, 0px"
           className="object-cover"
-          priority
         />
         <div
           aria-hidden
@@ -20,8 +19,7 @@ export function AuthBrandingPanel({ className }: { className?: string }) {
         />
         <div className="absolute inset-x-0 bottom-0 max-w-lg p-10">
           <blockquote className="text-2xl leading-snug font-medium text-balance text-brand-foreground">
-            &ldquo;Centralize clientes, acompanhe prazos e dispare WhatsApp — tudo em um só
-            lugar.&rdquo;
+            &ldquo;Protocolamos a organização do seu escritório.&rdquo;
           </blockquote>
           <p className="mt-2 text-sm text-brand-foreground/75">
             Feito para escritórios de advocacia que querem organização sem complicação.
