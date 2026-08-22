@@ -197,7 +197,7 @@ describe("CasoSheet", () => {
   // Clicar num documento troca o conteúdo da drawer inteira pelo visualizador (como uma
   // aba exclusiva), escondendo as abas Detalhes/Documentos até voltar.
   it("abre o documento na própria drawer ao clicar no card, e Voltar restaura as abas", async () => {
-    global.fetch = jest.fn().mockImplementation((url: string, init?: RequestInit) => {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
       if (url.startsWith("/api/comentarios")) {
         return Promise.resolve({ ok: true, status: 200, json: async () => ({ comentarios: [] }) } as Response);
       }

@@ -93,7 +93,6 @@ describe("DocumentosGrupo", () => {
   });
 
   it("recusa arquivo de tipo não suportado sem chamar a API", async () => {
-    const user = userEvent.setup();
     renderGrupo();
     await screen.findByText(/nenhum documento/i);
 
