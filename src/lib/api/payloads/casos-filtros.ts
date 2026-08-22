@@ -2,19 +2,22 @@ import { clienteRepository } from "@/repositories/cliente.repository";
 import { membroRepository } from "@/repositories/membro.repository";
 import { statusRepository } from "@/repositories/status.repository";
 import { tipoStatusRepository } from "@/repositories/tipo-status.repository";
+import { tipoProcessoRepository } from "@/repositories/tipo-processo.repository";
 import { usuarioService } from "@/services/usuario.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { FiltrosCasoOpcoes } from "@/types/caso";
 
 // Payload único para as opções dos filtros de /casos e do dashboard (dropdowns de
-// cliente, responsável, status e tipo) — evita 4 requisições separadas na tela.
+// cliente, responsável, status, tipo de status e tipo de processo) — evita 5
+// requisições separadas na tela.
 // Extraído do route handler para ser reusado pelo prefetch no servidor.
 export async function montarOpcoesFiltroCaso(ctx: TenantContext): Promise<FiltrosCasoOpcoes> {
-  const [clientes, membros, status, tipos] = await Promise.all([
+  const [clientes, membros, status, tipos, tiposProcesso] = await Promise.all([
     clienteRepository.listar(ctx.escritorioId),
     membroRepository.listarComUsuarioPorEscritorio(ctx.escritorioId),
     statusRepository.listar(ctx.escritorioId),
     tipoStatusRepository.listar(),
+    tipoProcessoRepository.listar(ctx.escritorioId),
   ]);
 
   const membrosComAvatar = await Promise.all(
@@ -34,6 +37,13 @@ export async function montarOpcoesFiltroCaso(ctx: TenantContext): Promise<Filtro
       nome: t.nome,
       chave: t.chave,
       cor: t.cor,
+      descricao: t.descricao,
+    })),
+    tiposProcesso: tiposProcesso.map((t) => ({
+      id: t.id,
+      nome: t.nome,
+      cor: t.cor,
+      icone: t.icone,
       descricao: t.descricao,
     })),
   };

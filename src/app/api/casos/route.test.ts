@@ -45,6 +45,7 @@ const service = casoService as jest.Mocked<typeof casoService>;
 const ctx = { usuarioId: "user-1", escritorioId: "esc-1", role: "padrao" as const };
 const CLIENTE_ID = "11111111-1111-4111-8111-111111111111";
 const STATUS_ID = "22222222-2222-4222-8222-222222222222";
+const TIPO_PROCESSO_ID = "44444444-4444-4444-8444-444444444444";
 
 function post(body: unknown) {
   return POST(new Request("http://localhost/api/casos", { method: "POST", body: JSON.stringify(body) }));
@@ -107,14 +108,18 @@ describe("POST /api/casos", () => {
   it("cria o caso e responde 201", async () => {
     service.criar.mockResolvedValue({ id: "caso-1" } as never);
 
-    const response = await post({ titulo: "Novo Caso", clienteId: CLIENTE_ID, statusId: STATUS_ID });
+    const response = await post({ tipoProcessoId: TIPO_PROCESSO_ID, clienteId: CLIENTE_ID, statusId: STATUS_ID });
     const corpo = await response.json();
 
     expect(response.status).toBe(201);
     expect(corpo.caso).toEqual({ id: "caso-1" });
     expect(service.criar).toHaveBeenCalledWith(
       ctx,
-      expect.objectContaining({ titulo: "Novo Caso", clienteId: CLIENTE_ID, statusId: STATUS_ID })
+      expect.objectContaining({
+        tipoProcessoId: TIPO_PROCESSO_ID,
+        clienteId: CLIENTE_ID,
+        statusId: STATUS_ID,
+      })
     );
   });
 
@@ -127,7 +132,7 @@ describe("POST /api/casos", () => {
   });
 
   it("responde 400 para payload inválido (zod)", async () => {
-    const response = await post({ titulo: "", clienteId: CLIENTE_ID, statusId: STATUS_ID });
+    const response = await post({ clienteId: CLIENTE_ID, statusId: STATUS_ID });
     expect(response.status).toBe(400);
     expect(service.criar).not.toHaveBeenCalled();
   });
@@ -136,7 +141,7 @@ describe("POST /api/casos", () => {
     const { ClienteNaoEncontradoError } = jest.requireMock("@/services/cliente.service");
     service.criar.mockRejectedValue(new ClienteNaoEncontradoError());
 
-    const response = await post({ titulo: "Novo Caso", clienteId: CLIENTE_ID, statusId: STATUS_ID });
+    const response = await post({ tipoProcessoId: TIPO_PROCESSO_ID, clienteId: CLIENTE_ID, statusId: STATUS_ID });
     expect(response.status).toBe(404);
   });
 
@@ -144,7 +149,7 @@ describe("POST /api/casos", () => {
     const { ClienteInativoError } = jest.requireMock("@/services/caso.service");
     service.criar.mockRejectedValue(new ClienteInativoError());
 
-    const response = await post({ titulo: "Novo Caso", clienteId: CLIENTE_ID, statusId: STATUS_ID });
+    const response = await post({ tipoProcessoId: TIPO_PROCESSO_ID, clienteId: CLIENTE_ID, statusId: STATUS_ID });
     expect(response.status).toBe(400);
   });
 
@@ -152,7 +157,7 @@ describe("POST /api/casos", () => {
     const { NaoAutenticadoError } = jest.requireMock("@/lib/auth/tenant-context");
     mockedGetTenantContext.mockRejectedValue(new NaoAutenticadoError());
 
-    const response = await post({ titulo: "Novo Caso", clienteId: CLIENTE_ID, statusId: STATUS_ID });
+    const response = await post({ tipoProcessoId: TIPO_PROCESSO_ID, clienteId: CLIENTE_ID, statusId: STATUS_ID });
     expect(response.status).toBe(401);
   });
 });

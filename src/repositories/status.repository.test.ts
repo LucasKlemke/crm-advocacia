@@ -109,9 +109,19 @@ describe("statusRepository", () => {
 
     expect(await statusRepository.contarCasos(status.id)).toBe(0);
 
+    const tipoProcesso = await prisma.tipoProcesso.create({
+      data: {
+        nome: "Tipo Status Repo",
+        icone: "Briefcase",
+        cor: "#6366f1",
+        ordem: 1,
+        escritorioId,
+      },
+    });
+
     await prisma.caso.create({
       data: {
-        titulo: "Caso Teste",
+        tipoProcesso: { connect: { id: tipoProcesso.id } },
         escritorio: { connect: { id: escritorioId } },
         cliente: { connect: { id: cliente.id } },
         status: { connect: { id: status.id } },

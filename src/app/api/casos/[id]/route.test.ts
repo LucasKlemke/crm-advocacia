@@ -118,7 +118,7 @@ describe("PATCH /api/casos/[id]", () => {
   });
 
   it("responde 400 para payload inválido", async () => {
-    const response = await patch({ titulo: "" });
+    const response = await patch({ tipoProcessoId: "nao-e-uuid" });
     expect(response.status).toBe(400);
     expect(service.atualizar).not.toHaveBeenCalled();
   });
@@ -135,7 +135,7 @@ describe("PATCH /api/casos/[id]", () => {
     const { CasoNaoEncontradoError } = jest.requireMock("@/services/caso.service");
     service.atualizar.mockRejectedValue(new CasoNaoEncontradoError());
 
-    const response = await patch({ titulo: "Novo título" });
+    const response = await patch({ descricao: "Nova descrição" });
     expect(response.status).toBe(404);
   });
 });

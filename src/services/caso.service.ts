@@ -6,6 +6,7 @@ import { comentarioRepository } from "@/repositories/comentario.repository";
 import { documentoRepository } from "@/repositories/documento.repository";
 import { clienteService } from "@/services/cliente.service";
 import { statusService } from "@/services/status.service";
+import { tipoProcessoService } from "@/services/tipo-processo.service";
 import { logService } from "@/services/log.service";
 import { calcularDiff } from "@/lib/utils/diff";
 import type { TenantContext } from "@/lib/auth/tenant-context";
@@ -35,7 +36,7 @@ export class ResponsavelInvalidoError extends Error {
 }
 
 export interface DadosNovoCaso {
-  titulo: string;
+  tipoProcessoId: string;
   clienteId: string;
   statusId: string;
   responsavelMembroId?: string | null;
@@ -47,7 +48,7 @@ export interface DadosNovoCaso {
 export type DadosEdicaoCaso = Partial<DadosNovoCaso>;
 
 const CAMPOS_AUDITADOS = [
-  "titulo",
+  "tipoProcessoId",
   "clienteId",
   "statusId",
   "responsavelMembroId",
@@ -155,6 +156,7 @@ export const casoService = {
   async criar(ctx: TenantContext, dados: DadosNovoCaso): Promise<Caso> {
     await validarCliente(ctx, dados.clienteId);
     await statusService.obter(ctx, dados.statusId);
+    const tipoProcesso = await tipoProcessoService.obter(ctx, dados.tipoProcessoId);
     if (dados.responsavelMembroId) {
       await validarResponsavel(ctx, dados.responsavelMembroId);
     }
@@ -162,13 +164,13 @@ export const casoService = {
     return prisma.$transaction(async (tx) => {
       const caso = await casoRepository.create(
         {
-          titulo: dados.titulo.trim(),
           numeroProcesso: dados.numeroProcesso?.trim() || null,
           descricao: dados.descricao?.trim() || null,
           valor: dados.valor ?? null,
           escritorio: { connect: { id: ctx.escritorioId } },
           cliente: { connect: { id: dados.clienteId } },
           status: { connect: { id: dados.statusId } },
+          tipoProcesso: { connect: { id: dados.tipoProcessoId } },
           ...(dados.responsavelMembroId
             ? { responsavel: { connect: { id: dados.responsavelMembroId } } }
             : {}),
@@ -182,7 +184,7 @@ export const casoService = {
           acao: "criar",
           entidade: "caso",
           entidadeId: caso.id,
-          resumo: `Caso ${caso.titulo} criado`,
+          resumo: `Caso ${tipoProcesso.nome} criado`,
         },
         tx
       );
@@ -200,12 +202,16 @@ export const casoService = {
     if (dados.statusId !== undefined) {
       await statusService.obter(ctx, dados.statusId);
     }
+    const tipoProcesso =
+      dados.tipoProcessoId !== undefined
+        ? await tipoProcessoService.obter(ctx, dados.tipoProcessoId)
+        : atual.tipoProcesso;
     if (dados.responsavelMembroId) {
       await validarResponsavel(ctx, dados.responsavelMembroId);
     }
 
     const mudancas: DadosEdicaoCaso = {
-      ...(dados.titulo !== undefined ? { titulo: dados.titulo.trim() } : {}),
+      ...(dados.tipoProcessoId !== undefined ? { tipoProcessoId: dados.tipoProcessoId } : {}),
       ...(dados.clienteId !== undefined ? { clienteId: dados.clienteId } : {}),
       ...(dados.statusId !== undefined ? { statusId: dados.statusId } : {}),
       ...(dados.responsavelMembroId !== undefined
@@ -231,7 +237,9 @@ export const casoService = {
       const caso = await casoRepository.update(
         id,
         {
-          ...(mudancas.titulo !== undefined ? { titulo: mudancas.titulo } : {}),
+          ...(mudancas.tipoProcessoId !== undefined
+            ? { tipoProcesso: { connect: { id: mudancas.tipoProcessoId } } }
+            : {}),
           ...(mudancas.clienteId !== undefined
             ? { cliente: { connect: { id: mudancas.clienteId } } }
             : {}),
@@ -258,7 +266,7 @@ export const casoService = {
           acao: "atualizar",
           entidade: "caso",
           entidadeId: caso.id,
-          resumo: `Caso ${caso.titulo} atualizado`,
+          resumo: `Caso ${tipoProcesso.nome} atualizado`,
           dados: diff,
         },
         tx
@@ -284,7 +292,7 @@ export const casoService = {
           acao: "atualizar",
           entidade: "caso",
           entidadeId: caso.id,
-          resumo: `Caso ${caso.titulo} arquivado`,
+          resumo: `Caso ${atual.tipoProcesso.nome} arquivado`,
         },
         tx
       );
@@ -306,7 +314,7 @@ export const casoService = {
           acao: "atualizar",
           entidade: "caso",
           entidadeId: caso.id,
-          resumo: `Caso ${caso.titulo} desarquivado`,
+          resumo: `Caso ${atual.tipoProcesso.nome} desarquivado`,
         },
         tx
       );

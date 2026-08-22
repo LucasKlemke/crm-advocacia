@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe("GET /api/casos/[id]/documentos/download-todos", () => {
   it("devolve um stream zip com o título do caso no filename", async () => {
-    (casoService.obter as jest.Mock).mockResolvedValue({ id: "caso-1", titulo: "Ação de Cobrança" });
+    (casoService.obter as jest.Mock).mockResolvedValue({ id: "caso-1", tipoProcesso: { nome: "Ação de Cobrança" } });
     (documentoService.listarPorEscopo as jest.Mock).mockResolvedValue([{ id: "doc-1" }]);
     (montarZipDocumentos as jest.Mock).mockReturnValue(Readable.from([Buffer.from("PK\x03\x04")]));
 
@@ -64,7 +64,7 @@ describe("GET /api/casos/[id]/documentos/download-todos", () => {
   // A resposta já saiu com 200 quando o stream começa: erro interno do archiver não pode
   // desaparecer em silêncio, tem que pelo menos ir para o log do servidor.
   it("registra listener de erro no stream do zip", async () => {
-    (casoService.obter as jest.Mock).mockResolvedValue({ id: "caso-1", titulo: "Ação de Cobrança" });
+    (casoService.obter as jest.Mock).mockResolvedValue({ id: "caso-1", tipoProcesso: { nome: "Ação de Cobrança" } });
     (documentoService.listarPorEscopo as jest.Mock).mockResolvedValue([]);
     const zip = Readable.from([Buffer.from("PK\x03\x04")]);
     (montarZipDocumentos as jest.Mock).mockReturnValue(zip);

@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse(Readable.toWeb(zip) as ReadableStream, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="documentos-caso-${caso.titulo}.zip"`,
+        "Content-Disposition": `attachment; filename="documentos-caso-${caso.tipoProcesso.nome}.zip"`,
       },
     });
   } catch (error) {
