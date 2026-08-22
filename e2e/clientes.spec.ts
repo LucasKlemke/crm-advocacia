@@ -12,7 +12,8 @@ test.describe("CRUD de clientes", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Advogada Titular");
     await page.getByLabel("E-mail").fill(`e2e-clientes-${sufixo}@teste.com`);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 
