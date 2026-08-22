@@ -7,6 +7,7 @@ import { User, Mail, Lock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { InputGroupPasswordInput } from "@/components/ui/input-group-password";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
 
 export default function CadastroPage() {
@@ -105,10 +106,9 @@ export default function CadastroPage() {
             <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
               <Lock />
             </InputGroupAddon>
-            <InputGroupInput
+            <InputGroupPasswordInput
               id="senha"
               name="senha"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               required
@@ -124,10 +124,9 @@ export default function CadastroPage() {
             <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
               <Lock />
             </InputGroupAddon>
-            <InputGroupInput
+            <InputGroupPasswordInput
               id="confirmarSenha"
               name="confirmarSenha"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               required

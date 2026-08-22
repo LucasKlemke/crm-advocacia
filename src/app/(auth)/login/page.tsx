@@ -7,6 +7,7 @@ import { LogIn, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { InputGroupPasswordInput } from "@/components/ui/input-group-password";
 
 // Só aceita path relativo interno ("/rota"), nunca URL absoluta/protocol-relative
 // ("//host" ou "https://host") — evita open redirect via callbackUrl manipulado.
@@ -81,10 +82,9 @@ export default function LoginPage() {
             <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
               <Lock />
             </InputGroupAddon>
-            <InputGroupInput
+            <InputGroupPasswordInput
               id="senha"
               name="senha"
-              type="password"
               autoComplete="current-password"
               required
             />
