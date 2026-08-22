@@ -83,6 +83,29 @@ describe("documentoRepository", () => {
     expect(documentos).toHaveLength(0);
   });
 
+  it("contarPorEscopos agrupa por escopoId e ignora soft-deletados", async () => {
+    await criar(escritorioId, "cliente-1", "um.pdf");
+    await criar(escritorioId, "cliente-1", "dois.pdf");
+    await criar(escritorioId, "cliente-2", "tres.pdf");
+    const removido = await criar(escritorioId, "cliente-2", "removido.pdf");
+    await documentoRepository.marcarExcluido(removido.id, new Date());
+    await criar(outroEscritorioId, "cliente-1", "de-outro-tenant.pdf");
+
+    const contagens = await documentoRepository.contarPorEscopos(escritorioId, "cliente", [
+      "cliente-1",
+      "cliente-2",
+      "cliente-3",
+    ]);
+
+    expect(contagens).toEqual({ "cliente-1": 2, "cliente-2": 1 });
+  });
+
+  it("contarPorEscopos devolve objeto vazio sem ids", async () => {
+    await expect(
+      documentoRepository.contarPorEscopos(escritorioId, "cliente", [])
+    ).resolves.toEqual({});
+  });
+
   it("findById devolve o documento criado", async () => {
     const criado = await criar(escritorioId, "cliente-1", "para-buscar.pdf");
     await expect(documentoRepository.findById(criado.id)).resolves.toMatchObject({

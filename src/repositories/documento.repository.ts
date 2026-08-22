@@ -24,6 +24,23 @@ export const documentoRepository = {
     });
   },
 
+  // Mesma ideia do comentarioRepository.contarPorEscopos: contagem em lote para os
+  // cards do kanban, já que `escopoId` não é uma FK que o Prisma saiba agregar.
+  async contarPorEscopos(
+    escritorioId: string,
+    escopo: EscopoDocumento,
+    escopoIds: string[],
+    db: Db = prisma
+  ): Promise<Record<string, number>> {
+    if (escopoIds.length === 0) return {};
+    const grupos = await db.documento.groupBy({
+      by: ["escopoId"],
+      where: { escritorioId, escopo, escopoId: { in: escopoIds }, softDeletedAt: null },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(grupos.map((g) => [g.escopoId, g._count._all]));
+  },
+
   async marcarExcluido(id: string, quando: Date, db: Db = prisma): Promise<Documento> {
     return db.documento.update({ where: { id }, data: { softDeletedAt: quando } });
   },
