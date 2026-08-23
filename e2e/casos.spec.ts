@@ -8,7 +8,8 @@ test.describe("Kanban e tabela de casos", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Advogada Titular");
     await page.getByLabel("E-mail").fill(`e2e-casos-${sufixo}@teste.com`);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 
@@ -36,7 +37,8 @@ test.describe("Kanban e tabela de casos", () => {
 
     // Criar caso: por padrão a tela abre em Kanban.
     await page.getByRole("button", { name: "Novo processo" }).click();
-    await page.getByLabel("Título").fill("Ação de cobrança");
+    await page.getByRole("combobox", { name: "Tipo de processo" }).click();
+    await page.getByRole("option", { name: "Ação de cobrança" }).click();
     await page.getByRole("combobox", { name: "Cliente" }).click();
     await page.getByRole("option", { name: "Cliente do Caso" }).click();
     await page.getByRole("button", { name: "Criar processo" }).click();
@@ -57,9 +59,9 @@ test.describe("Kanban e tabela de casos", () => {
     await expect(page.getByRole("cell", { name: "Ação de cobrança", exact: true })).toBeVisible();
 
     await page.getByRole("combobox", { name: "Status de Ação de cobrança" }).click();
-    await page.getByRole("option", { name: "Qualificado" }).click();
+    await page.getByRole("option", { name: "Negociação" }).click();
     await expect(page.getByRole("combobox", { name: "Status de Ação de cobrança" })).toContainText(
-      "Qualificado"
+      "Negociação"
     );
 
     // Filtrar por responsável "Sem responsável" continua mostrando o caso recém-criado.

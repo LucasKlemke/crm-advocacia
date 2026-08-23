@@ -18,7 +18,7 @@ function casoComResponsavel(): CasoComRelacoes {
     clienteId: "cli-1",
     statusId: "status-1",
     responsavelMembroId: "membro-1",
-    titulo: "Ação de cobrança",
+    tipoProcessoId: "tipo-processo-1",
     numeroProcesso: null,
     descricao: null,
     valor: null,
@@ -27,6 +27,7 @@ function casoComResponsavel(): CasoComRelacoes {
     updatedAt: new Date("2026-01-02"),
     cliente: { id: "cli-1", nome: "Fulano", cpf: "12345678901" },
     status: { id: "status-1", nome: "Em análise", cor: "#000000" },
+    tipoProcesso: { id: "tipo-processo-1", nome: "Ação de cobrança" },
     responsavel: {
       id: "membro-1",
       usuario: {
@@ -64,7 +65,7 @@ describe("serializarCaso", () => {
     const dto = await serializarCaso(casoComResponsavel());
 
     expect(dto.id).toBe("caso-1");
-    expect(dto.titulo).toBe("Ação de cobrança");
+    expect(dto.tipoProcesso).toEqual({ id: "tipo-processo-1", nome: "Ação de cobrança" });
     expect(dto.cliente).toEqual({ id: "cli-1", nome: "Fulano", cpf: "12345678901" });
     expect(dto.status).toEqual({ id: "status-1", nome: "Em análise", cor: "#000000" });
   });

@@ -11,9 +11,13 @@ import { comentarioRepository } from "@/repositories/comentario.repository";
 import { documentoRepository } from "@/repositories/documento.repository";
 import { clienteService, ClienteNaoEncontradoError } from "@/services/cliente.service";
 import { statusService, StatusNaoEncontradoError } from "@/services/status.service";
+import {
+  tipoProcessoService,
+  TipoProcessoNaoEncontradoError,
+} from "@/services/tipo-processo.service";
 import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
-import type { Cliente, Membro, Status } from "@prisma/client";
+import type { Cliente, Membro, Status, TipoProcesso } from "@prisma/client";
 
 jest.mock("@/repositories/caso.repository");
 jest.mock("@/repositories/status.repository");
@@ -34,6 +38,13 @@ jest.mock("@/services/status.service", () => {
     StatusNaoEncontradoError,
   };
 });
+jest.mock("@/services/tipo-processo.service", () => {
+  class TipoProcessoNaoEncontradoError extends Error {}
+  return {
+    tipoProcessoService: { obter: jest.fn() },
+    TipoProcessoNaoEncontradoError,
+  };
+});
 jest.mock("@/services/log.service");
 jest.mock("@/lib/prisma", () => ({
   // A transação roda o callback direto: os repositórios já estão mockados.
@@ -47,6 +58,7 @@ const comentarioRepo = comentarioRepository as jest.Mocked<typeof comentarioRepo
 const documentoRepo = documentoRepository as jest.Mocked<typeof documentoRepository>;
 const clientes = clienteService as jest.Mocked<typeof clienteService>;
 const status = statusService as jest.Mocked<typeof statusService>;
+const tiposProcesso = tipoProcessoService as jest.Mocked<typeof tipoProcessoService>;
 const logs = logService as jest.Mocked<typeof logService>;
 
 function ctx(role: TenantContext["role"] = "padrao"): TenantContext {
@@ -96,6 +108,21 @@ function statusFake(over: Partial<Status> = {}): Status {
   };
 }
 
+function tipoProcessoFake(over: Partial<TipoProcesso> = {}): TipoProcesso {
+  return {
+    id: "tipo-processo-1",
+    escritorioId: "esc-1",
+    nome: "Ação de Cobrança",
+    icone: "Briefcase",
+    cor: "#6366f1",
+    descricao: null,
+    ordem: 1,
+    createdAt: AGORA,
+    updatedAt: AGORA,
+    ...over,
+  };
+}
+
 function membroFake(over: Partial<Membro> = {}): Membro {
   return {
     id: "membro-1",
@@ -115,7 +142,7 @@ function casoFake(over: Partial<CasoComRelacoes> = {}): CasoComRelacoes {
     clienteId: "cliente-1",
     statusId: "status-1",
     responsavelMembroId: null,
-    titulo: "Ação de Cobrança",
+    tipoProcessoId: "tipo-processo-1",
     descricao: null,
     valor: null,
     arquivado: false,
@@ -123,6 +150,7 @@ function casoFake(over: Partial<CasoComRelacoes> = {}): CasoComRelacoes {
     updatedAt: AGORA,
     cliente: clienteFake(),
     status: statusFake(),
+    tipoProcesso: tipoProcessoFake(),
     responsavel: null,
     ...over,
   } as unknown as CasoComRelacoes;
@@ -133,6 +161,7 @@ beforeEach(() => {
   logs.registrar.mockResolvedValue({} as never);
   clientes.obter.mockResolvedValue(clienteFake());
   status.obter.mockResolvedValue(statusFake());
+  tiposProcesso.obter.mockResolvedValue(tipoProcessoFake());
 });
 
 describe("casoService.obter", () => {
@@ -246,21 +275,26 @@ describe("casoService.listarKanban", () => {
 });
 
 describe("casoService.criar", () => {
-  const dados = { titulo: "Novo Caso", clienteId: "cliente-1", statusId: "status-1" };
+  const dados = {
+    tipoProcessoId: "tipo-processo-1",
+    clienteId: "cliente-1",
+    statusId: "status-1",
+  };
 
-  it("valida o cliente, o status e cria o caso", async () => {
+  it("valida o cliente, o status, o tipo de processo e cria o caso", async () => {
     repo.create.mockResolvedValue(casoFake());
 
     await casoService.criar(ctx(), dados);
 
     expect(clientes.obter).toHaveBeenCalledWith(ctx(), "cliente-1");
     expect(status.obter).toHaveBeenCalledWith(ctx(), "status-1");
+    expect(tiposProcesso.obter).toHaveBeenCalledWith(ctx(), "tipo-processo-1");
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        titulo: "Novo Caso",
         escritorio: { connect: { id: "esc-1" } },
         cliente: { connect: { id: "cliente-1" } },
         status: { connect: { id: "status-1" } },
+        tipoProcesso: { connect: { id: "tipo-processo-1" } },
       }),
       expect.anything()
     );
@@ -286,6 +320,12 @@ describe("casoService.criar", () => {
   it("propaga erro quando o status não é do tenant", async () => {
     status.obter.mockRejectedValue(new StatusNaoEncontradoError());
     await expect(casoService.criar(ctx(), dados)).rejects.toThrow(StatusNaoEncontradoError);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("propaga erro quando o tipo de processo não é do tenant", async () => {
+    tiposProcesso.obter.mockRejectedValue(new TipoProcessoNaoEncontradoError());
+    await expect(casoService.criar(ctx(), dados)).rejects.toThrow(TipoProcessoNaoEncontradoError);
     expect(repo.create).not.toHaveBeenCalled();
   });
 
@@ -327,7 +367,9 @@ describe("casoService.atualizar", () => {
   it("não grava nem loga quando nada muda", async () => {
     repo.findById.mockResolvedValue(casoFake());
 
-    const resultado = await casoService.atualizar(ctx(), "caso-1", { titulo: "Ação de Cobrança" });
+    const resultado = await casoService.atualizar(ctx(), "caso-1", {
+      tipoProcessoId: "tipo-processo-1",
+    });
 
     expect(resultado).toEqual(casoFake());
     expect(repo.update).not.toHaveBeenCalled();
@@ -336,13 +378,16 @@ describe("casoService.atualizar", () => {
 
   it("atualiza e registra o diff no log", async () => {
     repo.findById.mockResolvedValue(casoFake());
-    repo.update.mockResolvedValue(casoFake({ titulo: "Renomeado" }));
+    tiposProcesso.obter.mockResolvedValue(
+      tipoProcessoFake({ id: "tipo-processo-2", nome: "Divórcio" })
+    );
+    repo.update.mockResolvedValue(casoFake({ tipoProcessoId: "tipo-processo-2" }));
 
-    await casoService.atualizar(ctx(), "caso-1", { titulo: "Renomeado" });
+    await casoService.atualizar(ctx(), "caso-1", { tipoProcessoId: "tipo-processo-2" });
 
     expect(repo.update).toHaveBeenCalledWith(
       "caso-1",
-      expect.objectContaining({ titulo: "Renomeado" }),
+      expect.objectContaining({ tipoProcesso: { connect: { id: "tipo-processo-2" } } }),
       expect.anything()
     );
     expect(logs.registrar).toHaveBeenCalledWith(
@@ -351,7 +396,7 @@ describe("casoService.atualizar", () => {
         acao: "atualizar",
         entidade: "caso",
         dados: expect.objectContaining({
-          titulo: { antes: "Ação de Cobrança", depois: "Renomeado" },
+          tipoProcessoId: { antes: "tipo-processo-1", depois: "tipo-processo-2" },
         }),
       }),
       expect.anything()
@@ -444,7 +489,7 @@ describe("casoService.atualizar", () => {
   it("trata caso de outro escritório como não encontrado", async () => {
     repo.findById.mockResolvedValue(casoFake({ escritorioId: "esc-2" }));
     await expect(
-      casoService.atualizar(ctx(), "caso-1", { titulo: "X" })
+      casoService.atualizar(ctx(), "caso-1", { tipoProcessoId: "tipo-processo-2" })
     ).rejects.toThrow(CasoNaoEncontradoError);
   });
 });

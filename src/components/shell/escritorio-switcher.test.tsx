@@ -60,7 +60,7 @@ describe("EscritorioSwitcher", () => {
     await user.click(await screen.findByRole("menuitem", { name: /criar escritório/i }));
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nome do escritório")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nome do escritório/)).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 });

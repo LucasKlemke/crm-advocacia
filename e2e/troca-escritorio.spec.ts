@@ -9,7 +9,8 @@ test.describe("Troca de escritório ativo", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Advogada Multi Escritório");
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 

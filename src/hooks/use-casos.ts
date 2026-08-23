@@ -18,9 +18,9 @@ import type {
 } from "@/types/caso";
 
 export interface DadosCasoForm {
-  titulo: string;
   clienteId: string;
   statusId: string;
+  tipoProcessoId: string;
   responsavelMembroId?: string | null;
   numeroProcesso?: string | null;
   descricao?: string | null;
@@ -39,6 +39,9 @@ function paramsDeFiltros(filtros: Partial<FiltrosCasos>): URLSearchParams {
   }
   if (filtros.tipoStatusIds && filtros.tipoStatusIds.length > 0) {
     params.set("tipoStatusId", filtros.tipoStatusIds.join(","));
+  }
+  if (filtros.tipoProcessoIds && filtros.tipoProcessoIds.length > 0) {
+    params.set("tipoProcessoId", filtros.tipoProcessoIds.join(","));
   }
   if (filtros.clienteIds && filtros.clienteIds.length > 0) {
     params.set("clienteId", filtros.clienteIds.join(","));

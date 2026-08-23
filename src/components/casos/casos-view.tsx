@@ -30,6 +30,7 @@ export function CasosView({ atorUsuarioId, atorNome, atorRole }: CasosViewProps)
         visao={visao}
         onVisaoChange={setVisao}
         onNovoCaso={() => setSheet({ modo: "criar", caso: null })}
+        atorRole={atorRole}
       />
 
       {visao === "kanban" ? (

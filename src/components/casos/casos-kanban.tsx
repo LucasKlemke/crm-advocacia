@@ -40,6 +40,7 @@ function filtrosSemPagina(filtros: FiltrosCasos) {
     busca: filtros.busca,
     statusIds: filtros.statusIds,
     tipoStatusIds: filtros.tipoStatusIds,
+    tipoProcessoIds: filtros.tipoProcessoIds,
     clienteIds: filtros.clienteIds,
     responsavelIds: filtros.responsavelIds,
     dataInicio: filtros.dataInicio,
@@ -89,6 +90,9 @@ export function CasosKanban({ filtros, onAbrirCaso }: CasosKanbanProps) {
       const params = new URLSearchParams();
       if (filtrosKanban.busca?.trim()) params.set("busca", filtrosKanban.busca.trim());
       if (filtrosKanban.tipoStatusIds?.length) params.set("tipoStatusId", filtrosKanban.tipoStatusIds.join(","));
+      if (filtrosKanban.tipoProcessoIds?.length) {
+        params.set("tipoProcessoId", filtrosKanban.tipoProcessoIds.join(","));
+      }
       if (filtrosKanban.clienteIds?.length) params.set("clienteId", filtrosKanban.clienteIds.join(","));
       if (filtrosKanban.responsavelIds?.length) params.set("responsavelId", filtrosKanban.responsavelIds.join(","));
       if (filtrosKanban.dataInicio) params.set("dataInicio", filtrosKanban.dataInicio);

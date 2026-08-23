@@ -75,6 +75,9 @@ describe("casoRepository", () => {
 
   afterAll(async () => {
     await prisma.membro.deleteMany({ where: { id: membroId } });
+    await prisma.tipoProcesso.deleteMany({
+      where: { escritorioId: { in: [escritorioId, outroEscritorioId] } },
+    });
     await prisma.status.deleteMany({
       where: { escritorioId: { in: [escritorioId, outroEscritorioId] } },
     });
@@ -87,10 +90,33 @@ describe("casoRepository", () => {
     await prisma.$disconnect();
   });
 
-  function criar(
+  // O tipo substituiu o antigo título livre: cada nome usado nos testes vira um
+  // TipoProcesso do escritório, criado sob demanda e reaproveitado nas chamadas
+  // seguintes (o par escritório+nome é único).
+  const tiposPorChave = new Map<string, string>();
+
+  async function tipoProcessoDe(escritorio: string, nome: string): Promise<string> {
+    const chave = `${escritorio}:${nome}`;
+    const existente = tiposPorChave.get(chave);
+    if (existente) return existente;
+
+    const tipo = await prisma.tipoProcesso.create({
+      data: {
+        nome,
+        icone: "Briefcase",
+        cor: "#6366f1",
+        ordem: tiposPorChave.size + 1,
+        escritorioId: escritorio,
+      },
+    });
+    tiposPorChave.set(chave, tipo.id);
+    return tipo.id;
+  }
+
+  async function criar(
     escritorio: string,
     dados: {
-      titulo: string;
+      tipo: string;
       cliente: string;
       status: string;
       responsavel?: string;
@@ -99,7 +125,7 @@ describe("casoRepository", () => {
     }
   ) {
     return casoRepository.create({
-      titulo: dados.titulo,
+      tipoProcesso: { connect: { id: await tipoProcessoDe(escritorio, dados.tipo) } },
       arquivado: dados.arquivado ?? false,
       escritorio: { connect: { id: escritorio } },
       cliente: { connect: { id: dados.cliente } },
@@ -110,7 +136,7 @@ describe("casoRepository", () => {
   }
 
   it("cria um caso vinculado ao escritório, cliente e status", async () => {
-    const caso = await criar(escritorioId, { titulo: "Caso 1", cliente: clienteId, status: statusId });
+    const caso = await criar(escritorioId, { tipo: "Caso 1", cliente: clienteId, status: statusId });
     expect(caso.escritorioId).toBe(escritorioId);
     expect(caso.clienteId).toBe(clienteId);
     expect(caso.statusId).toBe(statusId);
@@ -119,7 +145,7 @@ describe("casoRepository", () => {
 
   it("findById inclui cliente, status e responsavel", async () => {
     const caso = await criar(escritorioId, {
-      titulo: "Caso Com Responsável",
+      tipo: "Caso Com Responsável",
       cliente: clienteId,
       status: statusId,
       responsavel: membroId,
@@ -133,7 +159,7 @@ describe("casoRepository", () => {
   });
 
   it("listar não devolve casos de outro escritório (RN19)", async () => {
-    await criar(escritorioId, { titulo: "Do Tenant", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Do Tenant", cliente: clienteId, status: statusId });
 
     const outroCliente = await clienteRepository.create({
       nome: "Cliente Outro Tenant",
@@ -150,13 +176,13 @@ describe("casoRepository", () => {
       tipo: { connect: { id: outroTipo!.id } },
     });
     await criar(outroEscritorioId, {
-      titulo: "De Outro Tenant",
+      tipo: "De Outro Tenant",
       cliente: outroCliente.id,
       status: outroStatusOutroTenant.id,
     });
 
     const casos = await casoRepository.listar(escritorioId);
-    expect(casos.map((c) => c.titulo)).toEqual(["Do Tenant"]);
+    expect(casos.map((c) => c.tipoProcesso.nome)).toEqual(["Do Tenant"]);
 
     await prisma.caso.deleteMany({ where: { escritorioId: outroEscritorioId } });
     await prisma.status.delete({ where: { id: outroStatusOutroTenant.id } });
@@ -164,91 +190,103 @@ describe("casoRepository", () => {
   });
 
   it("listar por padrão esconde casos arquivados", async () => {
-    await criar(escritorioId, { titulo: "Ativo", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Ativo", cliente: clienteId, status: statusId });
     await criar(escritorioId, {
-      titulo: "Arquivado",
+      tipo: "Arquivado",
       cliente: clienteId,
       status: statusId,
       arquivado: true,
     });
 
     const casos = await casoRepository.listar(escritorioId);
-    expect(casos.map((c) => c.titulo)).toEqual(["Ativo"]);
+    expect(casos.map((c) => c.tipoProcesso.nome)).toEqual(["Ativo"]);
   });
 
   it("listar com arquivado:true devolve só os arquivados", async () => {
-    await criar(escritorioId, { titulo: "Ativo", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Ativo", cliente: clienteId, status: statusId });
     await criar(escritorioId, {
-      titulo: "Arquivado",
+      tipo: "Arquivado",
       cliente: clienteId,
       status: statusId,
       arquivado: true,
     });
 
     const casos = await casoRepository.listar(escritorioId, { arquivado: true });
-    expect(casos.map((c) => c.titulo)).toEqual(["Arquivado"]);
+    expect(casos.map((c) => c.tipoProcesso.nome)).toEqual(["Arquivado"]);
   });
 
   it("filtra por busca no título e descrição", async () => {
-    await criar(escritorioId, { titulo: "Ação de cobrança", cliente: clienteId, status: statusId });
-    await criar(escritorioId, { titulo: "Divórcio", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Ação de cobrança", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Divórcio", cliente: clienteId, status: statusId });
 
     const casos = await casoRepository.listar(escritorioId, { busca: "cobrança" });
-    expect(casos.map((c) => c.titulo)).toEqual(["Ação de cobrança"]);
+    expect(casos.map((c) => c.tipoProcesso.nome)).toEqual(["Ação de cobrança"]);
+  });
+
+  it("filtra por tipoProcessoIds", async () => {
+    await criar(escritorioId, { tipo: "Ação de cobrança", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Divórcio", cliente: clienteId, status: statusId });
+
+    const tipoId = await tipoProcessoDe(escritorioId, "Divórcio");
+    const casos = await casoRepository.listar(escritorioId, { tipoProcessoIds: [tipoId] });
+    expect(casos.map((c) => c.tipoProcesso.nome)).toEqual(["Divórcio"]);
   });
 
   it("filtra por statusIds", async () => {
-    await criar(escritorioId, { titulo: "No status 1", cliente: clienteId, status: statusId });
-    await criar(escritorioId, { titulo: "No status 2", cliente: clienteId, status: outroStatusId });
+    await criar(escritorioId, { tipo: "No status 1", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "No status 2", cliente: clienteId, status: outroStatusId });
 
     const casos = await casoRepository.listar(escritorioId, { statusIds: [statusId] });
-    expect(casos.map((c) => c.titulo)).toEqual(["No status 1"]);
+    expect(casos.map((c) => c.tipoProcesso.nome)).toEqual(["No status 1"]);
   });
 
   it("filtra por responsavelIds incluindo o sentinela de sem responsável", async () => {
     await criar(escritorioId, {
-      titulo: "Com Responsável",
+      tipo: "Com Responsável",
       cliente: clienteId,
       status: statusId,
       responsavel: membroId,
     });
-    await criar(escritorioId, { titulo: "Sem Responsável", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Sem Responsável", cliente: clienteId, status: statusId });
 
     const semResponsavel = await casoRepository.listar(escritorioId, {
       responsavelIds: [SEM_RESPONSAVEL],
     });
-    expect(semResponsavel.map((c) => c.titulo)).toEqual(["Sem Responsável"]);
+    expect(semResponsavel.map((c) => c.tipoProcesso.nome)).toEqual(["Sem Responsável"]);
 
     const comResponsavel = await casoRepository.listar(escritorioId, {
       responsavelIds: [membroId],
     });
-    expect(comResponsavel.map((c) => c.titulo)).toEqual(["Com Responsável"]);
+    expect(comResponsavel.map((c) => c.tipoProcesso.nome)).toEqual(["Com Responsável"]);
 
     const ambos = await casoRepository.listar(escritorioId, {
       responsavelIds: [SEM_RESPONSAVEL, membroId],
     });
-    expect(ambos.map((c) => c.titulo).sort()).toEqual(["Com Responsável", "Sem Responsável"]);
+    expect(ambos.map((c) => c.tipoProcesso.nome).sort()).toEqual(["Com Responsável", "Sem Responsável"]);
   });
 
   it("contar respeita os mesmos filtros de listar", async () => {
-    await criar(escritorioId, { titulo: "Um", cliente: clienteId, status: statusId });
-    await criar(escritorioId, { titulo: "Dois", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Um", cliente: clienteId, status: statusId });
+    await criar(escritorioId, { tipo: "Dois", cliente: clienteId, status: statusId });
 
     expect(await casoRepository.contar(escritorioId, { statusIds: [statusId] })).toBe(2);
     expect(await casoRepository.contar(escritorioId, { statusIds: [outroStatusId] })).toBe(0);
   });
 
   it("update altera os campos do caso", async () => {
-    const caso = await criar(escritorioId, { titulo: "Original", cliente: clienteId, status: statusId });
-    const atualizado = await casoRepository.update(caso.id, { titulo: "Atualizado" });
-    expect(atualizado.titulo).toBe("Atualizado");
+    const caso = await criar(escritorioId, { tipo: "Original", cliente: clienteId, status: statusId });
+    const novoTipoId = await tipoProcessoDe(escritorioId, "Atualizado");
+    const atualizado = await casoRepository.update(caso.id, {
+      tipoProcesso: { connect: { id: novoTipoId } },
+    });
+    expect(atualizado.tipoProcessoId).toBe(novoTipoId);
   });
 
   describe("contarPorStatus", () => {
     it("agrupa a contagem de casos por statusId", async () => {
-      await criar(escritorioId, { titulo: "Um", cliente: clienteId, status: statusId });
-      await criar(escritorioId, { titulo: "Dois", cliente: clienteId, status: statusId });
-      await criar(escritorioId, { titulo: "Três", cliente: clienteId, status: outroStatusId });
+      await criar(escritorioId, { tipo: "Um", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { tipo: "Dois", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { tipo: "Três", cliente: clienteId, status: outroStatusId });
 
       const contagens = await casoRepository.contarPorStatus(escritorioId);
 
@@ -265,9 +303,9 @@ describe("casoRepository", () => {
     });
 
     it("por padrão ignora casos arquivados", async () => {
-      await criar(escritorioId, { titulo: "Ativo", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { tipo: "Ativo", cliente: clienteId, status: statusId });
       await criar(escritorioId, {
-        titulo: "Arquivado",
+        tipo: "Arquivado",
         cliente: clienteId,
         status: statusId,
         arquivado: true,
@@ -278,7 +316,7 @@ describe("casoRepository", () => {
     });
 
     it("não devolve contagens de outro escritório (RN19)", async () => {
-      await criar(escritorioId, { titulo: "Do Tenant", cliente: clienteId, status: statusId });
+      await criar(escritorioId, { tipo: "Do Tenant", cliente: clienteId, status: statusId });
 
       const outroCliente = await clienteRepository.create({
         nome: "Cliente Outro Tenant Contagem",
@@ -295,7 +333,7 @@ describe("casoRepository", () => {
         tipo: { connect: { id: outroTipo!.id } },
       });
       await criar(outroEscritorioId, {
-        titulo: "De Outro Tenant",
+        tipo: "De Outro Tenant",
         cliente: outroCliente.id,
         status: outroStatusOutroTenant.id,
       });
@@ -310,19 +348,19 @@ describe("casoRepository", () => {
 
     it("soma o valor dos casos por statusId", async () => {
       await criar(escritorioId, {
-        titulo: "Um",
+        tipo: "Um",
         cliente: clienteId,
         status: statusId,
         valor: 1000,
       });
       await criar(escritorioId, {
-        titulo: "Dois",
+        tipo: "Dois",
         cliente: clienteId,
         status: statusId,
         valor: 500.5,
       });
       await criar(escritorioId, {
-        titulo: "Três",
+        tipo: "Três",
         cliente: clienteId,
         status: outroStatusId,
         valor: 200,

@@ -4,25 +4,26 @@ import { SEM_RESPONSAVEL } from "@/repositories/caso.repository";
 const CLIENTE_ID = "11111111-1111-4111-8111-111111111111";
 const STATUS_ID = "22222222-2222-4222-8222-222222222222";
 const MEMBRO_ID = "33333333-3333-4333-8333-333333333333";
+const TIPO_PROCESSO_ID = "44444444-4444-4444-8444-444444444444";
 
 describe("novoCasoSchema", () => {
   it("aceita um payload mínimo válido", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "Ação de Cobrança",
+      tipoProcessoId: TIPO_PROCESSO_ID,
       clienteId: CLIENTE_ID,
       statusId: STATUS_ID,
     });
     expect(parsed.success).toBe(true);
   });
 
-  it("rejeita título vazio", () => {
-    const parsed = novoCasoSchema.safeParse({ titulo: "", clienteId: CLIENTE_ID, statusId: STATUS_ID });
+  it("rejeita payload sem tipo de processo (campo obrigatório)", () => {
+    const parsed = novoCasoSchema.safeParse({ clienteId: CLIENTE_ID, statusId: STATUS_ID });
     expect(parsed.success).toBe(false);
   });
 
-  it("rejeita título maior que 140 caracteres", () => {
+  it("rejeita tipoProcessoId que não é uuid", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "a".repeat(141),
+      tipoProcessoId: "nao-e-uuid",
       clienteId: CLIENTE_ID,
       statusId: STATUS_ID,
     });
@@ -31,7 +32,7 @@ describe("novoCasoSchema", () => {
 
   it("rejeita clienteId que não é uuid", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "Ação",
+      tipoProcessoId: TIPO_PROCESSO_ID,
       clienteId: "nao-e-uuid",
       statusId: STATUS_ID,
     });
@@ -40,7 +41,7 @@ describe("novoCasoSchema", () => {
 
   it("aceita valor numérico e coage string numérica", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "Ação",
+      tipoProcessoId: TIPO_PROCESSO_ID,
       clienteId: CLIENTE_ID,
       statusId: STATUS_ID,
       valor: "1500.50",
@@ -53,7 +54,7 @@ describe("novoCasoSchema", () => {
 
   it("rejeita valor negativo", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "Ação",
+      tipoProcessoId: TIPO_PROCESSO_ID,
       clienteId: CLIENTE_ID,
       statusId: STATUS_ID,
       valor: -10,
@@ -63,7 +64,7 @@ describe("novoCasoSchema", () => {
 
   it("aceita responsavelMembroId nulo (sem responsável)", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "Ação",
+      tipoProcessoId: TIPO_PROCESSO_ID,
       clienteId: CLIENTE_ID,
       statusId: STATUS_ID,
       responsavelMembroId: null,
@@ -73,7 +74,7 @@ describe("novoCasoSchema", () => {
 
   it("aceita responsavelMembroId válido", () => {
     const parsed = novoCasoSchema.safeParse({
-      titulo: "Ação",
+      tipoProcessoId: TIPO_PROCESSO_ID,
       clienteId: CLIENTE_ID,
       statusId: STATUS_ID,
       responsavelMembroId: MEMBRO_ID,
@@ -95,6 +96,11 @@ describe("edicaoCasoSchema", () => {
 });
 
 describe("parseFiltrosCasoDaQuery", () => {
+  it("lê tipoProcessoId como lista separada por vírgula", () => {
+    const filtros = parseFiltrosCasoDaQuery(new URLSearchParams("tipoProcessoId=tp-1,tp-2"));
+    expect(filtros.tipoProcessoIds).toEqual(["tp-1", "tp-2"]);
+  });
+
   it("devolve filtros vazios quando não há query params", () => {
     const filtros = parseFiltrosCasoDaQuery(new URLSearchParams());
     expect(filtros).toEqual({

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ListTodo, Users } from "lucide-react";
+import { Briefcase, Building2, ListTodo, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GRUPOS = [
@@ -15,7 +15,10 @@ const GRUPOS = [
   },
   {
     label: "Pipeline",
-    items: [{ href: "/configuracoes/status", label: "Status", icon: ListTodo }],
+    items: [
+      { href: "/configuracoes/status", label: "Status", icon: ListTodo },
+      { href: "/configuracoes/tipos-processo", label: "Tipos de processo", icon: Briefcase },
+    ],
   },
 ];
 

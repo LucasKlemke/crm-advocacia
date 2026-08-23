@@ -2,6 +2,7 @@
 // (JSON); `valor` chega como string (Decimal serializado) ou número, nunca como
 // instância de Decimal — por isso o tipo aceita `string | number | null`.
 import type { StatusDTO } from "@/types/status";
+import type { TipoProcessoDTO } from "@/types/tipo-processo";
 
 export interface CasoClienteDTO {
   id: string;
@@ -25,8 +26,8 @@ export interface CasoDTO {
   escritorioId: string;
   clienteId: string;
   statusId: string;
+  tipoProcessoId: string;
   responsavelMembroId: string | null;
-  titulo: string;
   numeroProcesso: string | null;
   descricao: string | null;
   valor: string | number | null;
@@ -35,6 +36,7 @@ export interface CasoDTO {
   updatedAt: string;
   cliente: CasoClienteDTO;
   status: StatusDTO;
+  tipoProcesso: TipoProcessoDTO;
   responsavel: CasoResponsavelDTO | null;
   // Só o kanban preenche: a listagem em tabela não precisa das contagens.
   totalDocumentos?: number;
@@ -85,11 +87,20 @@ export interface OpcaoTipoStatusFiltro {
   descricao: string | null;
 }
 
+export interface OpcaoTipoProcessoFiltro {
+  id: string;
+  nome: string;
+  cor: string;
+  icone: string;
+  descricao: string | null;
+}
+
 export interface FiltrosCasoOpcoes {
   clientes: OpcaoClienteFiltro[];
   membros: OpcaoFiltroCaso[];
   status: OpcaoStatusFiltro[];
   tipos: OpcaoTipoStatusFiltro[];
+  tiposProcesso: OpcaoTipoProcessoFiltro[];
 }
 
 export const SEM_RESPONSAVEL = "sem-responsavel";
@@ -99,6 +110,7 @@ export interface FiltrosCasos {
   busca: string;
   statusIds: string[];
   tipoStatusIds: string[];
+  tipoProcessoIds: string[];
   clienteIds: string[];
   responsavelIds: string[];
   dataInicio: string | null;
@@ -111,6 +123,7 @@ export const filtrosCasosPadrao: FiltrosCasos = {
   busca: "",
   statusIds: [],
   tipoStatusIds: [],
+  tipoProcessoIds: [],
   clienteIds: [],
   responsavelIds: [],
   dataInicio: null,

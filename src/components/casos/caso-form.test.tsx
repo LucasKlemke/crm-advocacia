@@ -18,6 +18,10 @@ function mockarFetch() {
             { id: "status-2", nome: "Fechado", cor: "#10b981" },
           ],
           tipos: [],
+          tiposProcesso: [
+            { id: "tipo-processo-1", nome: "Ação de cobrança", cor: "#6366f1", icone: "Briefcase" },
+            { id: "tipo-processo-2", nome: "Divórcio", cor: "#f43f5e", icone: "Users" },
+          ],
         }),
       } as unknown as Response);
     }
@@ -25,7 +29,9 @@ function mockarFetch() {
       return Promise.resolve({
         ok: true,
         status: 201,
-        json: async () => ({ caso: { id: "caso-novo", titulo: JSON.parse(String(init.body)).titulo } }),
+        json: async () => ({
+          caso: { id: "caso-novo", tipoProcessoId: JSON.parse(String(init.body)).tipoProcessoId },
+        }),
       } as unknown as Response);
     }
     return Promise.reject(new Error(`URL não mockada: ${url}`));
@@ -44,14 +50,14 @@ describe("CasoForm", () => {
     expect(await screen.findByText("Em análise")).toBeInTheDocument();
   });
 
-  it("mostra erro quando o título está vazio", async () => {
+  it("mostra erro quando o tipo de processo não foi selecionado", async () => {
     const usuario = userEvent.setup();
     renderComQuery(<CasoForm onSucesso={jest.fn()} />);
     await screen.findByText("Em análise");
 
     await usuario.click(screen.getByRole("button", { name: "Criar processo" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Informe o título do processo.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Selecione o tipo de processo.");
   });
 
   it("mostra erro quando o cliente não foi selecionado", async () => {
@@ -59,7 +65,8 @@ describe("CasoForm", () => {
     renderComQuery(<CasoForm onSucesso={jest.fn()} />);
     await screen.findByText("Em análise");
 
-    await usuario.type(screen.getByLabelText(/Título/), "Ação de cobrança");
+    await usuario.click(screen.getByRole("combobox", { name: /Tipo de processo/ }));
+    await usuario.click(await screen.findByRole("option", { name: /Ação de cobrança/ }));
     await usuario.click(screen.getByRole("button", { name: "Criar processo" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Selecione o cliente.");
@@ -71,7 +78,8 @@ describe("CasoForm", () => {
     renderComQuery(<CasoForm onSucesso={onSucesso} />);
     await screen.findByText("Em análise");
 
-    await usuario.type(screen.getByLabelText(/Título/), "Ação de cobrança");
+    await usuario.click(screen.getByRole("combobox", { name: /Tipo de processo/ }));
+    await usuario.click(await screen.findByRole("option", { name: /Ação de cobrança/ }));
 
     await usuario.click(screen.getByRole("combobox", { name: /Cliente/ }));
     await usuario.click(await screen.findByRole("option", { name: "Maria Silva" }));
@@ -85,7 +93,7 @@ describe("CasoForm", () => {
       expect(chamada).toBeDefined();
       const corpo = JSON.parse(chamada[1].body);
       expect(corpo).toMatchObject({
-        titulo: "Ação de cobrança",
+        tipoProcessoId: "tipo-processo-1",
         clienteId: "cli-1",
         statusId: "status-1",
         responsavelMembroId: null,

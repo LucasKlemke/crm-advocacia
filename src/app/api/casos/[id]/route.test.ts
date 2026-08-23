@@ -117,8 +117,32 @@ describe("PATCH /api/casos/[id]", () => {
     });
   });
 
+  // O CasoDTO promete cliente/status/tipoProcesso, e a UI usa o retorno do PATCH para
+  // repintar o cabeçalho do sheet e as linhas da tabela. Devolver o Caso cru (sem
+  // relações) quebrava a tela com "Cannot read properties of undefined (reading 'nome')".
+  it("responde o caso com as relações serializadas, não o registro cru", async () => {
+    service.atualizar.mockResolvedValue({
+      id: "caso-1",
+      tipoProcessoId: "tipo-processo-1",
+      cliente: { id: "cli-1", nome: "Maria" },
+      status: { id: "status-1", nome: "Em análise" },
+      tipoProcesso: { id: "tipo-processo-1", nome: "Ação de cobrança" },
+      responsavel: null,
+    } as never);
+
+    const response = await patch({ descricao: "Nova descrição" });
+    const corpo = await response.json();
+
+    expect(corpo.caso.tipoProcesso).toEqual({
+      id: "tipo-processo-1",
+      nome: "Ação de cobrança",
+    });
+    expect(corpo.caso.cliente).toBeDefined();
+    expect(corpo.caso.status).toBeDefined();
+  });
+
   it("responde 400 para payload inválido", async () => {
-    const response = await patch({ titulo: "" });
+    const response = await patch({ tipoProcessoId: "nao-e-uuid" });
     expect(response.status).toBe(400);
     expect(service.atualizar).not.toHaveBeenCalled();
   });
@@ -135,12 +159,27 @@ describe("PATCH /api/casos/[id]", () => {
     const { CasoNaoEncontradoError } = jest.requireMock("@/services/caso.service");
     service.atualizar.mockRejectedValue(new CasoNaoEncontradoError());
 
-    const response = await patch({ titulo: "Novo título" });
+    const response = await patch({ descricao: "Nova descrição" });
     expect(response.status).toBe(404);
   });
 });
 
 describe("DELETE /api/casos/[id]", () => {
+  it("responde o caso arquivado com as relações serializadas", async () => {
+    service.arquivar.mockResolvedValue({
+      id: "caso-1",
+      arquivado: true,
+      cliente: { id: "cli-1", nome: "Maria" },
+      status: { id: "status-1", nome: "Em análise" },
+      tipoProcesso: { id: "tipo-processo-1", nome: "Ação de cobrança" },
+      responsavel: null,
+    } as never);
+
+    const corpo = await (await del()).json();
+
+    expect(corpo.caso.tipoProcesso.nome).toBe("Ação de cobrança");
+  });
+
   it("arquiva (soft) o caso em vez de excluir de fato", async () => {
     service.arquivar.mockResolvedValue({ id: "caso-1", arquivado: true } as never);
 
