@@ -33,7 +33,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!parsed.success) return respostaDadosInvalidos(parsed.error);
 
     const caso = await casoService.atualizar(ctx, id, parsed.data);
-    return NextResponse.json({ caso });
+    return NextResponse.json({ caso: await serializarCaso(caso) });
   } catch (error) {
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;
@@ -50,7 +50,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const { id } = await params;
 
     const caso = await casoService.arquivar(ctx, id);
-    return NextResponse.json({ caso });
+    return NextResponse.json({ caso: await serializarCaso(caso) });
   } catch (error) {
     const resposta = tratarErroDeContexto(error) ?? tratarErroDeCaso(error);
     if (resposta) return resposta;

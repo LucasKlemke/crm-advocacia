@@ -24,7 +24,8 @@ describe("StatusIconePicker", () => {
 
     await usuario.click(screen.getByRole("button", { name: "Selecionar ícone" }));
     await usuario.type(screen.getByPlaceholderText("Buscar ícone..."), "Trophy");
-    await usuario.click(await screen.findByText("Trophy"));
+    // A lista é uma grade só de ícones: o nome de cada opção vive no aria-label.
+    await usuario.click(await screen.findByRole("option", { name: "Trophy" }));
 
     expect(onChange).toHaveBeenCalledWith("Trophy");
   });

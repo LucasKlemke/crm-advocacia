@@ -10,7 +10,8 @@ test.describe("Cadastro de usuário, onboarding e login", () => {
 
     await page.getByLabel("Seu nome").fill("Advogado E2E");
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
 
     await expect(page).toHaveURL("/onboarding");
@@ -24,7 +25,8 @@ test.describe("Cadastro de usuário, onboarding e login", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Advogado Onboarding");
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 
@@ -40,14 +42,15 @@ test.describe("Cadastro de usuário, onboarding e login", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Advogado E2E Login");
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 
     await page.context().clearCookies();
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
     await page.getByRole("button", { name: /entrar/i }).click();
 
     await expect(page).toHaveURL("/onboarding");
@@ -59,7 +62,7 @@ test.describe("Cadastro de usuário, onboarding e login", () => {
     await page.goto("/login");
 
     await page.getByLabel("E-mail").fill("nao-existe@teste.com");
-    await page.getByLabel("Senha").fill("senha-qualquer");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-qualquer");
     await page.getByRole("button", { name: /entrar/i }).click();
 
     await expect(page.getByText(/e-mail ou senha inválidos/i)).toBeVisible();

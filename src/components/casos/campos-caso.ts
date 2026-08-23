@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 // texto/máscara): não há ganho em array-driven form+validação aqui. Este módulo guarda
 // só o que de fato se repete entre caso-form.tsx (criação) e caso-dados.tsx (edição
 // inline) — rótulo e ícone de cada campo.
-export const ICONE_TITULO: LucideIcon = Tag;
+export const ICONE_TIPO_PROCESSO: LucideIcon = Tag;
 export const ICONE_NUMERO_PROCESSO: LucideIcon = Hash;
 export const ICONE_CLIENTE: LucideIcon = User;
 export const ICONE_RESPONSAVEL: LucideIcon = Users;
@@ -14,3 +14,4 @@ export const ICONE_DESCRICAO: LucideIcon = FileText;
 
 export const SEM_RESPONSAVEL_VALOR = "sem-responsavel";
 export const CRIAR_CLIENTE_VALOR = "criar-cliente";
+export const CRIAR_TIPO_PROCESSO_VALOR = "criar-tipo-processo";

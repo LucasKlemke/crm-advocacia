@@ -173,9 +173,30 @@ Colunas do kanban, definidas por cada escritório e associadas a um `tipo_status
 
 `@@unique([escritorio_id, nome])`. Todo escritório novo já nasce com 9 status básicos (um por `tipo_status`), criados dentro da mesma transação que cria o escritório — não é um seed de banco, é um comportamento do `EscritorioService`/`StatusService` no momento do cadastro.
 
+## `tipo_processo`
+
+Natureza do processo, cadastrada por cada escritório em `/configuracoes/tipos-processo`. Substituiu o antigo `caso.titulo` (texto livre de 140 caracteres): o título nunca era padronizado, então "Juros abusivos" e "juros abusivo" eram coisas diferentes para o banco, sem agrupamento nem filtro possíveis.
+
+Mesma anatomia de `status` (nome + cor + ícone + ordem, único por escritório), mas **sem** nível global — não existe um `tipo_tipo_processo` equivalente ao `tipo_status`, porque não há necessidade de comparar tipos entre escritórios.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório) |
+| nome | varchar(60) | Ex.: "Juros abusivos" — único por escritório |
+| icone | varchar(60) | Nome de um ícone Lucide (mesma allow-list de `status`) |
+| cor | varchar(9) | Hex (mesma paleta permitida de `status`) |
+| descricao | varchar(255) | Opcional |
+| ordem | int | Ordem de exibição nos selects e filtros |
+| created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, nome])`. Todo escritório novo nasce com 8 tipos iniciais (Ação trabalhista, Ação de cobrança, Divórcio, Inventário, Aposentadoria, Revisional, Indenizatória, Consultivo), criados na mesma transação do cadastro pelo `TipoProcessoService.criarPadroes` — sem eles, um escritório recém-criado não conseguiria cadastrar o primeiro processo, já que o tipo é obrigatório.
+
+Escrita (criar/editar/excluir) é restrita a `owner`/`admin`, como a de `status`; o papel `padrao` só lê.
+
 ## `caso`
 
-Casos do escritório, vinculados a um cliente ativo e a um status (RN06/RN07). Ao contrário do sugerido inicialmente, guarda `escritorio_id` diretamente (como `cliente`/`comentario`/`log`) em vez de resolver o tenant via `join` com `cliente` — mesmo padrão do restante do schema, evita join obrigatório em toda query do kanban e mantém RN19 simples de auditar.
+Casos do escritório, vinculados a um cliente ativo, a um status e a um tipo de processo (RN06/RN07). Ao contrário do sugerido inicialmente, guarda `escritorio_id` diretamente (como `cliente`/`comentario`/`log`) em vez de resolver o tenant via `join` com `cliente` — mesmo padrão do restante do schema, evita join obrigatório em toda query do kanban e mantém RN19 simples de auditar.
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
@@ -183,15 +204,17 @@ Casos do escritório, vinculados a um cliente ativo e a um status (RN06/RN07). A
 | escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
 | cliente_id | uuid | FK → `cliente`, `onDelete: Restrict` (obrigatório, RN06) |
 | status_id | uuid | FK → `status`, `onDelete: Restrict` (obrigatório, RN07) |
+| tipo_processo_id | uuid | FK → `tipo_processo`, `onDelete: Restrict` (obrigatório) — substituiu o antigo `titulo` |
 | responsavel_membro_id | uuid | FK → `membro`, `onDelete: SetNull` — opcional ("sem responsável" é um estado válido) |
-| titulo | varchar(140) | |
 | numero_processo | varchar(25) | Número CNJ do processo (`NNNNNNN-DD.AAAA.J.TR.OOOO`) — opcional, texto livre |
 | descricao | text | Opcional |
 | valor | decimal(12,2) | Quanto o advogado recebe ao concluir o caso — opcional |
 | arquivado | boolean | Sai do kanban ativo, mantém histórico (RN08) |
 | created_at / updated_at | timestamp | |
 
-`onDelete: Restrict` em `caso.status_id` é a garantia física de RN09 ("status só pode ser removido se vazio") — a checagem amigável (contar casos antes de excluir) fica no `StatusService`, a constraint é a rede de segurança contra bugs.
+`onDelete: Restrict` em `caso.status_id` é a garantia física de RN09 ("status só pode ser removido se vazio") — a checagem amigável (contar casos antes de excluir) fica no `StatusService`, a constraint é a rede de segurança contra bugs. `caso.tipo_processo_id` tem o mesmo par (Restrict + checagem no `TipoProcessoService`).
+
+A migration que introduziu `tipo_processo` não descartou os títulos existentes: agrupou os títulos de cada escritório (case-insensitive, truncados nos 60 caracteres de `nome`), criou um tipo por título distinto e reanexou cada caso ao seu, antes de dropar a coluna. A coluna nova entrou nullable, foi preenchida e só então virou `NOT NULL` — se algum caso tivesse ficado sem tipo, a migration falharia em vez de gravar dado inconsistente.
 
 ## `prazo`
 

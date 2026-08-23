@@ -13,16 +13,19 @@ import {
 } from "@/hooks/use-casos";
 import {
   CRIAR_CLIENTE_VALOR,
+  CRIAR_TIPO_PROCESSO_VALOR,
   ICONE_CLIENTE,
   ICONE_DESCRICAO,
   ICONE_NUMERO_PROCESSO,
   ICONE_RESPONSAVEL,
-  ICONE_TITULO,
+  ICONE_TIPO_PROCESSO,
   ICONE_VALOR,
   SEM_RESPONSAVEL_VALOR,
 } from "@/components/casos/campos-caso";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { ClienteForm } from "@/components/clientes/cliente-form";
+import { TipoProcessoForm } from "@/components/configuracoes/tipo-processo-form";
+import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,14 +45,19 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { CasoDTO } from "@/types/caso";
+import type { RoleMembro } from "@prisma/client";
 
 export interface CasoFormProps {
   onSucesso: (caso: CasoDTO) => void;
   onCancelar?: () => void;
+  // Criar tipo de processo é configuração do escritório (só owner/admin), então o
+  // atalho "Criar tipo" some para o papel padrao — que ainda escolhe entre os tipos
+  // já cadastrados normalmente.
+  atorRole?: RoleMembro;
 }
 
 interface Valores {
-  titulo: string;
+  tipoProcessoId: string;
   clienteId: string;
   statusId: string;
   responsavelMembroId: string;
@@ -59,7 +67,7 @@ interface Valores {
 }
 
 const VALORES_INICIAIS: Valores = {
-  titulo: "",
+  tipoProcessoId: "",
   clienteId: "",
   statusId: "",
   responsavelMembroId: SEM_RESPONSAVEL_VALOR,
@@ -68,13 +76,14 @@ const VALORES_INICIAIS: Valores = {
   descricao: "",
 };
 
-export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
+export function CasoForm({ onSucesso, onCancelar, atorRole }: CasoFormProps) {
   const queryClient = useQueryClient();
   const { data: opcoes, isLoading: carregandoOpcoes } = useCasoFiltroOpcoes();
   const criar = useCriarCaso();
   const [valores, setValores] = useState<Valores>(VALORES_INICIAIS);
   const [erro, setErro] = useState<string | null>(null);
   const [criandoCliente, setCriandoCliente] = useState(false);
+  const [criandoTipo, setCriandoTipo] = useState(false);
 
   function alterar<K extends keyof Valores>(campo: K, valor: Valores[K]) {
     setValores((atuais) => ({ ...atuais, [campo]: valor }));
@@ -85,8 +94,8 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
     evento.preventDefault();
     setErro(null);
 
-    if (!valores.titulo.trim()) {
-      setErro("Informe o título do processo.");
+    if (!valores.tipoProcessoId) {
+      setErro("Selecione o tipo de processo.");
       return;
     }
     if (!valores.clienteId) {
@@ -99,7 +108,7 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
     }
 
     const dados: DadosCasoForm = {
-      titulo: valores.titulo,
+      tipoProcessoId: valores.tipoProcessoId,
       clienteId: valores.clienteId,
       statusId: statusIdEfetivo,
       responsavelMembroId:
@@ -126,6 +135,8 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
   const clientes = opcoes?.clientes ?? [];
   const membros = opcoes?.membros ?? [];
   const status = opcoes?.status ?? [];
+  const tiposProcesso = opcoes?.tiposProcesso ?? [];
+  const podeCriarTipo = atorRole !== "padrao";
   const salvando = criar.isPending;
   // Status default = primeira etapa do funil (menor `ordem`), até o usuário escolher outro.
   const statusIdEfetivo = valores.statusId || (status[0]?.id ?? "");
@@ -134,17 +145,51 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
     <>
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="caso-titulo">
-          <ICONE_TITULO aria-hidden className="size-3.5 text-muted-foreground" />
-          Título
+        <Label htmlFor="caso-tipo-processo">
+          <ICONE_TIPO_PROCESSO aria-hidden className="size-3.5 text-muted-foreground" />
+          Tipo de processo
         </Label>
-        <Input
-          id="caso-titulo"
-          name="titulo"
-          value={valores.titulo}
-          onChange={(evento) => alterar("titulo", evento.target.value)}
-          disabled={salvando}
-        />
+        <Select
+          value={valores.tipoProcessoId || null}
+          onValueChange={(valor) => {
+            if (valor === CRIAR_TIPO_PROCESSO_VALOR) {
+              setCriandoTipo(true);
+              return;
+            }
+            alterar("tipoProcessoId", (valor as string) ?? "");
+          }}
+          disabled={salvando || carregandoOpcoes}
+        >
+          <SelectTrigger id="caso-tipo-processo" className="w-full">
+            <SelectValue>
+              {() =>
+                tiposProcesso.find((t) => t.id === valores.tipoProcessoId)?.nome ?? "Selecione"
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {podeCriarTipo ? (
+              <SelectItem value={CRIAR_TIPO_PROCESSO_VALOR}>
+                <Plus className="size-3.5" />
+                Criar tipo
+              </SelectItem>
+            ) : null}
+            {tiposProcesso.map((tipo) => {
+              const Icone = MAPA_ICONES_STATUS[tipo.icone];
+              return (
+                <SelectItem key={tipo.id} value={tipo.id}>
+                  <span
+                    aria-hidden
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: tipo.cor }}
+                  />
+                  {Icone ? <Icone className="size-3.5 text-muted-foreground" /> : null}
+                  {tipo.nome}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -327,6 +372,29 @@ export function CasoForm({ onSucesso, onCancelar }: CasoFormProps) {
                 setCriandoCliente(false);
               }}
               onCancelar={() => setCriandoCliente(false)}
+            />
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <Sheet open={criandoTipo} onOpenChange={setCriandoTipo}>
+      <SheetContent className="w-full gap-0 sm:max-w-xl">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Novo tipo de processo</SheetTitle>
+            <SheetDescription>
+              Cadastre um tipo do escritório sem sair do processo.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 py-4">
+            <TipoProcessoForm
+              onSucesso={(tipo) => {
+                queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+                alterar("tipoProcessoId", tipo.id);
+                setCriandoTipo(false);
+              }}
+              onCancelar={() => setCriandoTipo(false)}
             />
           </div>
         </div>

@@ -5,6 +5,7 @@ import { FileText, MessageSquare, UserRound } from "lucide-react";
 import { formatarCpf } from "@/lib/utils/cpf";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { BadgeValor } from "@/components/shared/badge-valor";
+import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
 import type { CasoDTO } from "@/types/caso";
 
 export interface CasoCardProps {
@@ -36,6 +37,8 @@ function Pill({
 // normal (dentro da coluna) quanto pelo <DragOverlay> (fora da árvore das colunas, para
 // não ser cortado pelo overflow do ScrollArea enquanto arrasta).
 function CasoCardConteudo({ caso }: { caso: CasoDTO }) {
+  const IconeTipo = MAPA_ICONES_STATUS[caso.tipoProcesso.icone];
+
   return (
     <>
       <div className="flex items-center justify-between gap-2">
@@ -66,7 +69,14 @@ function CasoCardConteudo({ caso }: { caso: CasoDTO }) {
         </span>
       </div>
 
-      <p className="line-clamp-2 text-sm font-semibold text-foreground">{caso.titulo}</p>
+      {/* O tipo substituiu o antigo título livre: é o rótulo principal do card, com a
+          cor e o ícone que o escritório escolheu ao cadastrá-lo. */}
+      <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+        {IconeTipo ? (
+          <IconeTipo aria-hidden className="size-3.5 shrink-0" style={{ color: caso.tipoProcesso.cor }} />
+        ) : null}
+        <span className="line-clamp-2">{caso.tipoProcesso.nome}</span>
+      </p>
 
       <div className="flex flex-col gap-0.5">
         <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
@@ -123,7 +133,7 @@ export function CasoCard({ caso, onClick }: CasoCardProps) {
       {...attributes}
       role="button"
       tabIndex={0}
-      aria-label={`Abrir processo ${caso.titulo}`}
+      aria-label={`Abrir processo ${caso.tipoProcesso.nome}`}
       onClick={onClick}
       onKeyDown={(evento) => {
         if (evento.key === "Enter") onClick();

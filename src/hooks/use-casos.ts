@@ -2,6 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import {
+  RAIZ_CASOS,
+  chaveCasos,
+  chaveCasosColuna,
+  chaveCasosFiltroOpcoes,
+  chaveCasosKanban,
+} from "@/lib/query/chaves";
 import type {
   CasoDTO,
   FiltrosCasoOpcoes,
@@ -11,27 +18,18 @@ import type {
 } from "@/types/caso";
 
 export interface DadosCasoForm {
-  titulo: string;
   clienteId: string;
   statusId: string;
+  tipoProcessoId: string;
   responsavelMembroId?: string | null;
   numeroProcesso?: string | null;
   descricao?: string | null;
   valor?: number | null;
 }
 
-// Toda key de casos nasce sob a raiz ["casos"]: um único invalidateQueries({queryKey:
-// ["casos"]}) alcança listagem, kanban e qualquer página filtrada — kanban e tabela
-// nunca ficam dessincronizados depois de uma escrita.
-const RAIZ = ["casos"] as const;
+const RAIZ = RAIZ_CASOS;
 
-export const chaveCasos = (filtros?: FiltrosCasos) =>
-  filtros ? ([...RAIZ, "list", filtros] as const) : RAIZ;
-
-export const chaveCasosKanban = (filtros?: Omit<FiltrosCasos, "pagina">) =>
-  filtros ? ([...RAIZ, "kanban", filtros] as const) : ([...RAIZ, "kanban"] as const);
-
-export const chaveCasosFiltroOpcoes = () => [...RAIZ, "filtros"] as const;
+export { chaveCasos, chaveCasosKanban, chaveCasosFiltroOpcoes };
 
 function paramsDeFiltros(filtros: Partial<FiltrosCasos>): URLSearchParams {
   const params = new URLSearchParams();
@@ -41,6 +39,9 @@ function paramsDeFiltros(filtros: Partial<FiltrosCasos>): URLSearchParams {
   }
   if (filtros.tipoStatusIds && filtros.tipoStatusIds.length > 0) {
     params.set("tipoStatusId", filtros.tipoStatusIds.join(","));
+  }
+  if (filtros.tipoProcessoIds && filtros.tipoProcessoIds.length > 0) {
+    params.set("tipoProcessoId", filtros.tipoProcessoIds.join(","));
   }
   if (filtros.clienteIds && filtros.clienteIds.length > 0) {
     params.set("clienteId", filtros.clienteIds.join(","));
@@ -90,7 +91,7 @@ export function useCasosDaColuna(
   pagina: number
 ) {
   return useQuery({
-    queryKey: [...RAIZ, "coluna", statusId, filtros, pagina] as const,
+    queryKey: chaveCasosColuna(statusId, filtros, pagina),
     queryFn: () =>
       apiFetch<ListaCasos>(urlListagem({ ...filtros, statusIds: [statusId], pagina })),
     enabled: pagina > 1,

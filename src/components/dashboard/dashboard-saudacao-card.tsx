@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { CalendarDays, Scale } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useSaudacaoRotativa } from "@/hooks/use-saudacao-rotativa";
-import { formatarDataExtensa } from "@/lib/utils/data";
 
 export interface DashboardSaudacaoCardProps {
   nome: string;
+  /** Data já formatada no servidor, como o header do shell também faz. */
+  data: string;
 }
 
 // Só o primeiro nome, normalizado — o nome cadastrado pode vir todo em caixa alta
@@ -28,12 +28,9 @@ function tamanhoNome(texto: string): string {
 // Faixa de boas-vindas acima dos cards de status: saudação como rótulo pequeno,
 // nome em destaque, imagem sangrando pela direita com fade (mesmo idioma visual do
 // AuthBrandingPanel) e uma barra escura com o contexto do dia sobre a imagem.
-export function DashboardSaudacaoCard({ nome }: DashboardSaudacaoCardProps) {
+export function DashboardSaudacaoCard({ nome, data }: DashboardSaudacaoCardProps) {
   const { saudacao, subtitulo } = useSaudacaoRotativa();
   const nomeExibido = primeiroNome(nome);
-  // Data no fuso do navegador: o card só é montado no cliente (depende do resumo
-  // carregado), então não há SSR para divergir na hidratação.
-  const [dataHoje] = useState(() => formatarDataExtensa(new Date()));
 
   return (
     <Card className="relative w-full max-w-2xl min-w-0 flex-1 gap-0 overflow-hidden rounded-2xl bg-linear-to-br from-brand/15 via-brand/5 to-transparent py-0 ring-foreground/10">
@@ -63,7 +60,7 @@ export function DashboardSaudacaoCard({ nome }: DashboardSaudacaoCardProps) {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-full bg-overlay/50 px-4 py-2.5 text-xs text-brand-foreground backdrop-blur-sm sm:text-sm">
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 shrink-0 opacity-70" aria-hidden />
-            <span className="min-w-24">{dataHoje}</span>
+            <span className="min-w-24">{data}</span>
           </span>
           <span className="flex items-center gap-2">
             <Scale className="size-4 shrink-0 opacity-70" aria-hidden />

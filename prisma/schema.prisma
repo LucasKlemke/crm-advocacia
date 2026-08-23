@@ -42,6 +42,7 @@ enum EntidadeLog {
   comentario
   caso
   status
+  tipo_processo
   membro
   documento
 }
@@ -76,14 +77,15 @@ model Escritorio {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  membros     Membro[]
-  convites    Convite[]
-  clientes    Cliente[]
-  comentarios Comentario[]
-  logs        Log[]
-  status      Status[]
-  casos       Caso[]
-  documentos  Documento[]
+  membros       Membro[]
+  convites      Convite[]
+  clientes      Cliente[]
+  comentarios   Comentario[]
+  logs          Log[]
+  status        Status[]
+  tiposProcesso TipoProcesso[]
+  casos         Caso[]
+  documentos    Documento[]
 
   @@map("escritorio")
 }
@@ -119,8 +121,8 @@ model Membro {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  usuario    Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  escritorio Escritorio  @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   casos      Caso[]
   documentos Documento[]
 
@@ -203,18 +205,18 @@ model Comentario {
 // Documento anexado a um cliente ou caso (escopo, escopo_id — mesmo padrão de
 // Comentario), armazenado no S3 via storage_key (RN17/RN18).
 model Documento {
-  id             String          @id @default(uuid())
-  escritorioId   String          @map("escritorio_id")
-  escopo         EscopoDocumento
-  escopoId       String          @map("escopo_id")
-  autorMembroId  String          @map("autor_membro_id")
-  nomeOriginal   String          @map("nome_original") @db.VarChar(255)
-  tipoArquivo    TipoArquivo     @map("tipo_arquivo")
-  tamanhoKb      Int             @map("tamanho_kb")
-  storageKey     String          @map("storage_key") @db.VarChar(500)
-  softDeletedAt  DateTime?       @map("soft_deleted_at")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  id            String          @id @default(uuid())
+  escritorioId  String          @map("escritorio_id")
+  escopo        EscopoDocumento
+  escopoId      String          @map("escopo_id")
+  autorMembroId String          @map("autor_membro_id")
+  nomeOriginal  String          @map("nome_original") @db.VarChar(255)
+  tipoArquivo   TipoArquivo     @map("tipo_arquivo")
+  tamanhoKb     Int             @map("tamanho_kb")
+  storageKey    String          @map("storage_key") @db.VarChar(500)
+  softDeletedAt DateTime?       @map("soft_deleted_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   autor      Membro     @relation(fields: [autorMembroId], references: [id], onDelete: Restrict)
@@ -285,6 +287,28 @@ model Status {
   @@map("status")
 }
 
+// Tipo de processo do escritório: padroniza a natureza do caso ("Juros abusivos",
+// "Aposentadoria") no lugar do antigo título livre de Caso. Mesma anatomia de Status
+// (nome + cor + ícone + ordem), mas sem nível global — o tipo é do tenant e ponto.
+model TipoProcesso {
+  id           String   @id @default(uuid())
+  escritorioId String   @map("escritorio_id")
+  nome         String   @db.VarChar(60)
+  icone        String   @db.VarChar(60)
+  cor          String   @db.VarChar(9)
+  descricao    String?  @db.VarChar(255)
+  ordem        Int
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  casos      Caso[]
+
+  @@unique([escritorioId, nome])
+  @@index([escritorioId, ordem])
+  @@map("tipo_processo")
+}
+
 // Caso do escritório: sempre vinculado a um cliente ativo e a um status (RN06/RN07).
 // Responsável é opcional ("sem responsável") e vira null se o membro for removido.
 model Caso {
@@ -293,7 +317,7 @@ model Caso {
   clienteId           String   @map("cliente_id")
   statusId            String   @map("status_id")
   responsavelMembroId String?  @map("responsavel_membro_id")
-  titulo              String   @db.VarChar(140)
+  tipoProcessoId      String   @map("tipo_processo_id")
   numeroProcesso      String?  @map("numero_processo") @db.VarChar(25)
   descricao           String?  @db.Text
   valor               Decimal? @db.Decimal(12, 2)
@@ -301,13 +325,15 @@ model Caso {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  escritorio  Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
-  cliente     Cliente    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  status      Status     @relation(fields: [statusId], references: [id], onDelete: Restrict)
-  responsavel Membro?    @relation(fields: [responsavelMembroId], references: [id], onDelete: SetNull)
+  escritorio   Escritorio   @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  status       Status       @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  tipoProcesso TipoProcesso @relation(fields: [tipoProcessoId], references: [id], onDelete: Restrict)
+  responsavel  Membro?      @relation(fields: [responsavelMembroId], references: [id], onDelete: SetNull)
 
   @@index([escritorioId, arquivado, statusId, createdAt])
   @@index([escritorioId, clienteId])
   @@index([escritorioId, responsavelMembroId])
+  @@index([escritorioId, tipoProcessoId])
   @@map("caso")
 }

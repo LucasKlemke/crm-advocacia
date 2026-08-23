@@ -2,20 +2,10 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ehSessaoExpirada } from "@/lib/api-client";
+import { opcoesPadraoQuery } from "@/lib/query/opcoes-padrao";
 
 function criarQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 30_000,
-        refetchOnWindowFocus: false,
-        // Sessão expirada não se resolve tentando de novo (o apiFetch já leva o
-        // usuário ao login): repetir só atrasaria o erro aparecer na tela.
-        retry: (falhas, erro) => !ehSessaoExpirada(erro) && falhas < 1,
-      },
-    },
-  });
+  return new QueryClient({ defaultOptions: { queries: opcoesPadraoQuery } });
 }
 
 export interface QueryProviderProps {

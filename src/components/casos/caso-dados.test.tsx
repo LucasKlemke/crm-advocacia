@@ -12,7 +12,7 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
     clienteId: "cli-1",
     statusId: "status-1",
     responsavelMembroId: null,
-    titulo: "Ação de cobrança",
+    tipoProcessoId: "tipo-processo-1",
     numeroProcesso: null,
     descricao: null,
     valor: null,
@@ -42,6 +42,17 @@ function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
       createdAt: "2026-08-01T12:00:00.000Z",
       updatedAt: "2026-08-01T12:00:00.000Z",
     },
+    tipoProcesso: {
+      id: "tipo-processo-1",
+      escritorioId: "esc-1",
+      nome: "Ação de cobrança",
+      icone: "Briefcase",
+      cor: "#6366f1",
+      descricao: null,
+      ordem: 1,
+      createdAt: "2026-08-01T12:00:00.000Z",
+      updatedAt: "2026-08-01T12:00:00.000Z",
+    },
     responsavel: null,
     ...over,
   };
@@ -61,6 +72,10 @@ function mockarFetch() {
             { id: "status-2", nome: "Fechado", cor: "#10b981" },
           ],
           tipos: [],
+          tiposProcesso: [
+            { id: "tipo-processo-1", nome: "Ação de cobrança", cor: "#6366f1", icone: "Briefcase" },
+            { id: "tipo-processo-2", nome: "Divórcio", cor: "#f43f5e", icone: "Users" },
+          ],
         }),
       } as unknown as Response);
     }
@@ -85,7 +100,37 @@ describe("CasoDados", () => {
   it("mostra os dados atuais do caso", async () => {
     renderComQuery(<CasoDados caso={casoFake()} />);
 
-    expect(screen.getByDisplayValue("Ação de cobrança")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("combobox", { name: /Tipo de processo/ })
+    ).toHaveTextContent("Ação de cobrança");
+  });
+
+  it("troca o tipo de processo e salva imediatamente", async () => {
+    const usuario = userEvent.setup();
+    renderComQuery(<CasoDados caso={casoFake()} />);
+    await screen.findByText("Em análise");
+
+    await usuario.click(screen.getByRole("combobox", { name: /Tipo de processo/ }));
+    await usuario.click(await screen.findByRole("option", { name: /Divórcio/ }));
+
+    await waitFor(() => {
+      const chamada = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, init]) => url === "/api/casos/caso-1" && init?.method === "PATCH"
+      );
+      expect(chamada).toBeDefined();
+      expect(JSON.parse(chamada[1].body)).toEqual({ tipoProcessoId: "tipo-processo-2" });
+    });
+  });
+
+  it("não oferece o atalho de criar tipo para o papel padrao", async () => {
+    const usuario = userEvent.setup();
+    renderComQuery(<CasoDados caso={casoFake()} atorRole="padrao" />);
+    await screen.findByText("Em análise");
+
+    await usuario.click(screen.getByRole("combobox", { name: /Tipo de processo/ }));
+
+    expect(await screen.findByRole("option", { name: /Divórcio/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Criar tipo/ })).not.toBeInTheDocument();
   });
 
   it("troca o status e salva imediatamente", async () => {
@@ -105,26 +150,26 @@ describe("CasoDados", () => {
     });
   });
 
-  it("só mostra o botão salvar quando o título/valor/descrição muda", async () => {
+  it("só mostra o botão salvar quando nº/valor/descrição muda", async () => {
     const usuario = userEvent.setup();
     renderComQuery(<CasoDados caso={casoFake()} />);
     await screen.findByText("Em análise");
 
     expect(screen.queryByRole("button", { name: "Salvar alterações" })).not.toBeInTheDocument();
 
-    await usuario.type(screen.getByDisplayValue("Ação de cobrança"), " urgente");
+    await usuario.type(screen.getByLabelText(/Nº do processo/), "0001");
 
     expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeInTheDocument();
   });
 
-  it("salva o título editado ao clicar em Salvar alterações", async () => {
+  it("salva o nº do processo editado ao clicar em Salvar alterações", async () => {
     const usuario = userEvent.setup();
     renderComQuery(<CasoDados caso={casoFake()} />);
     await screen.findByText("Em análise");
 
-    const campo = screen.getByDisplayValue("Ação de cobrança");
+    const campo = screen.getByLabelText(/Nº do processo/);
     await usuario.clear(campo);
-    await usuario.type(campo, "Novo título");
+    await usuario.type(campo, "0001112-33.2026.8.24.0001");
     await usuario.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
     await waitFor(() => {
@@ -132,7 +177,9 @@ describe("CasoDados", () => {
         ([url, init]) => url === "/api/casos/caso-1" && init?.method === "PATCH"
       );
       expect(chamada).toBeDefined();
-      expect(JSON.parse(chamada[1].body)).toMatchObject({ titulo: "Novo título" });
+      expect(JSON.parse(chamada[1].body)).toMatchObject({
+        numeroProcesso: "0001112-33.2026.8.24.0001",
+      });
     });
   });
 });

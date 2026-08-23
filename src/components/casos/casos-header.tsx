@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutGrid, Plus, Search, Table2, Tag, User, Users } from "lucide-react";
+import { Briefcase, LayoutGrid, Plus, Search, Table2, Tag, User, Users } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { chaveCasosFiltroOpcoes, useCasoFiltroOpcoes } from "@/hooks/use-casos";
 import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
 import { ClienteForm } from "@/components/clientes/cliente-form";
+import { TipoProcessoForm } from "@/components/configuracoes/tipo-processo-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,6 +20,7 @@ import {
 import { formatarCpf } from "@/lib/utils/cpf";
 import { SEM_RESPONSAVEL } from "@/types/caso";
 import type { FiltrosCasos } from "@/types/caso";
+import type { RoleMembro } from "@prisma/client";
 
 export type VisaoCasos = "kanban" | "tabela";
 
@@ -28,6 +30,9 @@ export interface CasosHeaderProps {
   visao: VisaoCasos;
   onVisaoChange: (visao: VisaoCasos) => void;
   onNovoCaso: () => void;
+  // Criar tipo de processo é configuração do escritório (só owner/admin): para o papel
+  // padrao o filtro continua funcionando, só sem o atalho de criação.
+  atorRole?: RoleMembro;
 }
 
 // Cabeçalho da tela: busca + alternância Kanban/Tabela + filtros multi-select
@@ -39,11 +44,14 @@ export function CasosHeader({
   visao,
   onVisaoChange,
   onNovoCaso,
+  atorRole,
 }: CasosHeaderProps) {
   const queryClient = useQueryClient();
   const [buscaDigitada, setBuscaDigitada] = useState(filtros.busca);
   const [criandoCliente, setCriandoCliente] = useState(false);
+  const [criandoTipo, setCriandoTipo] = useState(false);
   const { data: opcoes } = useCasoFiltroOpcoes();
+  const podeCriarTipo = atorRole !== "padrao";
 
   // Debounce da busca: cada tecla não pode virar uma chamada de API.
   useEffect(() => {
@@ -71,7 +79,7 @@ export function CasosHeader({
         <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           aria-label="Buscar processos"
-          placeholder="Buscar por título ou descrição"
+          placeholder="Buscar por tipo, nº do processo ou descrição"
           className="pl-8"
           value={buscaDigitada}
           onChange={(evento) => setBuscaDigitada(evento.target.value)}
@@ -121,6 +129,23 @@ export function CasosHeader({
         onChange={(clienteIds) => onFiltrosChange({ ...filtros, clienteIds, pagina: 1 })}
         buscaPlaceholder="Buscar cliente..."
         acaoCriar={{ label: "Novo cliente", onSelecionar: () => setCriandoCliente(true) }}
+      />
+
+      <FiltroMultiSelect
+        label="Tipo de processo"
+        icone={Briefcase}
+        opcoes={(opcoes?.tiposProcesso ?? []).map((t) => ({
+          id: t.id,
+          nome: t.nome,
+          cor: t.cor,
+          descricao: t.descricao,
+        }))}
+        selecionados={filtros.tipoProcessoIds}
+        onChange={(tipoProcessoIds) => onFiltrosChange({ ...filtros, tipoProcessoIds, pagina: 1 })}
+        buscaPlaceholder="Buscar tipo de processo..."
+        acaoCriar={
+          podeCriarTipo ? { label: "Novo tipo", onSelecionar: () => setCriandoTipo(true) } : undefined
+        }
       />
 
       <FiltroMultiSelect
@@ -179,6 +204,33 @@ export function CasosHeader({
                   setCriandoCliente(false);
                 }}
                 onCancelar={() => setCriandoCliente(false)}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={criandoTipo} onOpenChange={setCriandoTipo}>
+        <SheetContent className="w-full gap-0 sm:max-w-xl">
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Novo tipo de processo</SheetTitle>
+              <SheetDescription>
+                Cadastre um tipo do escritório sem sair dos processos.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="px-4 py-4">
+              <TipoProcessoForm
+                onSucesso={(tipo) => {
+                  queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+                  onFiltrosChange({
+                    ...filtros,
+                    tipoProcessoIds: [...filtros.tipoProcessoIds, tipo.id],
+                    pagina: 1,
+                  });
+                  setCriandoTipo(false);
+                }}
+                onCancelar={() => setCriandoTipo(false)}
               />
             </div>
           </div>

@@ -1,8 +1,6 @@
 import { z } from "zod";
 import type { FiltrosCaso } from "@/repositories/caso.repository";
 
-export const tituloCasoSchema = z.string().trim().min(1, "Informe o título do processo.").max(140);
-
 export const numeroProcessoCasoSchema = z.string().trim().max(25).nullish();
 
 export const descricaoCasoSchema = z.string().trim().max(10000).nullish();
@@ -11,9 +9,9 @@ export const descricaoCasoSchema = z.string().trim().max(10000).nullish();
 export const valorCasoSchema = z.coerce.number().nonnegative("O valor não pode ser negativo.").nullish();
 
 export const novoCasoSchema = z.object({
-  titulo: tituloCasoSchema,
   clienteId: z.uuid("Cliente inválido."),
   statusId: z.uuid("Status inválido."),
+  tipoProcessoId: z.uuid("Tipo de processo inválido."),
   responsavelMembroId: z.uuid("Responsável inválido.").nullish(),
   numeroProcesso: numeroProcessoCasoSchema,
   descricao: descricaoCasoSchema,
@@ -25,9 +23,10 @@ export const edicaoCasoSchema = novoCasoSchema.partial();
 
 // Query params de /api/casos e /api/casos/kanban — contrato usado pela UI do kanban/tabela.
 //
-//   busca            texto livre (título/descrição)
+//   busca            texto livre (nome do tipo de processo / nº do processo / descrição)
 //   statusId         um ou mais ids de Status, separados por vírgula
 //   tipoStatusId     um ou mais ids de TipoStatus, separados por vírgula
+//   tipoProcessoId   um ou mais ids de TipoProcesso, separados por vírgula
 //   clienteId        um ou mais ids de Cliente, separados por vírgula
 //   responsavelId    um ou mais ids de Membro, separados por vírgula — o literal
 //                     "sem-responsavel" pede os casos sem responsável (OR com os demais ids)
@@ -56,6 +55,7 @@ export function parseFiltrosCasoDaQuery(searchParams: URLSearchParams): FiltrosC
     busca: searchParams.get("busca")?.trim() || undefined,
     statusIds: listaDe("statusId"),
     tipoStatusIds: listaDe("tipoStatusId"),
+    tipoProcessoIds: listaDe("tipoProcessoId"),
     clienteIds: listaDe("clienteId"),
     responsavelIds: listaDe("responsavelId"),
     dataInicio: dataDe("dataInicio"),

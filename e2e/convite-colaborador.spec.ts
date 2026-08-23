@@ -12,7 +12,8 @@ test.describe("Convite de colaborador", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill(nome);
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 
@@ -56,7 +57,8 @@ test.describe("Convite de colaborador", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Colaborador Convidado");
     await page.getByLabel("E-mail").fill(convidadoEmail);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
 
     // Convite consumido: vai direto para a home do escritório, sem passar por onboarding.
@@ -83,7 +85,8 @@ test.describe("Convite de colaborador", () => {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill("Colaborador Padrao");
     await page.getByLabel("E-mail").fill(colaboradorEmail);
-    await page.getByLabel("Senha").fill("senha-forte-123");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-forte-123");
+    await page.getByLabel("Confirmar senha").fill("senha-forte-123");
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/");
 

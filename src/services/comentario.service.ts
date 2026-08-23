@@ -42,7 +42,7 @@ async function garantirEscopo(
     }
     case "caso": {
       const caso = await casoService.obter(ctx, escopoId);
-      return caso.titulo;
+      return caso.tipoProcesso.nome;
     }
   }
 }

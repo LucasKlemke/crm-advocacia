@@ -84,7 +84,7 @@ describe("StatusForm", () => {
     await usuario.click(await screen.findByRole("option", { name: "Em análise" }));
 
     await usuario.click(screen.getByRole("button", { name: "Selecionar ícone" }));
-    await usuario.click(await screen.findByText("Search"));
+    await usuario.click(await screen.findByRole("option", { name: "Search" }));
 
     await usuario.click(screen.getByRole("radio", { name: "Cor #f59e0b" }));
 
@@ -159,7 +159,7 @@ describe("StatusForm", () => {
     await usuario.click(screen.getByLabelText("Tipo de status"));
     await usuario.click(await screen.findByRole("option", { name: "Em análise" }));
     await usuario.click(screen.getByRole("button", { name: "Selecionar ícone" }));
-    await usuario.click(await screen.findByText("Search"));
+    await usuario.click(await screen.findByRole("option", { name: "Search" }));
     await usuario.click(screen.getByRole("radio", { name: "Cor #f59e0b" }));
 
     await usuario.click(screen.getByRole("button", { name: "Criar status" }));

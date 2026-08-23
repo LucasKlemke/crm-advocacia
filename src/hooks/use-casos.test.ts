@@ -28,7 +28,7 @@ const CASO: CasoDTO = {
   clienteId: "cli-1",
   statusId: "status-1",
   responsavelMembroId: null,
-  titulo: "Ação de cobrança",
+  tipoProcessoId: "tipo-processo-1",
   numeroProcesso: null,
   descricao: null,
   valor: null,
@@ -53,6 +53,17 @@ const CASO: CasoDTO = {
     nome: "Em análise",
     icone: "Search",
     cor: "#f59e0b",
+    descricao: null,
+    ordem: 1,
+    createdAt: "2026-08-01T12:00:00.000Z",
+    updatedAt: "2026-08-01T12:00:00.000Z",
+  },
+  tipoProcesso: {
+    id: "tipo-processo-1",
+    escritorioId: "esc-1",
+    nome: "Ação de cobrança",
+    icone: "Briefcase",
+    cor: "#6366f1",
     descricao: null,
     ordem: 1,
     createdAt: "2026-08-01T12:00:00.000Z",
@@ -168,7 +179,11 @@ describe("useCriarCaso", () => {
     const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
     const { result } = renderHook(() => useCriarCaso(), { wrapper: Wrapper });
 
-    result.current.mutate({ titulo: "Ação de cobrança", clienteId: "cli-1", statusId: "status-1" });
+    result.current.mutate({
+      tipoProcessoId: "tipo-processo-1",
+      clienteId: "cli-1",
+      statusId: "status-1",
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];

@@ -76,7 +76,10 @@ function membroFake(over: Partial<Membro> = {}): Membro {
 beforeEach(() => {
   jest.clearAllMocks();
   clientes.obter.mockResolvedValue({ id: "cli-1", nome: "Maria Silva" } as never);
-  casos.obter.mockResolvedValue({ id: "caso-1", titulo: "Ação de Cobrança" } as never);
+  casos.obter.mockResolvedValue({
+    id: "caso-1",
+    tipoProcesso: { nome: "Ação de Cobrança" },
+  } as never);
   membros.findByUsuarioEEscritorio.mockResolvedValue(membroFake());
   logs.registrar.mockResolvedValue({} as never);
   s3.gerarUrlUpload.mockResolvedValue("https://bucket.s3.amazonaws.com/signed-put");

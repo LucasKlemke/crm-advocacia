@@ -85,7 +85,7 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: Ca
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className="w-10 px-4" />
-              <TableHead>Título</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>
                 <span className="flex items-center gap-1.5">
                   <Hash aria-hidden className="size-3.5 text-muted-foreground" />
@@ -160,13 +160,13 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: Ca
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Abrir ${caso.titulo}`}
+                    aria-label={`Abrir ${caso.tipoProcesso.nome}`}
                     onClick={() => onAbrirCaso(caso)}
                   >
                     <ExternalLink className="size-4" />
                   </Button>
                 </TableCell>
-                <TableCell className="max-w-56 truncate py-3 font-medium">{caso.titulo}</TableCell>
+                <TableCell className="max-w-56 truncate py-3 font-medium">{caso.tipoProcesso.nome}</TableCell>
                 <TableCell className="max-w-40 truncate text-muted-foreground">
                   {caso.numeroProcesso ?? "—"}
                 </TableCell>
@@ -177,7 +177,7 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: Ca
                     onValueChange={(valor) => alterarResponsavel(caso, valor as string)}
                     disabled={atualizar.isPending}
                   >
-                    <SelectTrigger size="sm" aria-label={`Responsável de ${caso.titulo}`}>
+                    <SelectTrigger size="sm" aria-label={`Responsável de ${caso.tipoProcesso.nome}`}>
                       <SelectValue>
                         {() => {
                           const membroSelecionado = membrosOpcoes.find(
@@ -213,7 +213,7 @@ export function CasosTable({ filtros, onFiltrosChange, onAbrirCaso, limite }: Ca
                     onValueChange={(valor) => alterarStatus(caso, valor as string)}
                     disabled={atualizar.isPending}
                   >
-                    <SelectTrigger size="sm" aria-label={`Status de ${caso.titulo}`}>
+                    <SelectTrigger size="sm" aria-label={`Status de ${caso.tipoProcesso.nome}`}>
                       <SelectValue>
                         {() => (
                           <span className="flex items-center gap-1.5">

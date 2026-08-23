@@ -11,6 +11,7 @@ export interface FiltrosCaso {
   busca?: string;
   statusIds?: string[];
   tipoStatusIds?: string[];
+  tipoProcessoIds?: string[];
   clienteIds?: string[];
   responsavelIds?: string[];
   dataInicio?: Date;
@@ -23,6 +24,7 @@ export interface FiltrosCaso {
 export const CASO_INCLUDE = {
   cliente: true,
   status: true,
+  tipoProcesso: true,
   responsavel: { include: { usuario: true } },
 } satisfies Prisma.CasoInclude;
 
@@ -53,7 +55,8 @@ function where(escritorioId: string, filtros: FiltrosCaso): Prisma.CasoWhereInpu
     ...(busca
       ? {
           OR: [
-            { titulo: { contains: busca, mode: "insensitive" } },
+            { tipoProcesso: { nome: { contains: busca, mode: "insensitive" } } },
+            { numeroProcesso: { contains: busca, mode: "insensitive" } },
             { descricao: { contains: busca, mode: "insensitive" } },
           ],
         }
@@ -63,6 +66,9 @@ function where(escritorioId: string, filtros: FiltrosCaso): Prisma.CasoWhereInpu
       : {}),
     ...(filtros.tipoStatusIds && filtros.tipoStatusIds.length > 0
       ? { status: { tipoStatusId: { in: filtros.tipoStatusIds } } }
+      : {}),
+    ...(filtros.tipoProcessoIds && filtros.tipoProcessoIds.length > 0
+      ? { tipoProcessoId: { in: filtros.tipoProcessoIds } }
       : {}),
     ...(filtros.clienteIds && filtros.clienteIds.length > 0
       ? { clienteId: { in: filtros.clienteIds } }
@@ -106,8 +112,14 @@ export const casoRepository = {
     return db.caso.count({ where: where(escritorioId, filtros) });
   },
 
-  async update(id: string, data: Prisma.CasoUpdateInput, db: Db = prisma): Promise<Caso> {
-    return db.caso.update({ where: { id }, data });
+  // Devolve as relações como o findById: quem edita um caso (rotas PATCH/DELETE)
+  // responde o CasoDTO completo, que promete cliente/status/tipoProcesso.
+  async update(
+    id: string,
+    data: Prisma.CasoUpdateInput,
+    db: Db = prisma
+  ): Promise<CasoComRelacoes> {
+    return db.caso.update({ where: { id }, data, include: CASO_INCLUDE });
   },
 
   async contarPorStatus(

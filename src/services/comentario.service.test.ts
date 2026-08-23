@@ -54,7 +54,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   logs.registrar.mockResolvedValue({} as never);
   clientes.obter.mockResolvedValue({ id: "cli-1", nome: "Maria Silva" } as never);
-  casos.obter.mockResolvedValue({ id: "caso-1", titulo: "Ação de Cobrança" } as never);
+  casos.obter.mockResolvedValue({
+    id: "caso-1",
+    tipoProcesso: { nome: "Ação de Cobrança" },
+  } as never);
 });
 
 describe("comentarioService.criar", () => {

@@ -13,16 +13,19 @@ import {
 } from "@/hooks/use-casos";
 import {
   CRIAR_CLIENTE_VALOR,
+  CRIAR_TIPO_PROCESSO_VALOR,
   ICONE_CLIENTE,
   ICONE_DESCRICAO,
   ICONE_NUMERO_PROCESSO,
   ICONE_RESPONSAVEL,
-  ICONE_TITULO,
+  ICONE_TIPO_PROCESSO,
   ICONE_VALOR,
   SEM_RESPONSAVEL_VALOR,
 } from "@/components/casos/campos-caso";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { ClienteForm } from "@/components/clientes/cliente-form";
+import { TipoProcessoForm } from "@/components/configuracoes/tipo-processo-form";
+import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,14 +45,17 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { CasoDTO } from "@/types/caso";
+import type { RoleMembro } from "@prisma/client";
 
 export interface CasoDadosProps {
   caso: CasoDTO;
   onAtualizado?: (caso: CasoDTO) => void;
+  // Criar tipo de processo é configuração do escritório (só owner/admin) — ver CasoForm.
+  atorRole?: RoleMembro;
 }
 
 interface Valores {
-  titulo: string;
+  tipoProcessoId: string;
   clienteId: string;
   statusId: string;
   responsavelMembroId: string;
@@ -60,7 +66,7 @@ interface Valores {
 
 function valoresIniciais(caso: CasoDTO): Valores {
   return {
-    titulo: caso.titulo,
+    tipoProcessoId: caso.tipoProcessoId,
     clienteId: caso.clienteId,
     statusId: caso.statusId,
     responsavelMembroId: caso.responsavelMembroId ?? SEM_RESPONSAVEL_VALOR,
@@ -73,7 +79,7 @@ function valoresIniciais(caso: CasoDTO): Valores {
 // Selects (cliente/status/responsável) salvam ao trocar; título/valor/descrição têm
 // texto livre e só salvam com o botão explícito, como em ClienteDados — mas montado
 // como formulário completo (não campo-a-campo) porque a maioria dos campos é select.
-export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
+export function CasoDados({ caso, onAtualizado, atorRole }: CasoDadosProps) {
   const queryClient = useQueryClient();
   const { data: opcoes } = useCasoFiltroOpcoes();
   const atualizar = useAtualizarCaso();
@@ -81,12 +87,14 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
   const [original, setOriginal] = useState<Valores>(() => valoresIniciais(caso));
   const [erro, setErro] = useState<string | null>(null);
   const [criandoCliente, setCriandoCliente] = useState(false);
+  const [criandoTipo, setCriandoTipo] = useState(false);
 
   const clientes = opcoes?.clientes ?? [];
   const membros = opcoes?.membros ?? [];
   const status = opcoes?.status ?? [];
+  const tiposProcesso = opcoes?.tiposProcesso ?? [];
+  const podeCriarTipo = atorRole !== "padrao";
   const alteradoTexto =
-    valores.titulo !== original.titulo ||
     valores.numeroProcesso !== original.numeroProcesso ||
     valores.valor !== original.valor ||
     valores.descricao !== original.descricao;
@@ -119,6 +127,12 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
     await salvarCampo({ statusId }, novos);
   }
 
+  async function alterarTipoProcesso(tipoProcessoId: string) {
+    const novos = { ...valores, tipoProcessoId };
+    setValores(novos);
+    await salvarCampo({ tipoProcessoId }, novos);
+  }
+
   async function alterarCliente(clienteId: string) {
     const novos = { ...valores, clienteId };
     setValores(novos);
@@ -135,13 +149,8 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
   }
 
   async function salvarTexto() {
-    if (!valores.titulo.trim()) {
-      setErro("Informe o título do processo.");
-      return;
-    }
     setErro(null);
     const dados: Partial<DadosCasoForm> = {};
-    if (valores.titulo !== original.titulo) dados.titulo = valores.titulo;
     if (valores.numeroProcesso !== original.numeroProcesso) {
       dados.numeroProcesso = valores.numeroProcesso || null;
     }
@@ -159,16 +168,52 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
     <>
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="caso-dados-titulo">
-          <ICONE_TITULO aria-hidden className="size-3.5 text-muted-foreground" />
-          Título
+        <Label htmlFor="caso-dados-tipo-processo">
+          <ICONE_TIPO_PROCESSO aria-hidden className="size-3.5 text-muted-foreground" />
+          Tipo de processo
         </Label>
-        <Input
-          id="caso-dados-titulo"
-          value={valores.titulo}
-          onChange={(evento) => alterar("titulo", evento.target.value)}
+        <Select
+          value={valores.tipoProcessoId || null}
+          onValueChange={(valor) => {
+            if (valor === CRIAR_TIPO_PROCESSO_VALOR) {
+              setCriandoTipo(true);
+              return;
+            }
+            alterarTipoProcesso(valor as string);
+          }}
           disabled={atualizar.isPending}
-        />
+        >
+          <SelectTrigger id="caso-dados-tipo-processo" className="w-full">
+            <SelectValue>
+              {() =>
+                tiposProcesso.find((t) => t.id === valores.tipoProcessoId)?.nome ??
+                caso.tipoProcesso.nome
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {podeCriarTipo ? (
+              <SelectItem value={CRIAR_TIPO_PROCESSO_VALOR}>
+                <Plus className="size-3.5" />
+                Criar tipo
+              </SelectItem>
+            ) : null}
+            {tiposProcesso.map((tipo) => {
+              const Icone = MAPA_ICONES_STATUS[tipo.icone];
+              return (
+                <SelectItem key={tipo.id} value={tipo.id}>
+                  <span
+                    aria-hidden
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: tipo.cor }}
+                  />
+                  {Icone ? <Icone className="size-3.5 text-muted-foreground" /> : null}
+                  {tipo.nome}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -344,6 +389,29 @@ export function CasoDados({ caso, onAtualizado }: CasoDadosProps) {
                 await alterarCliente(cliente.id);
               }}
               onCancelar={() => setCriandoCliente(false)}
+            />
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <Sheet open={criandoTipo} onOpenChange={setCriandoTipo}>
+      <SheetContent className="w-full gap-0 sm:max-w-xl">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Novo tipo de processo</SheetTitle>
+            <SheetDescription>
+              Cadastre um tipo do escritório sem sair do processo.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 py-4">
+            <TipoProcessoForm
+              onSucesso={async (tipo) => {
+                queryClient.invalidateQueries({ queryKey: chaveCasosFiltroOpcoes() });
+                setCriandoTipo(false);
+                await alterarTipoProcesso(tipo.id);
+              }}
+              onCancelar={() => setCriandoTipo(false)}
             />
           </div>
         </div>
