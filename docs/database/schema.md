@@ -299,7 +299,7 @@ Arquivos anexados a um caso.
 
 ## `instancia_whatsapp`
 
-Vinculação entre um escritório e uma instância UAZAPI para envio de mensagens WhatsApp. Cada escritório pode registrar múltiplas instâncias (ex.: números/bots diferentes) para diversificar canais de comunicação. O status acompanha o ciclo de conexão via QR code e webhook de notificações da UAZAPI.
+Vinculação entre um escritório e uma instância UAZAPI para envio de mensagens WhatsApp. Cada escritório pode registrar múltiplas instâncias (ex.: números/bots diferentes) para diversificar canais de comunicação. O status acompanha o ciclo de conexão via QR code, consultado sob demanda pela aplicação (sem webhook).
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
@@ -307,14 +307,14 @@ Vinculação entre um escritório e uma instância UAZAPI para envio de mensagen
 | escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório — escopo de tenant) |
 | nome | varchar(60) | Identificador legível da instância (ex.: "Bot Principal", "Suporte"), único por escritório |
 | uazapi_instance_id | varchar(100) | ID da instância UAZAPI retornado ao criar via API |
-| uazapi_token | varchar(255) | Token de acesso da instância (guard), armazenado como texto pleno protegido pelo controle de acesso normal do banco de dados |
+| uazapi_token | varchar(255) | Token de acesso da instância, armazenado como texto pleno protegido pelo controle de acesso normal do banco de dados |
 | status | enum | `disconnected` (não conectado), `connecting` (QR code exibido, aguardando escanear), `connected` (conectado e pronto), `hibernated` (desativado temporariamente) |
 | numero_conectado | varchar(20) | Número WhatsApp conectado (ex.: "5548999999999"), preenchido quando transiciona para `connected` |
 | created_at / updated_at | timestamp | |
 
 `@@unique([escritorio_id, nome])` garante que nomes de instância são únicos por escritório. `@@index([escritorio_id])` permite consultar as instâncias de um tenant rapidamente.
 
-Fluxo de conexão: criar instância com status `disconnected` → chamar UAZAPI para gerar QR → status muda pra `connecting` → usuário escaneia QR no app (webhook retorna validação) → status muda pra `connected` + `numero_conectado` preenchido. Desconexão (erro de rede, sessão expirada) reafirma `disconnected` ou `hibernated` conforme a razão.
+Fluxo de conexão: criar instância com status `disconnected` → chamar UAZAPI para gerar QR → status muda pra `connecting` → usuário escaneia QR no celular → aplicação consulta `GET /api/instancias/[id]/status` (poll manual no endpoint `/instance/status` da UAZAPI, sem webhook) → status muda pra `connected` + `numero_conectado` preenchido. Desconexão (erro de rede, sessão expirada) reafirma `disconnected` ou `hibernated` conforme a razão.
 
 ## Relacionamentos
 

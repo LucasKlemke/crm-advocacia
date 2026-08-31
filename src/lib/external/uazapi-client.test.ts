@@ -43,6 +43,24 @@ describe("uazapiClient", () => {
       });
     });
 
+    it("inclui adminField01 no body quando informado (namespacing por tenant na UAZAPI)", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ instance: { id: "inst-1", token: "tok-1", status: "loading" } })
+      );
+
+      await uazapiClient.criarInstancia("esc-1:Atendimento", { adminField01: "esc-1" });
+
+      expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          admintoken: ADMIN_TOKEN,
+        },
+        body: JSON.stringify({ name: "esc-1:Atendimento", adminField01: "esc-1" }),
+      });
+    });
+
     it("faz parsing de id/token/status a partir de body.instance", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(
         respostaFake({ instance: { id: "inst-1", token: "tok-1", status: "connected", name: "x" } })
@@ -55,13 +73,13 @@ describe("uazapiClient", () => {
       });
     });
 
-    it("usa fallback pro token de nível raiz quando body.instance vem ausente", async () => {
+    it("usa fallback pro token/id de nível raiz quando body.instance vem ausente", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(
-        respostaFake({ token: "tok-raiz", status: "loading" })
+        respostaFake({ id: "inst-raiz", token: "tok-raiz", status: "loading" })
       );
 
       await expect(uazapiClient.criarInstancia("x")).resolves.toEqual({
-        id: undefined,
+        id: "inst-raiz",
         token: "tok-raiz",
         status: "loading",
       });
@@ -98,6 +116,18 @@ describe("uazapiClient", () => {
       (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ instance: { id: "inst-1" } }));
 
       await expect(uazapiClient.criarInstancia("x")).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+
+    // Regressão: `id` ausente/vazio não pode virar `id: undefined` cast pra string e
+    // seguir adiante até estourar validação do Prisma (cuja mensagem ecoaria o token).
+    it("lança UazapiIndisponivelError se a resposta 2xx não tiver id", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ instance: { token: "tok-1", status: "loading" } })
+      );
+
+      const erro: unknown = await uazapiClient.criarInstancia("x").catch((e: unknown) => e);
+      expect(erro).toBeInstanceOf(UazapiIndisponivelError);
+      expect((erro as Error).message).not.toContain("tok-1");
     });
 
     it("lança UazapiIndisponivelError em caso de falha de rede", async () => {

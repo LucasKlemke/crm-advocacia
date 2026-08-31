@@ -80,6 +80,16 @@ describe("GET /api/instancias", () => {
     expect(response.status).toBe(500);
     expect(body.error).not.toMatch(/connection reset/);
   });
+
+  // Regressão: GET usava só tratarErroDeContexto, deixando um erro de domínio da UAZAPI
+  // cair no 500 genérico em vez do 502 — mesmo tratamento de POST e das outras rotas.
+  it("retorna 502 quando a UAZAPI está indisponível", async () => {
+    const { UazapiIndisponivelError } = jest.requireMock("@/lib/external/uazapi-client");
+    service.listar.mockRejectedValue(new UazapiIndisponivelError());
+
+    const response = await GET();
+    expect(response.status).toBe(502);
+  });
 });
 
 describe("POST /api/instancias", () => {

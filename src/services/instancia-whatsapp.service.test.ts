@@ -5,7 +5,7 @@ import {
   PermissaoNegadaError,
 } from "./instancia-whatsapp.service";
 import { instanciaWhatsappRepository } from "@/repositories/instancia-whatsapp.repository";
-import { uazapiClient } from "@/lib/external/uazapi-client";
+import { uazapiClient, UazapiIndisponivelError } from "@/lib/external/uazapi-client";
 import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { InstanciaWhatsapp } from "@prisma/client";
@@ -118,6 +118,12 @@ describe("instanciaWhatsappService.criarEConectar", () => {
 
     expect(chamadas).toEqual(["findByNome", "criarInstancia", "conectarInstancia", "create"]);
 
+    // Nome enviado à UAZAPI (conta compartilhada por todos os escritórios) é namespaced
+    // por tenant — o nome local salvo/exibido continua sem o prefixo (ver expect.objectContaining abaixo).
+    expect(client.criarInstancia).toHaveBeenCalledWith("esc-1:Atendimento", {
+      adminField01: "esc-1",
+    });
+
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         nome: "Atendimento",
@@ -141,6 +147,24 @@ describe("instanciaWhatsappService.criarEConectar", () => {
     expect(resultado.qrcode).toBe("data:image/png;base64,abc");
     expect(resultado.paircode).toBe("1234-5678");
     expect(resultado.instancia).not.toHaveProperty("uazapiToken");
+  });
+
+  // Regressão: um status fora do enum vindo da UAZAPI não pode chegar ao Prisma
+  // (PrismaClientValidationError ecoaria o uazapiToken no log do catch da rota).
+  it("lança UazapiIndisponivelError se a UAZAPI devolver status fora do enum, sem gravar nem logar", async () => {
+    repo.findByNome.mockResolvedValue(null);
+    client.criarInstancia.mockResolvedValue({
+      id: "uazapi-id-1",
+      token: "token-secreto",
+      status: "disconnected",
+    });
+    client.conectarInstancia.mockResolvedValue({ status: "loading" });
+
+    await expect(instanciaWhatsappService.criarEConectar(ctx(), dados)).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
   });
 });
 
@@ -199,6 +223,17 @@ describe("instanciaWhatsappService.reconectar", () => {
     expect(resultado.qrcode).toBe("qrcode-novo");
     expect(resultado.paircode).toBe("paircode-novo");
     expect(resultado.instancia).not.toHaveProperty("uazapiToken");
+  });
+
+  it("lança UazapiIndisponivelError se a UAZAPI devolver status fora do enum, sem gravar nem logar", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ status: "disconnected" }));
+    client.conectarInstancia.mockResolvedValue({ status: "loading" });
+
+    await expect(instanciaWhatsappService.reconectar(ctx(), "instancia-1")).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(repo.atualizarConexao).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
   });
 });
 
@@ -273,5 +308,18 @@ describe("instanciaWhatsappService.verificarStatus", () => {
       { status: "connected", numeroConectado: "5511888888888" },
       expect.anything()
     );
+  });
+
+  it("lança UazapiIndisponivelError se a UAZAPI devolver status fora do enum, sem gravar nem logar", async () => {
+    repo.findById.mockResolvedValue(
+      instanciaFake({ status: "connected", numeroConectado: "5511999999999" })
+    );
+    client.consultarStatus.mockResolvedValue({ status: "loading" });
+
+    await expect(instanciaWhatsappService.verificarStatus(ctx(), "instancia-1")).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(repo.atualizarConexao).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
   });
 });

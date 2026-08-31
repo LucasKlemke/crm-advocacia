@@ -11,7 +11,7 @@ export async function GET() {
     const instancias = await instanciaWhatsappService.listar(ctx);
     return NextResponse.json({ instancias });
   } catch (error) {
-    const resposta = tratarErroDeContexto(error);
+    const resposta = tratarErroDeContexto(error) ?? tratarErroDeInstanciaWhatsapp(error);
     if (resposta) return resposta;
     console.error("Erro ao listar instâncias de WhatsApp", error);
     return NextResponse.json(

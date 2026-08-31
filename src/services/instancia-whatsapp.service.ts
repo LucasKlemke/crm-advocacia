@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { instanciaWhatsappRepository } from "@/repositories/instancia-whatsapp.repository";
-import { uazapiClient } from "@/lib/external/uazapi-client";
+import { uazapiClient, UazapiIndisponivelError } from "@/lib/external/uazapi-client";
 import { logService } from "@/services/log.service";
 import { PermissaoNegadaError } from "@/services/membro.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
@@ -43,6 +43,25 @@ function semToken(instancia: InstanciaWhatsapp): InstanciaSemToken {
   return resto;
 }
 
+const STATUS_VALIDOS: readonly StatusInstanciaWhatsapp[] = [
+  "disconnected",
+  "connecting",
+  "connected",
+  "hibernated",
+];
+
+// Valida em runtime o status devolvido pela UAZAPI antes que ele chegue perto do Prisma:
+// um valor fora do enum viraria PrismaClientValidationError, cuja mensagem ecoa o `data`
+// inteiro da chamada (incluindo uazapiToken) — e aquele erro acaba em console.error no
+// Route Handler. Virando UazapiIndisponivelError aqui, o problema é um erro de domínio
+// com mensagem genérica, tratado antes de qualquer escrita no banco.
+function paraStatusInstancia(valor: string): StatusInstanciaWhatsapp {
+  if ((STATUS_VALIDOS as readonly string[]).includes(valor)) {
+    return valor as StatusInstanciaWhatsapp;
+  }
+  throw new UazapiIndisponivelError("A UAZAPI retornou um status de instância inesperado.");
+}
+
 async function obterDoTenant(ctx: TenantContext, id: string): Promise<InstanciaWhatsapp> {
   const instancia = await instanciaWhatsappRepository.findById(id);
   // Instância de outro escritório é tratada como inexistente — não confirma a existência.
@@ -70,10 +89,21 @@ export const instanciaWhatsappService = {
       throw new NomeInstanciaDuplicadoError();
     }
 
+    // A UAZAPI é uma conta única compartilhada por todos os escritórios: `nome` só é
+    // único no nosso banco (por escritório), então o valor enviado como `name` pra
+    // UAZAPI é namespaced por tenant pra nunca colidir com o de outro escritório do
+    // lado de lá. O `nome` local (armazenado e exibido) permanece o digitado pelo usuário.
+    const nomeNamespaced = `${ctx.escritorioId}:${nome}`;
+
     // Chamadas externas acontecem fora da transação: uma transação Prisma não pode
     // ficar aberta esperando uma chamada HTTP lenta pra UAZAPI.
-    const criada = await uazapiClient.criarInstancia(nome);
+    const criada = await uazapiClient.criarInstancia(nomeNamespaced, {
+      adminField01: ctx.escritorioId,
+    });
     const conexao = await uazapiClient.conectarInstancia(criada.token);
+    // Valida o status ANTES de entrar na transação: um status fora do contrato aborta
+    // aqui, sem nenhuma escrita no banco e sem log.
+    const statusValidado = paraStatusInstancia(conexao.status);
 
     const instancia = await prisma.$transaction(async (tx) => {
       const nova = await instanciaWhatsappRepository.create(
@@ -81,7 +111,7 @@ export const instanciaWhatsappService = {
           nome,
           uazapiInstanceId: criada.id,
           uazapiToken: criada.token,
-          status: conexao.status as StatusInstanciaWhatsapp,
+          status: statusValidado,
           escritorio: { connect: { id: ctx.escritorioId } },
         },
         tx
@@ -113,11 +143,14 @@ export const instanciaWhatsappService = {
     const atual = await obterDoTenant(ctx, id);
     // Reusa o token já salvo — não recria a instância na UAZAPI.
     const conexao = await uazapiClient.conectarInstancia(atual.uazapiToken);
+    // Valida o status ANTES de entrar na transação: um status fora do contrato aborta
+    // aqui, sem nenhuma escrita no banco e sem log.
+    const statusValidado = paraStatusInstancia(conexao.status);
 
     const instancia = await prisma.$transaction(async (tx) => {
       const atualizada = await instanciaWhatsappRepository.atualizarConexao(
         id,
-        { status: conexao.status as StatusInstanciaWhatsapp },
+        { status: statusValidado },
         tx
       );
 
@@ -141,9 +174,12 @@ export const instanciaWhatsappService = {
   async verificarStatus(ctx: TenantContext, id: string): Promise<InstanciaSemToken> {
     const atual = await obterDoTenant(ctx, id);
     const consulta = await uazapiClient.consultarStatus(atual.uazapiToken);
+    // Valida o status ANTES de qualquer comparação/escrita: um status fora do contrato
+    // aborta aqui, sem nenhuma escrita no banco e sem log.
+    const statusValidado = paraStatusInstancia(consulta.status);
 
     const numeroConectado = consulta.numeroConectado ?? null;
-    const mudou = consulta.status !== atual.status || numeroConectado !== atual.numeroConectado;
+    const mudou = statusValidado !== atual.status || numeroConectado !== atual.numeroConectado;
 
     // Nada mudou de fato: não toca no banco nem polui a auditoria com log vazio.
     if (!mudou) {
@@ -153,7 +189,7 @@ export const instanciaWhatsappService = {
     const instancia = await prisma.$transaction(async (tx) => {
       const atualizada = await instanciaWhatsappRepository.atualizarConexao(
         id,
-        { status: consulta.status as StatusInstanciaWhatsapp, numeroConectado },
+        { status: statusValidado, numeroConectado },
         tx
       );
 

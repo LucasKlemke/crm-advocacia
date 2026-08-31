@@ -1,8 +1,8 @@
 // Erro de domínio: nunca vaza corpo bruto da resposta da UAZAPI pro chamador —
 // a mensagem exposta é sempre genérica.
 export class UazapiIndisponivelError extends Error {
-  constructor() {
-    super("Não foi possível se comunicar com o WhatsApp no momento.");
+  constructor(mensagem = "Não foi possível se comunicar com o WhatsApp no momento.") {
+    super(mensagem);
     this.name = "UazapiIndisponivelError";
   }
 }
@@ -66,7 +66,10 @@ async function chamarUazapi(
 }
 
 export const uazapiClient = {
-  async criarInstancia(nome: string): Promise<{ id: string; token: string; status: string }> {
+  async criarInstancia(
+    nome: string,
+    opcoes?: { adminField01?: string }
+  ): Promise<{ id: string; token: string; status: string }> {
     const body = await chamarUazapi(
       "/instance/create",
       {
@@ -74,7 +77,10 @@ export const uazapiClient = {
         Accept: "application/json",
         admintoken: obterAdminToken(),
       },
-      { name: nome }
+      {
+        name: nome,
+        ...(opcoes?.adminField01 !== undefined ? { adminField01: opcoes.adminField01 } : {}),
+      }
     );
 
     const instance = corpoInstancia(body);
@@ -85,8 +91,16 @@ export const uazapiClient = {
       throw new UazapiIndisponivelError();
     }
 
+    // id ausente/vazio é resposta fora de contrato — não pode virar `id: undefined` cast
+    // pra string e seguir adiante até estourar validação do Prisma (que ecoaria o token
+    // acima no erro).
+    const id = instance.id as string | undefined;
+    if (!id) {
+      throw new UazapiIndisponivelError();
+    }
+
     return {
-      id: instance.id as string,
+      id,
       token,
       status: instance.status as string,
     };
