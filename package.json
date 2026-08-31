@@ -5,6 +5,9 @@
   "scripts": {
     "predev": "docker compose up -d",
     "dev": "next dev",
+    "dev:tunnel": "concurrently -k -n dev,ngrok -c blue,green \"npm run dev\" \"ngrok http 3000\"",
+    "ngrok:start": "bash scripts/ngrok-start.sh",
+    "ngrok:stop": "bash scripts/ngrok-stop.sh",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
@@ -58,6 +61,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "aws-sdk-client-mock": "^4.1.0",
+    "concurrently": "^10.0.5",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",

@@ -28,6 +28,10 @@
 .DS_Store
 *.pem
 
+# ngrok (scripts/ngrok-start.sh / ngrok-stop.sh)
+.ngrok.pid
+.ngrok.log
+
 # debug
 npm-debug.log*
 yarn-debug.log*
