@@ -1,0 +1,59 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api-client";
+import type {
+  ListaInstanciasWhatsapp,
+  RespostaConexaoInstanciaWhatsapp,
+  RespostaStatusInstanciaWhatsapp,
+} from "@/types/instancia-whatsapp";
+
+export interface DadosNovaInstanciaWhatsapp {
+  nome: string;
+}
+
+// Key padronizada [entidade] para que qualquer mutation invalide a listagem inteira com
+// um único invalidateQueries — a lista de instâncias é pequena (por escritório), não há
+// filtro/paginação aqui.
+export const chaveInstanciasWhatsapp = () => ["instancias-whatsapp"] as const;
+
+export function useInstanciasWhatsapp() {
+  return useQuery({
+    queryKey: chaveInstanciasWhatsapp(),
+    queryFn: () => apiFetch<ListaInstanciasWhatsapp>("/api/instancias"),
+  });
+}
+
+export function useCriarInstanciaWhatsapp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dados: DadosNovaInstanciaWhatsapp) =>
+      apiFetch<RespostaConexaoInstanciaWhatsapp>("/api/instancias", {
+        method: "POST",
+        body: JSON.stringify(dados),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
+  });
+}
+
+export function useReconectarInstanciaWhatsapp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<RespostaConexaoInstanciaWhatsapp>(`/api/instancias/${id}/reconectar`, {
+        method: "POST",
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
+  });
+}
+
+// Disparado manualmente pelo botão "Verificar conexão" — sem polling automático (fora do
+// escopo desta entrega), por isso é uma mutation e não uma query.
+export function useVerificarStatusInstanciaWhatsapp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<RespostaStatusInstanciaWhatsapp>(`/api/instancias/${id}/status`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
+  });
+}
