@@ -305,9 +305,9 @@ Vinculação entre um escritório e uma instância UAZAPI para envio de mensagen
 |---|---|---|
 | id | uuid | PK |
 | escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório — escopo de tenant) |
-| nome | varchar(60) | Identificador legível do escritório (ex.: "Bot Principal", "Suporte"), único por escritório |
+| nome | varchar(60) | Identificador legível da instância (ex.: "Bot Principal", "Suporte"), único por escritório |
 | uazapi_instance_id | varchar(100) | ID da instância UAZAPI retornado ao criar via API |
-| uazapi_token | varchar(255) | Token de acesso da instância (guard) — armazenado como hash em produção; por ora, texto pleno com acesso protegido a `UAZAPI_ADMIN_TOKEN` |
+| uazapi_token | varchar(255) | Token de acesso da instância (guard), armazenado como texto pleno protegido pelo controle de acesso normal do banco de dados |
 | status | enum | `disconnected` (não conectado), `connecting` (QR code exibido, aguardando escanear), `connected` (conectado e pronto), `hibernated` (desativado temporariamente) |
 | numero_conectado | varchar(20) | Número WhatsApp conectado (ex.: "5548999999999"), preenchido quando transiciona para `connected` |
 | created_at / updated_at | timestamp | |
