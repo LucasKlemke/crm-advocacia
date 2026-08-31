@@ -45,6 +45,7 @@ enum EntidadeLog {
   tipo_processo
   membro
   documento
+  instancia_whatsapp
 }
 
 enum AcaoLog {
@@ -68,6 +69,13 @@ enum EstadoCivilCliente {
   uniao_estavel
 }
 
+enum StatusInstanciaWhatsapp {
+  disconnected
+  connecting
+  connected
+  hibernated
+}
+
 model Escritorio {
   id               String   @id @default(uuid())
   nome             String   @db.VarChar(140)
@@ -77,15 +85,16 @@ model Escritorio {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  membros       Membro[]
-  convites      Convite[]
-  clientes      Cliente[]
-  comentarios   Comentario[]
-  logs          Log[]
-  status        Status[]
-  tiposProcesso TipoProcesso[]
-  casos         Caso[]
-  documentos    Documento[]
+  membros            Membro[]
+  convites           Convite[]
+  clientes           Cliente[]
+  comentarios        Comentario[]
+  logs               Log[]
+  status             Status[]
+  tiposProcesso      TipoProcesso[]
+  casos              Caso[]
+  documentos         Documento[]
+  instanciasWhatsapp InstanciaWhatsapp[]
 
   @@map("escritorio")
 }
@@ -336,4 +345,25 @@ model Caso {
   @@index([escritorioId, responsavelMembroId])
   @@index([escritorioId, tipoProcessoId])
   @@map("caso")
+}
+
+// Instância WhatsApp: vinculação entre um escritório e uma instância UAZAPI para envio de mensagens.
+// Cada escritório pode ter múltiplas instâncias (ex.: diferentes números/bots). O status acompanha
+// o ciclo de conexão (desconectado → conectando → conectado; hibernado se inativo).
+model InstanciaWhatsapp {
+  id                String                  @id @default(uuid())
+  escritorioId      String                  @map("escritorio_id")
+  nome              String                  @db.VarChar(60)
+  uazapiInstanceId  String                  @map("uazapi_instance_id") @db.VarChar(100)
+  uazapiToken       String                  @map("uazapi_token") @db.VarChar(255)
+  status            StatusInstanciaWhatsapp @default(disconnected)
+  numeroConectado   String?                 @map("numero_conectado") @db.VarChar(20)
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+
+  @@unique([escritorioId, nome])
+  @@index([escritorioId])
+  @@map("instancia_whatsapp")
 }
