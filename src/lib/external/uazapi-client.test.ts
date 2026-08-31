@@ -105,6 +105,20 @@ describe("uazapiClient", () => {
 
       await expect(uazapiClient.criarInstancia("x")).rejects.toBeInstanceOf(UazapiIndisponivelError);
     });
+
+    // Corpo 2xx sem JSON legível (vazio, HTML, JSON truncado) é falha de contrato real de
+    // API de terceiro — não pode borbulhar como SyntaxError cru pro chamador.
+    it("lança UazapiIndisponivelError se a resposta 2xx não tiver JSON legível", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new SyntaxError("Unexpected end of JSON input");
+        },
+      } as unknown as Response);
+
+      await expect(uazapiClient.criarInstancia("x")).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
   });
 
   describe("conectarInstancia", () => {

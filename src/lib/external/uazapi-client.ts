@@ -55,7 +55,14 @@ async function chamarUazapi(
     throw new UazapiIndisponivelError();
   }
 
-  return (await resposta.json()) as Record<string, unknown>;
+  // 2xx com corpo vazio/HTML/JSON truncado é falha de contrato tão real quanto um
+  // não-2xx — não pode borbulhar como SyntaxError cru (mesmo tratamento de api-client.ts).
+  const corpo: unknown = await resposta.json().catch(() => null);
+  if (corpo === null || typeof corpo !== "object") {
+    throw new UazapiIndisponivelError();
+  }
+
+  return corpo as Record<string, unknown>;
 }
 
 export const uazapiClient = {
