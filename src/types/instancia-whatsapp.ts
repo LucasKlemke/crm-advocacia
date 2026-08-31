@@ -10,6 +10,7 @@ export interface InstanciaWhatsappDTO {
   uazapiInstanceId: string;
   status: StatusInstanciaWhatsapp;
   numeroConectado: string | null;
+  fotoPerfilUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }

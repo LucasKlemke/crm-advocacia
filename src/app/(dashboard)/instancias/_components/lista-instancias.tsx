@@ -17,6 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
+import { formatarTelefone } from "@/lib/utils/telefone";
 import { StatusBadgeInstancia } from "./status-badge-instancia";
 import { NovaInstanciaDialog } from "./nova-instancia-dialog";
 import { QrcodeDialog, type QrcodeDialogState } from "./qrcode-dialog";
@@ -108,13 +110,16 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
               instancias.map((instancia) => (
                 <TableRow key={instancia.id}>
                   <TableCell className="px-4 py-3 font-medium text-foreground">
-                    {instancia.nome}
+                    <div className="flex items-center gap-3">
+                      <AvatarIniciais nome={instancia.nome} avatarUrl={instancia.fotoPerfilUrl} />
+                      {instancia.nome}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <StatusBadgeInstancia status={instancia.status} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {instancia.numeroConectado ?? "–"}
+                    {instancia.numeroConectado ? formatarTelefone(instancia.numeroConectado) : "–"}
                   </TableCell>
                   {!somenteLeitura ? (
                     <TableCell className="px-4">

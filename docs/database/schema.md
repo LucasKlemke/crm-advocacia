@@ -310,6 +310,7 @@ Vinculação entre um escritório e uma instância UAZAPI para envio de mensagen
 | uazapi_token | varchar(255) | Token de acesso da instância, armazenado como texto pleno protegido pelo controle de acesso normal do banco de dados |
 | status | enum | `disconnected` (não conectado), `connecting` (QR code exibido, aguardando escanear), `connected` (conectado e pronto), `hibernated` (desativado temporariamente) |
 | numero_conectado | varchar(20) | Número WhatsApp conectado (ex.: "5548999999999"), preenchido quando transiciona para `connected` |
+| foto_perfil_url | text | URL da foto de perfil do WhatsApp conectado (`profilePicUrl` da UAZAPI), sem limite de tamanho declarado — URLs do CDN do WhatsApp variam de tamanho e não têm teto documentado |
 | created_at / updated_at | timestamp | |
 
 `@@unique([escritorio_id, nome])` garante que nomes de instância são únicos por escritório. `@@index([escritorio_id])` permite consultar as instâncias de um tenant rapidamente.

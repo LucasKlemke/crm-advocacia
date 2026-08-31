@@ -35,6 +35,7 @@ function instanciaFake(over: Partial<InstanciaWhatsapp> = {}): InstanciaWhatsapp
     uazapiToken: "token-secreto",
     status: "connected",
     numeroConectado: "5511999999999",
+    fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     ...over,
@@ -166,6 +167,40 @@ describe("instanciaWhatsappService.criarEConectar", () => {
     expect(repo.create).not.toHaveBeenCalled();
     expect(logs.registrar).not.toHaveBeenCalled();
   });
+
+  // O usuário confirmou (payloads reais de webhook) que /instance/connect também devolve
+  // owner/profilePicUrl quando já disponíveis — precisam ser passados adiante pro repository.
+  it("passa numeroConectado/fotoPerfilUrl adiante quando a UAZAPI já os devolve em /instance/connect", async () => {
+    repo.findByNome.mockResolvedValue(null);
+    client.criarInstancia.mockResolvedValue({
+      id: "uazapi-id-1",
+      token: "token-secreto",
+      status: "disconnected",
+    });
+    client.conectarInstancia.mockResolvedValue({
+      status: "connected",
+      numeroConectado: "554796589979",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+    });
+    repo.create.mockResolvedValue(
+      instanciaFake({
+        status: "connected",
+        numeroConectado: "554796589979",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      })
+    );
+
+    const resultado = await instanciaWhatsappService.criarEConectar(ctx(), dados);
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        numeroConectado: "554796589979",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      }),
+      expect.anything()
+    );
+    expect(resultado.instancia.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto.jpg");
+  });
 });
 
 describe("instanciaWhatsappService.reconectar", () => {
@@ -235,6 +270,35 @@ describe("instanciaWhatsappService.reconectar", () => {
     expect(repo.atualizarConexao).not.toHaveBeenCalled();
     expect(logs.registrar).not.toHaveBeenCalled();
   });
+
+  it("passa numeroConectado/fotoPerfilUrl adiante quando a UAZAPI já os devolve em /instance/connect", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ status: "disconnected" }));
+    client.conectarInstancia.mockResolvedValue({
+      status: "connected",
+      numeroConectado: "554796589979",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+    });
+    repo.atualizarConexao.mockResolvedValue(
+      instanciaFake({
+        status: "connected",
+        numeroConectado: "554796589979",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      })
+    );
+
+    const resultado = await instanciaWhatsappService.reconectar(ctx(), "instancia-1");
+
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "instancia-1",
+      expect.objectContaining({
+        status: "connected",
+        numeroConectado: "554796589979",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      }),
+      expect.anything()
+    );
+    expect(resultado.instancia.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto.jpg");
+  });
 });
 
 describe("instanciaWhatsappService.verificarStatus", () => {
@@ -245,13 +309,18 @@ describe("instanciaWhatsappService.verificarStatus", () => {
     );
   });
 
-  it("não escreve nem loga quando nada mudou", async () => {
+  it("não escreve nem loga quando nada mudou (status, numeroConectado e fotoPerfilUrl iguais)", async () => {
     repo.findById.mockResolvedValue(
-      instanciaFake({ status: "connected", numeroConectado: "5511999999999" })
+      instanciaFake({
+        status: "connected",
+        numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      })
     );
     client.consultarStatus.mockResolvedValue({
       status: "connected",
       numeroConectado: "5511999999999",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
     });
 
     const resultado = await instanciaWhatsappService.verificarStatus(ctx(), "instancia-1");
@@ -264,7 +333,7 @@ describe("instanciaWhatsappService.verificarStatus", () => {
 
   it("atualiza e loga quando o status mudou", async () => {
     repo.findById.mockResolvedValue(
-      instanciaFake({ status: "connecting", numeroConectado: null })
+      instanciaFake({ status: "connecting", numeroConectado: null, fotoPerfilUrl: null })
     );
     client.consultarStatus.mockResolvedValue({
       status: "connected",
@@ -278,7 +347,7 @@ describe("instanciaWhatsappService.verificarStatus", () => {
 
     expect(repo.atualizarConexao).toHaveBeenCalledWith(
       "instancia-1",
-      { status: "connected", numeroConectado: "5511999999999" },
+      { status: "connected", numeroConectado: "5511999999999", fotoPerfilUrl: null },
       expect.anything()
     );
     expect(logs.registrar).toHaveBeenCalledWith(
@@ -291,11 +360,16 @@ describe("instanciaWhatsappService.verificarStatus", () => {
 
   it("atualiza quando só o numeroConectado mudou (status igual)", async () => {
     repo.findById.mockResolvedValue(
-      instanciaFake({ status: "connected", numeroConectado: "5511999999999" })
+      instanciaFake({
+        status: "connected",
+        numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      })
     );
     client.consultarStatus.mockResolvedValue({
       status: "connected",
       numeroConectado: "5511888888888",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
     });
     repo.atualizarConexao.mockResolvedValue(
       instanciaFake({ status: "connected", numeroConectado: "5511888888888" })
@@ -305,9 +379,45 @@ describe("instanciaWhatsappService.verificarStatus", () => {
 
     expect(repo.atualizarConexao).toHaveBeenCalledWith(
       "instancia-1",
-      { status: "connected", numeroConectado: "5511888888888" },
+      {
+        status: "connected",
+        numeroConectado: "5511888888888",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      },
       expect.anything()
     );
+  });
+
+  it("atualiza quando só o fotoPerfilUrl mudou (status e numeroConectado iguais)", async () => {
+    repo.findById.mockResolvedValue(
+      instanciaFake({
+        status: "connected",
+        numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto-antiga.jpg",
+      })
+    );
+    client.consultarStatus.mockResolvedValue({
+      status: "connected",
+      numeroConectado: "5511999999999",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto-nova.jpg",
+    });
+    repo.atualizarConexao.mockResolvedValue(
+      instanciaFake({ fotoPerfilUrl: "https://pps.whatsapp.net/foto-nova.jpg" })
+    );
+
+    const resultado = await instanciaWhatsappService.verificarStatus(ctx(), "instancia-1");
+
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "instancia-1",
+      {
+        status: "connected",
+        numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto-nova.jpg",
+      },
+      expect.anything()
+    );
+    expect(logs.registrar).toHaveBeenCalled();
+    expect(resultado.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto-nova.jpg");
   });
 
   it("lança UazapiIndisponivelError se a UAZAPI devolver status fora do enum, sem gravar nem logar", async () => {

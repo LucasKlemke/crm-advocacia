@@ -112,6 +112,12 @@ export const instanciaWhatsappService = {
           uazapiInstanceId: criada.id,
           uazapiToken: criada.token,
           status: statusValidado,
+          // Instância recém-criada normalmente ainda não tem número/foto, mas o usuário
+          // confirmou que /instance/connect às vezes já os devolve — passa adiante quando vem.
+          ...(conexao.numeroConectado !== undefined
+            ? { numeroConectado: conexao.numeroConectado }
+            : {}),
+          ...(conexao.fotoPerfilUrl !== undefined ? { fotoPerfilUrl: conexao.fotoPerfilUrl } : {}),
           escritorio: { connect: { id: ctx.escritorioId } },
         },
         tx
@@ -150,7 +156,15 @@ export const instanciaWhatsappService = {
     const instancia = await prisma.$transaction(async (tx) => {
       const atualizada = await instanciaWhatsappRepository.atualizarConexao(
         id,
-        { status: statusValidado },
+        {
+          status: statusValidado,
+          // Mesma lógica de criarEConectar: passa adiante numeroConectado/fotoPerfilUrl
+          // quando /instance/connect já os devolve.
+          ...(conexao.numeroConectado !== undefined
+            ? { numeroConectado: conexao.numeroConectado }
+            : {}),
+          ...(conexao.fotoPerfilUrl !== undefined ? { fotoPerfilUrl: conexao.fotoPerfilUrl } : {}),
+        },
         tx
       );
 
@@ -179,7 +193,11 @@ export const instanciaWhatsappService = {
     const statusValidado = paraStatusInstancia(consulta.status);
 
     const numeroConectado = consulta.numeroConectado ?? null;
-    const mudou = statusValidado !== atual.status || numeroConectado !== atual.numeroConectado;
+    const fotoPerfilUrl = consulta.fotoPerfilUrl ?? null;
+    const mudou =
+      statusValidado !== atual.status ||
+      numeroConectado !== atual.numeroConectado ||
+      fotoPerfilUrl !== atual.fotoPerfilUrl;
 
     // Nada mudou de fato: não toca no banco nem polui a auditoria com log vazio.
     if (!mudou) {
@@ -189,7 +207,7 @@ export const instanciaWhatsappService = {
     const instancia = await prisma.$transaction(async (tx) => {
       const atualizada = await instanciaWhatsappRepository.atualizarConexao(
         id,
-        { status: statusValidado, numeroConectado },
+        { status: statusValidado, numeroConectado, fotoPerfilUrl },
         tx
       );
 

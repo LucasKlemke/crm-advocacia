@@ -41,7 +41,11 @@ export const instanciaWhatsappRepository = {
 
   async atualizarConexao(
     id: string,
-    data: { status: StatusInstanciaWhatsapp; numeroConectado?: string | null },
+    data: {
+      status: StatusInstanciaWhatsapp;
+      numeroConectado?: string | null;
+      fotoPerfilUrl?: string | null;
+    },
     db: Db = prisma
   ): Promise<InstanciaWhatsapp> {
     return db.instanciaWhatsapp.update({ where: { id }, data });

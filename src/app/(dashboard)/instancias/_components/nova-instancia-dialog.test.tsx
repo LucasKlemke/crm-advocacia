@@ -10,6 +10,7 @@ const INSTANCIA: InstanciaWhatsappDTO = {
   uazapiInstanceId: "uaz-1",
   status: "connecting",
   numeroConectado: null,
+  fotoPerfilUrl: null,
   createdAt: "2026-08-01T12:00:00.000Z",
   updatedAt: "2026-08-01T12:00:00.000Z",
 };

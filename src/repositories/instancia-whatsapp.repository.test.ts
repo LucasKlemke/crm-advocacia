@@ -96,4 +96,31 @@ describe("instanciaWhatsappRepository", () => {
     expect(atualizada.uazapiToken).toBe(instancia.uazapiToken);
     expect(atualizada.escritorioId).toBe(escritorioId);
   });
+
+  it("atualizarConexao grava fotoPerfilUrl quando informado", async () => {
+    const instancia = await criar(escritorioId, "Comercial 2");
+
+    const atualizada = await instanciaWhatsappRepository.atualizarConexao(instancia.id, {
+      status: "connected",
+      numeroConectado: "5511999999999",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+    });
+
+    expect(atualizada.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto.jpg");
+  });
+
+  it("atualizarConexao deixa fotoPerfilUrl intocado quando omitido", async () => {
+    const instancia = await criar(escritorioId, "Comercial 3");
+    await instanciaWhatsappRepository.atualizarConexao(instancia.id, {
+      status: "connected",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto-original.jpg",
+    });
+
+    const atualizada = await instanciaWhatsappRepository.atualizarConexao(instancia.id, {
+      status: "connecting",
+    });
+
+    expect(atualizada.status).toBe("connecting");
+    expect(atualizada.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto-original.jpg");
+  });
 });

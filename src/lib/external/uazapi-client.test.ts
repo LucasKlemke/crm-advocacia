@@ -177,6 +177,8 @@ describe("uazapiClient", () => {
         status: "connecting",
         qrcode: "data:img",
         paircode: "ABCD-1234",
+        numeroConectado: undefined,
+        fotoPerfilUrl: undefined,
       });
     });
 
@@ -189,6 +191,46 @@ describe("uazapiClient", () => {
         status: "connecting",
         qrcode: "data:img-raiz",
         paircode: undefined,
+        numeroConectado: undefined,
+        fotoPerfilUrl: undefined,
+      });
+    });
+
+    // O usuário confirmou (payloads reais de webhook) que /instance/connect também
+    // devolve owner/profilePicUrl quando já disponíveis — mesmo parsing tolerante de
+    // consultarStatus, mas ambos os campos são opcionais aqui (instância recém-criada
+    // ainda não tem número/foto).
+    it("faz parsing tolerante de numeroConectado (owner) e fotoPerfilUrl (profilePicUrl) quando presentes", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({
+          instance: {
+            status: "connected",
+            owner: "554796589979",
+            profilePicUrl: "https://pps.whatsapp.net/foto.jpg",
+          },
+        })
+      );
+
+      await expect(uazapiClient.conectarInstancia("tok")).resolves.toEqual({
+        status: "connected",
+        qrcode: undefined,
+        paircode: undefined,
+        numeroConectado: "554796589979",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      });
+    });
+
+    it("não lança e devolve numeroConectado/fotoPerfilUrl undefined quando ausentes (instância recém-criada)", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ instance: { status: "connecting", qrcode: "data:img" } })
+      );
+
+      await expect(uazapiClient.conectarInstancia("tok")).resolves.toEqual({
+        status: "connecting",
+        qrcode: "data:img",
+        paircode: undefined,
+        numeroConectado: undefined,
+        fotoPerfilUrl: undefined,
       });
     });
 
@@ -206,31 +248,43 @@ describe("uazapiClient", () => {
   });
 
   describe("consultarStatus", () => {
-    it("chama POST /instance/status com URL e headers corretos, sem body", async () => {
+    // Regressão: UAZAPI responde 405 Method Not Allowed pra POST em /instance/status —
+    // esse endpoint só aceita GET (confirmado testando ao vivo contra o servidor real).
+    it("chama GET /instance/status com URL e headers corretos, sem body", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(
         respostaFake({ instance: { status: "connected", owner: "5511999999999" } })
       );
 
       await uazapiClient.consultarStatus("tok-instancia");
 
-      expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/status`, {
-        method: "POST",
+      const chamada = (global.fetch as jest.Mock).mock.calls[0];
+      expect(chamada[0]).toBe(`${SERVER_URL}/instance/status`);
+      expect(chamada[1]).toEqual({
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
           token: "tok-instancia",
         },
       });
+      expect(chamada[1]).not.toHaveProperty("body");
     });
 
-    it("faz parsing de status/numeroConectado (owner) a partir de body.instance", async () => {
+    it("faz parsing de status/numeroConectado (owner)/fotoPerfilUrl (profilePicUrl) a partir de body.instance", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(
-        respostaFake({ instance: { status: "connected", owner: "5511999999999" } })
+        respostaFake({
+          instance: {
+            status: "connected",
+            owner: "5511999999999",
+            profilePicUrl: "https://pps.whatsapp.net/foto.jpg",
+          },
+        })
       );
 
       await expect(uazapiClient.consultarStatus("tok")).resolves.toEqual({
         status: "connected",
         numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
       });
     });
 
@@ -242,6 +296,19 @@ describe("uazapiClient", () => {
       await expect(uazapiClient.consultarStatus("tok")).resolves.toEqual({
         status: "disconnected",
         numeroConectado: undefined,
+        fotoPerfilUrl: undefined,
+      });
+    });
+
+    it("não lança e devolve numeroConectado/fotoPerfilUrl undefined quando ausentes", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ instance: { status: "connecting" } })
+      );
+
+      await expect(uazapiClient.consultarStatus("tok")).resolves.toEqual({
+        status: "connecting",
+        numeroConectado: undefined,
+        fotoPerfilUrl: undefined,
       });
     });
 

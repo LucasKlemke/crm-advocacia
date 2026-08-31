@@ -5,6 +5,25 @@ import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
+// O componente base (base-ui) só troca pro <img> depois que um `new window.Image()`
+// real dispara `onload` — em jsdom isso nunca acontece sozinho (não há rede), então
+// simulamos o carregamento pra poder testar o estado "com fotoPerfilUrl" (mesmo padrão
+// de avatar-iniciais.test.tsx).
+class ImagemFake {
+  onload: (() => void) | null = null;
+  set src(_valor: string) {
+    this.onload?.();
+  }
+}
+const OriginalImage = global.Image;
+beforeAll(() => {
+  // @ts-expect-error stub simplificado só com o necessário pro loading status
+  global.Image = ImagemFake;
+});
+afterAll(() => {
+  global.Image = OriginalImage;
+});
+
 const CONECTADA: InstanciaWhatsappDTO = {
   id: "instancia-1",
   escritorioId: "esc-1",
@@ -12,6 +31,7 @@ const CONECTADA: InstanciaWhatsappDTO = {
   uazapiInstanceId: "uaz-1",
   status: "connected",
   numeroConectado: "5511999999999",
+  fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
   createdAt: "2026-08-01T12:00:00.000Z",
   updatedAt: "2026-08-01T12:00:00.000Z",
 };
@@ -23,6 +43,7 @@ const DESCONECTADA: InstanciaWhatsappDTO = {
   uazapiInstanceId: "uaz-2",
   status: "disconnected",
   numeroConectado: null,
+  fotoPerfilUrl: null,
   createdAt: "2026-08-01T12:00:00.000Z",
   updatedAt: "2026-08-01T12:00:00.000Z",
 };
@@ -66,13 +87,41 @@ describe("ListaInstancias", () => {
     ).toBeInTheDocument();
   });
 
-  it("lista nome, badge de status e número conectado de cada instância", async () => {
+  it("lista nome, badge de status e número conectado (formatado) de cada instância", async () => {
     global.fetch = mockFetch([CONECTADA]);
     renderComQuery(<ListaInstancias somenteLeitura={false} />);
 
     expect(await screen.findByText("Atendimento principal")).toBeInTheDocument();
     expect(screen.getByText("Conectado")).toBeInTheDocument();
-    expect(screen.getByText("5511999999999")).toBeInTheDocument();
+    expect(screen.getByText("+55 (11) 99999-9999")).toBeInTheDocument();
+  });
+
+  it("mostra a foto de perfil quando fotoPerfilUrl está presente", async () => {
+    global.fetch = mockFetch([CONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await screen.findByText("Atendimento principal");
+    await waitFor(() => {
+      const imagem = document.querySelector('[data-slot="avatar-image"]');
+      expect(imagem).toHaveAttribute("src", "https://pps.whatsapp.net/foto.jpg");
+    });
+  });
+
+  it("cai pras iniciais quando fotoPerfilUrl é null", async () => {
+    global.fetch = mockFetch([DESCONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await screen.findByText("Financeiro");
+    expect(document.querySelector('[data-slot="avatar-image"]')).not.toBeInTheDocument();
+    expect(screen.getByText("F")).toBeInTheDocument();
+  });
+
+  it("mostra travessão quando numeroConectado é null", async () => {
+    global.fetch = mockFetch([DESCONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await screen.findByText("Financeiro");
+    expect(screen.getByText("–")).toBeInTheDocument();
   });
 
   it("mostra ação Reconectar só para instâncias desconectadas/conectando", async () => {

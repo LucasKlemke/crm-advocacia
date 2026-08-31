@@ -34,7 +34,8 @@ function corpoInstancia(body: Record<string, unknown>): Record<string, unknown> 
 async function chamarUazapi(
   caminho: string,
   headers: Record<string, string>,
-  body?: unknown
+  body?: unknown,
+  method: "GET" | "POST" = "POST"
 ): Promise<Record<string, unknown>> {
   // A URL é resolvida fora do try: env var ausente é erro de configuração explícito,
   // não pode virar UazapiIndisponivelError genérico junto com falha de rede.
@@ -43,7 +44,7 @@ async function chamarUazapi(
   let resposta: Response;
   try {
     resposta = await fetch(url, {
-      method: "POST",
+      method,
       headers,
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
@@ -106,9 +107,13 @@ export const uazapiClient = {
     };
   },
 
-  async conectarInstancia(
-    uazapiToken: string
-  ): Promise<{ status: string; qrcode?: string; paircode?: string }> {
+  async conectarInstancia(uazapiToken: string): Promise<{
+    status: string;
+    qrcode?: string;
+    paircode?: string;
+    numeroConectado?: string;
+    fotoPerfilUrl?: string;
+  }> {
     const body = await chamarUazapi(
       "/instance/connect",
       {
@@ -124,20 +129,37 @@ export const uazapiClient = {
       status: instance.status as string,
       qrcode: instance.qrcode as string | undefined,
       paircode: instance.paircode as string | undefined,
+      // owner/profilePicUrl ainda não existem numa instância recém-criada — o usuário
+      // confirmou (payloads reais de webhook) que /instance/connect também os devolve
+      // assim que disponíveis, no mesmo formato tolerante de consultarStatus.
+      numeroConectado: instance.owner as string | undefined,
+      fotoPerfilUrl: instance.profilePicUrl as string | undefined,
     };
   },
 
-  async consultarStatus(uazapiToken: string): Promise<{ status: string; numeroConectado?: string }> {
-    const body = await chamarUazapi("/instance/status", {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      token: uazapiToken,
-    });
+  async consultarStatus(uazapiToken: string): Promise<{
+    status: string;
+    numeroConectado?: string;
+    fotoPerfilUrl?: string;
+  }> {
+    // /instance/status só aceita GET — POST devolve 405 Method Not Allowed (confirmado
+    // testando ao vivo contra o servidor real). GET não tem body.
+    const body = await chamarUazapi(
+      "/instance/status",
+      {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        token: uazapiToken,
+      },
+      undefined,
+      "GET"
+    );
 
     const instance = corpoInstancia(body);
     return {
       status: instance.status as string,
       numeroConectado: instance.owner as string | undefined,
+      fotoPerfilUrl: instance.profilePicUrl as string | undefined,
     };
   },
 };

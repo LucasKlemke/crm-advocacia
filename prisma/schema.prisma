@@ -358,6 +358,7 @@ model InstanciaWhatsapp {
   uazapiToken       String                  @map("uazapi_token") @db.VarChar(255)
   status            StatusInstanciaWhatsapp @default(disconnected)
   numeroConectado   String?                 @map("numero_conectado") @db.VarChar(20)
+  fotoPerfilUrl     String?                 @map("foto_perfil_url")
   createdAt         DateTime                @default(now()) @map("created_at")
   updatedAt         DateTime                @updatedAt @map("updated_at")
 
