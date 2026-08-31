@@ -162,4 +162,50 @@ export const uazapiClient = {
       fotoPerfilUrl: instance.profilePicUrl as string | undefined,
     };
   },
+
+  async listarTodasInstancias(): Promise<
+    Array<{
+      id: string;
+      status: string;
+      owner?: string;
+      fotoPerfilUrl?: string;
+      adminField01?: string;
+    }>
+  > {
+    // /instance/all exige admintoken (mesmo nível de /instance/create) — não o token de
+    // uma instância individual — e devolve TODAS as instâncias da conta UAZAPI inteira,
+    // de todos os escritórios que usam essa conta compartilhada, não só o do chamador.
+    const corpo = await chamarUazapi(
+      "/instance/all",
+      {
+        Accept: "application/json",
+        admintoken: obterAdminToken(),
+      },
+      undefined,
+      "GET"
+    );
+
+    // Ao contrário dos outros endpoints, a resposta aqui é um array no nível raiz do
+    // corpo, não um objeto `{ instance: ... }`. chamarUazapi só valida "é objeto" — um
+    // array também é typeof "object" em JS — então a validação de formato específica
+    // (é de fato um array) precisa acontecer aqui.
+    if (!Array.isArray(corpo)) {
+      throw new UazapiIndisponivelError();
+    }
+
+    // Barreira de segurança: cada item desse array carrega um `token` de ALGUM tenant
+    // (possivelmente de outro escritório) e outros campos sensíveis (ex.: openai_apikey).
+    // Só os campos abaixo sobrevivem ao mapeamento — nada além disso, especialmente não
+    // `token`, passa adiante pro Service/logs/testes.
+    return corpo.map((item: unknown) => {
+      const raw = item as Record<string, unknown>;
+      return {
+        id: raw.id as string,
+        status: raw.status as string,
+        owner: (raw.owner as string | undefined) || undefined,
+        fotoPerfilUrl: (raw.profilePicUrl as string | undefined) || undefined,
+        adminField01: (raw.adminField01 as string | undefined) || undefined,
+      };
+    });
+  },
 };

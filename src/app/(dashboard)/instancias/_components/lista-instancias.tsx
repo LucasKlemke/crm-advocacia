@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api-client";
 import {
   useInstanciasWhatsapp,
   useReconectarInstanciaWhatsapp,
+  useSincronizarInstanciasWhatsapp,
 } from "@/hooks/use-instancias-whatsapp";
 import {
   Table,
@@ -37,6 +38,7 @@ const STATUS_RECONECTAVEIS: ReadonlySet<InstanciaWhatsappDTO["status"]> = new Se
 export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
   const { data, isLoading, isError } = useInstanciasWhatsapp();
   const reconectar = useReconectarInstanciaWhatsapp();
+  const sincronizar = useSincronizarInstanciasWhatsapp();
 
   const [criando, setCriando] = useState(false);
   const [qrcode, setQrcode] = useState<QrcodeDialogState | null>(null);
@@ -59,6 +61,16 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
     }
   }
 
+  async function handleSincronizar() {
+    try {
+      await sincronizar.mutateAsync();
+      toast.success("Instâncias sincronizadas.");
+    } catch {
+      // Erro genérico de propósito: nunca expõe corpo/detalhe da resposta ao usuário.
+      toast.error("Não foi possível sincronizar as instâncias.");
+    }
+  }
+
   if (isLoading) {
     return <p className="p-4 text-sm text-muted-foreground">Carregando...</p>;
   }
@@ -78,12 +90,24 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
             Conecte o WhatsApp do escritório por QR Code e acompanhe o status de cada instância.
           </p>
         </div>
-        {!somenteLeitura ? (
-          <Button onClick={() => setCriando(true)}>
-            <Plus />
-            Nova instância
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {instancias.length > 0 ? (
+            <Button
+              variant="outline"
+              disabled={sincronizar.isPending}
+              onClick={handleSincronizar}
+            >
+              <RefreshCw className={sincronizar.isPending ? "animate-spin" : undefined} />
+              Sincronizar
+            </Button>
+          ) : null}
+          {!somenteLeitura ? (
+            <Button onClick={() => setCriando(true)}>
+              <Plus />
+              Nova instância
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="rounded-xl border border-border">

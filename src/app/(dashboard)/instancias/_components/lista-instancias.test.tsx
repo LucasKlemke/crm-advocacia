@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { ListaInstancias } from "./lista-instancias";
 import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
@@ -67,6 +68,13 @@ function mockFetch(instancias: InstanciaWhatsappDTO[] = []): typeof fetch {
           qrcode: "data:image/png;base64,novo-qr",
           paircode: "5678",
         }),
+      } as Response);
+    }
+    if (url === "/api/instancias/sincronizar" && init?.method === "POST") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ instancias }),
       } as Response);
     }
     return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
@@ -198,5 +206,93 @@ describe("ListaInstancias", () => {
 
     const imagem = await screen.findByRole("img", { name: /financeiro/i });
     expect(imagem).toHaveAttribute("src", "data:image/png;base64,criado-qr");
+  });
+
+  it("esconde o botão Sincronizar quando não há instâncias", async () => {
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await screen.findByText("Nenhuma instância de WhatsApp cadastrada ainda.");
+    expect(screen.queryByRole("button", { name: "Sincronizar" })).not.toBeInTheDocument();
+  });
+
+  it("mostra o botão Sincronizar quando há instâncias, mesmo somenteLeitura", async () => {
+    global.fetch = mockFetch([DESCONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura />);
+
+    expect(await screen.findByRole("button", { name: "Sincronizar" })).toBeInTheDocument();
+  });
+
+  it("clicar em Sincronizar chama a rota certa, desabilita o botão durante o pending e mostra toast de sucesso", async () => {
+    // Promise controlada manualmente pro POST de sincronizar, pra poder inspecionar o
+    // estado "pending" (botão desabilitado, ícone girando) antes de resolver a chamada.
+    let resolverSincronizar!: (value: Response) => void;
+    const sincronizarPendente = new Promise<Response>((resolve) => {
+      resolverSincronizar = resolve;
+    });
+
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/instancias/sincronizar" && init?.method === "POST") {
+        return sincronizarPendente;
+      }
+      if (url === "/api/instancias") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ instancias: [CONECTADA] }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    }) as unknown as typeof fetch;
+
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    const botao = await screen.findByRole("button", { name: "Sincronizar" });
+    await usuario.click(botao);
+
+    // Enquanto a mutation está pending: botão desabilitado e ícone girando.
+    await waitFor(() => expect(botao).toBeDisabled());
+    expect(botao.querySelector("svg")).toHaveClass("animate-spin");
+
+    resolverSincronizar({
+      ok: true,
+      status: 200,
+      json: async () => ({ instancias: [CONECTADA] }),
+    } as Response);
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Instâncias sincronizadas."));
+    await waitFor(() => expect(botao).not.toBeDisabled());
+  });
+
+  it("mostra toast de erro genérico quando a sincronização falha", async () => {
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/instancias/sincronizar" && init?.method === "POST") {
+        return Promise.resolve({
+          ok: false,
+          status: 502,
+          json: async () => ({ error: "Não foi possível se comunicar com o WhatsApp no momento." }),
+        } as Response);
+      }
+      if (url === "/api/instancias") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ instancias: [CONECTADA] }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    }) as unknown as typeof fetch;
+
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    const botao = await screen.findByRole("button", { name: "Sincronizar" });
+    await usuario.click(botao);
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Não foi possível sincronizar as instâncias.")
+    );
   });
 });

@@ -324,4 +324,97 @@ describe("uazapiClient", () => {
       await expect(uazapiClient.consultarStatus("tok")).rejects.toBeInstanceOf(UazapiIndisponivelError);
     });
   });
+
+  describe("listarTodasInstancias", () => {
+    it("chama GET /instance/all com admintoken (não token de instância) e sem body", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake([{ id: "i1", status: "connected", token: "tok-alheio" }])
+      );
+
+      await uazapiClient.listarTodasInstancias();
+
+      const chamada = (global.fetch as jest.Mock).mock.calls[0];
+      expect(chamada[0]).toBe(`${SERVER_URL}/instance/all`);
+      expect(chamada[1]).toEqual({
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          admintoken: ADMIN_TOKEN,
+        },
+      });
+      expect(chamada[1]).not.toHaveProperty("body");
+    });
+
+    // Segurança crítica: essa resposta mistura instâncias de TODOS os escritórios da
+    // conta UAZAPI compartilhada — cada item carrega um `token` de algum tenant
+    // (possivelmente de outro escritório). O mapeamento precisa jogar fora tudo que não
+    // está na lista branca, mesmo que a resposta bruta traga token/openai_apikey/etc.
+    it("mapeia cada item pro formato whitelisted, sem token (mesmo que a resposta bruta traga um)", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake([
+          {
+            id: "i1",
+            token: "tok-secreto-de-outro-tenant",
+            status: "connected",
+            owner: "5511999999999",
+            profilePicUrl: "https://example.com/foto.jpg",
+            adminField01: "esc-1",
+            openai_apikey: "sk-xyz",
+            chatbot_enabled: true,
+          },
+        ])
+      );
+
+      const resultado = await uazapiClient.listarTodasInstancias();
+
+      expect(resultado).toEqual([
+        {
+          id: "i1",
+          status: "connected",
+          owner: "5511999999999",
+          fotoPerfilUrl: "https://example.com/foto.jpg",
+          adminField01: "esc-1",
+        },
+      ]);
+      for (const item of resultado) {
+        expect(item).not.toHaveProperty("token");
+        expect(item).not.toHaveProperty("openai_apikey");
+        expect(item).not.toHaveProperty("chatbot_enabled");
+      }
+    });
+
+    it("mapeia owner/fotoPerfilUrl/adminField01 ausentes como undefined (não string vazia)", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake([{ id: "i2", status: "disconnected" }])
+      );
+
+      await expect(uazapiClient.listarTodasInstancias()).resolves.toEqual([
+        { id: "i2", status: "disconnected", owner: undefined, fotoPerfilUrl: undefined, adminField01: undefined },
+      ]);
+    });
+
+    it("lança UazapiIndisponivelError se a resposta não for um array", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ instance: [] }));
+
+      await expect(uazapiClient.listarTodasInstancias()).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+
+    it("lança UazapiIndisponivelError se a resposta HTTP não for 2xx", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake([], { status: 500 }));
+
+      await expect(uazapiClient.listarTodasInstancias()).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+
+    it("lança UazapiIndisponivelError em caso de falha de rede", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"));
+
+      await expect(uazapiClient.listarTodasInstancias()).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+  });
 });

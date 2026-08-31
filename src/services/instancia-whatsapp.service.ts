@@ -71,6 +71,22 @@ async function obterDoTenant(ctx: TenantContext, id: string): Promise<InstanciaW
   return instancia;
 }
 
+// Compara o estado local com o que a UAZAPI acabou de devolver — mesma regra de
+// mudança usada tanto por verificarStatus (uma instância) quanto por sincronizarTodas
+// (um lote): status/numeroConectado/fotoPerfilUrl diferentes do que já está salvo.
+function compararConexao(
+  atual: InstanciaWhatsapp,
+  remota: { status: StatusInstanciaWhatsapp; numeroConectado?: string; fotoPerfilUrl?: string }
+): { mudou: boolean; numeroConectado: string | null; fotoPerfilUrl: string | null } {
+  const numeroConectado = remota.numeroConectado ?? null;
+  const fotoPerfilUrl = remota.fotoPerfilUrl ?? null;
+  const mudou =
+    remota.status !== atual.status ||
+    numeroConectado !== atual.numeroConectado ||
+    fotoPerfilUrl !== atual.fotoPerfilUrl;
+  return { mudou, numeroConectado, fotoPerfilUrl };
+}
+
 export const instanciaWhatsappService = {
   async listar(ctx: TenantContext): Promise<InstanciaSemToken[]> {
     const instancias = await instanciaWhatsappRepository.listar(ctx.escritorioId);
@@ -192,12 +208,11 @@ export const instanciaWhatsappService = {
     // aborta aqui, sem nenhuma escrita no banco e sem log.
     const statusValidado = paraStatusInstancia(consulta.status);
 
-    const numeroConectado = consulta.numeroConectado ?? null;
-    const fotoPerfilUrl = consulta.fotoPerfilUrl ?? null;
-    const mudou =
-      statusValidado !== atual.status ||
-      numeroConectado !== atual.numeroConectado ||
-      fotoPerfilUrl !== atual.fotoPerfilUrl;
+    const { mudou, numeroConectado, fotoPerfilUrl } = compararConexao(atual, {
+      status: statusValidado,
+      numeroConectado: consulta.numeroConectado,
+      fotoPerfilUrl: consulta.fotoPerfilUrl,
+    });
 
     // Nada mudou de fato: não toca no banco nem polui a auditoria com log vazio.
     if (!mudou) {
@@ -226,5 +241,77 @@ export const instanciaWhatsappService = {
     });
 
     return semToken(instancia);
+  },
+
+  // Sem exigirPapelDeGestao: leitura + escrita condicional disponível a qualquer membro
+  // do tenant, mesmo padrão de verificarStatus (não é ação de configuração).
+  //
+  // /instance/all é uma chamada de conta inteira (admintoken) que devolve instâncias de
+  // TODOS os escritórios que usam essa conta UAZAPI compartilhada — nunca só as do
+  // chamador. Por isso (RN19) o casamento com o que já pertence a este escritório
+  // acontece inteiramente aqui: só instâncias já presentes em `locais` (linhas que já
+  // são deste escritório) podem ser tocadas, casadas pelo `uazapiInstanceId` que já
+  // guardamos localmente. Uma entrada remota sem correspondência local nunca vira uma
+  // linha nova e nunca é usada pra atualizar outra coisa.
+  async sincronizarTodas(ctx: TenantContext): Promise<InstanciaSemToken[]> {
+    const locais = await instanciaWhatsappRepository.listar(ctx.escritorioId);
+
+    // Escritório sem nenhuma instância: não há nada pra casar, então nem vale a pena
+    // fazer a chamada de conta inteira à UAZAPI.
+    if (locais.length === 0) {
+      return [];
+    }
+
+    const remotas = await uazapiClient.listarTodasInstancias();
+    const porId = new Map(remotas.map((remota) => [remota.id, remota]));
+
+    for (const local of locais) {
+      const remota = porId.get(local.uazapiInstanceId);
+      // Não apareceu na resposta da UAZAPI: sem evidência de mudança, não mexe.
+      if (!remota) continue;
+
+      let statusValidado: StatusInstanciaWhatsapp;
+      try {
+        statusValidado = paraStatusInstancia(remota.status);
+      } catch {
+        // Status fora do enum PARA ESSA instância não pode abortar o restante do lote —
+        // diferente de verificarStatus (uma instância só), aqui um item malformado só
+        // pula ele mesmo e o loop segue pras outras.
+        continue;
+      }
+
+      const { mudou, numeroConectado, fotoPerfilUrl } = compararConexao(local, {
+        status: statusValidado,
+        numeroConectado: remota.owner,
+        fotoPerfilUrl: remota.fotoPerfilUrl,
+      });
+
+      // Nada mudou pra essa instância: não escreve, não loga (RN20 é sobre escrita real).
+      if (!mudou) continue;
+
+      await prisma.$transaction(async (tx) => {
+        const atualizada = await instanciaWhatsappRepository.atualizarConexao(
+          local.id,
+          { status: statusValidado, numeroConectado, fotoPerfilUrl },
+          tx
+        );
+
+        // Uma linha de log por entidade efetivamente alterada (ação em lote — nunca um
+        // log combinado do lote inteiro).
+        await logService.registrar(
+          ctx,
+          {
+            acao: "atualizar",
+            entidade: "instancia_whatsapp",
+            entidadeId: atualizada.id,
+            resumo: `Instância ${atualizada.nome} sincronizada`,
+          },
+          tx
+        );
+      });
+    }
+
+    const atualizadas = await instanciaWhatsappRepository.listar(ctx.escritorioId);
+    return atualizadas.map(semToken);
   },
 };

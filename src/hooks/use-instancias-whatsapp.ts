@@ -57,3 +57,16 @@ export function useVerificarStatusInstanciaWhatsapp() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
   });
 }
+
+// Disparado pelo botão "Sincronizar" — atualiza TODAS as instâncias do escritório numa
+// única chamada em lote (/instance/all na UAZAPI), em vez de uma requisição por instância.
+export function useSincronizarInstanciasWhatsapp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<ListaInstanciasWhatsapp>("/api/instancias/sincronizar", {
+        method: "POST",
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
+  });
+}

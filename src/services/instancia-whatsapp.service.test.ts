@@ -433,3 +433,144 @@ describe("instanciaWhatsappService.verificarStatus", () => {
     expect(logs.registrar).not.toHaveBeenCalled();
   });
 });
+
+describe("instanciaWhatsappService.sincronizarTodas", () => {
+  it("retorna [] sem chamar a UAZAPI quando o escritório não tem instâncias locais", async () => {
+    repo.listar.mockResolvedValue([]);
+
+    const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(resultado).toEqual([]);
+    expect(repo.listar).toHaveBeenCalledTimes(1);
+    expect(client.listarTodasInstancias).not.toHaveBeenCalled();
+  });
+
+  it("não exige papel de gestão — role padrao também pode sincronizar", async () => {
+    repo.listar.mockResolvedValue([]);
+
+    await expect(instanciaWhatsappService.sincronizarTodas(ctx("padrao"))).resolves.toEqual([]);
+  });
+
+  it("ignora entradas remotas sem instância local correspondente (RN19: nunca cria/atualiza fora do que já é do tenant)", async () => {
+    const local = instanciaFake({
+      id: "instancia-1",
+      uazapiInstanceId: "uaz-1",
+      status: "connected",
+      numeroConectado: "5511999999999",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+    });
+    repo.listar.mockResolvedValueOnce([local]).mockResolvedValueOnce([local]);
+    // Resposta da UAZAPI (conta inteira) só tem instância de OUTRO tenant — nada bate
+    // com o uazapiInstanceId que este escritório já possui localmente.
+    client.listarTodasInstancias.mockResolvedValue([
+      { id: "uaz-de-outro-escritorio", status: "connected", owner: "5511888888888" },
+    ]);
+
+    const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.atualizarConexao).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]).not.toHaveProperty("uazapiToken");
+  });
+
+  it("atualiza e loga só as instâncias que realmente mudaram — uma linha de log por instância alterada, zero para as que não mudaram", async () => {
+    const a = instanciaFake({
+      id: "a",
+      uazapiInstanceId: "uaz-a",
+      nome: "A",
+      status: "connecting",
+      numeroConectado: null,
+      fotoPerfilUrl: null,
+    });
+    const b = instanciaFake({
+      id: "b",
+      uazapiInstanceId: "uaz-b",
+      nome: "B",
+      status: "connected",
+      numeroConectado: "5511999999999",
+      fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+    });
+    const c = instanciaFake({ id: "c", uazapiInstanceId: "uaz-c", nome: "C", status: "connected" });
+    const d = instanciaFake({ id: "d", uazapiInstanceId: "uaz-d", nome: "D", status: "disconnected" });
+
+    repo.listar.mockResolvedValueOnce([a, b, c, d]);
+    client.listarTodasInstancias.mockResolvedValue([
+      { id: "uaz-a", status: "connected", owner: "5511999999999" }, // muda (status + numero)
+      {
+        id: "uaz-b",
+        status: "connected",
+        owner: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      }, // idêntico ao local, não muda
+      { id: "uaz-c", status: "estado-invalido" }, // status fora do enum, deve ser pulado sem travar o lote
+      // uaz-d: ausente da resposta remota, deve ser ignorado
+    ]);
+    repo.atualizarConexao.mockResolvedValue(
+      instanciaFake({ id: "a", status: "connected", numeroConectado: "5511999999999" })
+    );
+    repo.listar.mockResolvedValueOnce([a, b, c, d]);
+
+    const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(client.listarTodasInstancias).toHaveBeenCalledTimes(1);
+    expect(repo.atualizarConexao).toHaveBeenCalledTimes(1);
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "a",
+      { status: "connected", numeroConectado: "5511999999999", fotoPerfilUrl: null },
+      expect.anything()
+    );
+    expect(logs.registrar).toHaveBeenCalledTimes(1);
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx(),
+      expect.objectContaining({
+        acao: "atualizar",
+        entidade: "instancia_whatsapp",
+        entidadeId: "a",
+        resumo: expect.stringContaining("A"),
+      }),
+      expect.anything()
+    );
+    expect(resultado).toHaveLength(4);
+    for (const item of resultado) {
+      expect(item).not.toHaveProperty("uazapiToken");
+    }
+  });
+
+  // Comportamento-chave que diferencia sincronizarTodas de verificarStatus: uma entrada
+  // remota malformada NÃO pode abortar a sincronização do lote inteiro — só ela é pulada.
+  it("um status inválido em uma instância do lote não impede a atualização das outras", async () => {
+    const bom1 = instanciaFake({ id: "x", uazapiInstanceId: "uaz-x", nome: "X", status: "connecting" });
+    const ruim = instanciaFake({ id: "y", uazapiInstanceId: "uaz-y", nome: "Y", status: "connected" });
+    const bom2 = instanciaFake({ id: "z", uazapiInstanceId: "uaz-z", nome: "Z", status: "connecting" });
+
+    repo.listar.mockResolvedValueOnce([bom1, ruim, bom2]);
+    client.listarTodasInstancias.mockResolvedValue([
+      { id: "uaz-x", status: "connected" },
+      { id: "uaz-y", status: "estado-que-nao-existe-no-enum" },
+      { id: "uaz-z", status: "connected" },
+    ]);
+    repo.atualizarConexao.mockResolvedValue(instanciaFake());
+    repo.listar.mockResolvedValueOnce([bom1, ruim, bom2]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.atualizarConexao).toHaveBeenCalledTimes(2);
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "x",
+      expect.objectContaining({ status: "connected" }),
+      expect.anything()
+    );
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "z",
+      expect.objectContaining({ status: "connected" }),
+      expect.anything()
+    );
+    expect(repo.atualizarConexao).not.toHaveBeenCalledWith(
+      "y",
+      expect.anything(),
+      expect.anything()
+    );
+    expect(logs.registrar).toHaveBeenCalledTimes(2);
+  });
+});

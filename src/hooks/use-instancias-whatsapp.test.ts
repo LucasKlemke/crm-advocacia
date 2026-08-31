@@ -7,6 +7,7 @@ import {
   useCriarInstanciaWhatsapp,
   useReconectarInstanciaWhatsapp,
   useVerificarStatusInstanciaWhatsapp,
+  useSincronizarInstanciasWhatsapp,
 } from "./use-instancias-whatsapp";
 
 function criarWrapper() {
@@ -85,6 +86,22 @@ describe("mutations de instância de WhatsApp", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     const [url] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toBe("/api/instancias/instancia-1/status");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chaveInstanciasWhatsapp() });
+  });
+
+  it("useSincronizarInstanciasWhatsapp faz POST em /api/instancias/sincronizar e invalida a lista", async () => {
+    const { Wrapper, queryClient } = criarWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useSincronizarInstanciasWhatsapp(), {
+      wrapper: Wrapper,
+    });
+
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe("/api/instancias/sincronizar");
+    expect(init.method).toBe("POST");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chaveInstanciasWhatsapp() });
   });
 });
