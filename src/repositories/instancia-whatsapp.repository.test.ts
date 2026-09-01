@@ -123,4 +123,12 @@ describe("instanciaWhatsappRepository", () => {
     expect(atualizada.status).toBe("connecting");
     expect(atualizada.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto-original.jpg");
   });
+
+  it("delete remove a instância", async () => {
+    const instancia = await criar(escritorioId, "Fantasma");
+
+    await instanciaWhatsappRepository.delete(instancia.id);
+
+    expect(await instanciaWhatsappRepository.findById(instancia.id)).toBeNull();
+  });
 });

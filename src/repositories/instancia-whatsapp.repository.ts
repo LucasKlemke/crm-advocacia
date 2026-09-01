@@ -50,4 +50,8 @@ export const instanciaWhatsappRepository = {
   ): Promise<InstanciaWhatsapp> {
     return db.instanciaWhatsapp.update({ where: { id }, data });
   },
+
+  async delete(id: string, db: Db = prisma): Promise<InstanciaWhatsapp> {
+    return db.instanciaWhatsapp.delete({ where: { id } });
+  },
 };

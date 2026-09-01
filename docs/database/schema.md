@@ -317,6 +317,8 @@ Vinculação entre um escritório e uma instância UAZAPI para envio de mensagen
 
 Fluxo de conexão: criar instância com status `disconnected` → chamar UAZAPI para gerar QR → status muda pra `connecting` → usuário escaneia QR no celular → aplicação consulta `GET /api/instancias/[id]/status` (poll manual no endpoint `/instance/status` da UAZAPI, sem webhook) → status muda pra `connected` + `numero_conectado` preenchido. Desconexão (erro de rede, sessão expirada) reafirma `disconnected` ou `hibernated` conforme a razão.
 
+Sincronização em lote (`POST /api/instancias/sincronizar`, endpoint `/instance/all` da UAZAPI): além de atualizar status/número/foto das instâncias que ainda existem do lado da UAZAPI, exclui (hard delete, sem soft delete nesta tabela) toda instância local cujo `uazapi_instance_id` não aparece mais na resposta — uma instância "fantasma" que foi removida diretamente na UAZAPI. Cada exclusão gera uma linha em `log` (`acao: excluir`) na mesma transação, uma por instância removida.
+
 ## Relacionamentos
 
 | Origem | Cardinalidade | Destino |

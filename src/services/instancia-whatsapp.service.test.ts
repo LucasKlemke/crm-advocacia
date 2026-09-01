@@ -451,7 +451,7 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
     await expect(instanciaWhatsappService.sincronizarTodas(ctx("padrao"))).resolves.toEqual([]);
   });
 
-  it("ignora entradas remotas sem instância local correspondente (RN19: nunca cria/atualiza fora do que já é do tenant)", async () => {
+  it("nunca cria/atualiza uma instância a partir de uma entrada remota de outro tenant (RN19)", async () => {
     const local = instanciaFake({
       id: "instancia-1",
       uazapiInstanceId: "uaz-1",
@@ -459,19 +459,70 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
       numeroConectado: "5511999999999",
       fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
     });
-    repo.listar.mockResolvedValueOnce([local]).mockResolvedValueOnce([local]);
+    repo.listar.mockResolvedValueOnce([local]).mockResolvedValueOnce([]);
     // Resposta da UAZAPI (conta inteira) só tem instância de OUTRO tenant — nada bate
-    // com o uazapiInstanceId que este escritório já possui localmente.
+    // com o uazapiInstanceId que este escritório já possui localmente, então essa
+    // instância é tratada como fantasma (ver teste abaixo) e não como "atualizável".
     client.listarTodasInstancias.mockResolvedValue([
       { id: "uaz-de-outro-escritorio", status: "connected", owner: "5511888888888" },
     ]);
 
-    const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
+    await instanciaWhatsappService.sincronizarTodas(ctx());
 
     expect(repo.atualizarConexao).not.toHaveBeenCalled();
-    expect(logs.registrar).not.toHaveBeenCalled();
-    expect(resultado).toHaveLength(1);
-    expect(resultado[0]).not.toHaveProperty("uazapiToken");
+    expect(repo.delete).toHaveBeenCalledTimes(1);
+    expect(repo.delete).not.toHaveBeenCalledWith("uaz-de-outro-escritorio", expect.anything());
+  });
+
+  it("exclui (e loga) uma instância local que não aparece mais na resposta da UAZAPI — instância fantasma", async () => {
+    const fantasma = instanciaFake({
+      id: "instancia-1",
+      nome: "Fantasma",
+      uazapiInstanceId: "uaz-1",
+    });
+    repo.listar.mockResolvedValueOnce([fantasma]).mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([]);
+
+    const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.delete).toHaveBeenCalledTimes(1);
+    expect(repo.delete).toHaveBeenCalledWith("instancia-1", expect.anything());
+    expect(logs.registrar).toHaveBeenCalledTimes(1);
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx(),
+      expect.objectContaining({
+        acao: "excluir",
+        entidade: "instancia_whatsapp",
+        entidadeId: "instancia-1",
+        resumo: expect.stringContaining("Fantasma"),
+      }),
+      expect.anything()
+    );
+    expect(resultado).toEqual([]);
+  });
+
+  it("exclui várias instâncias fantasma no mesmo lote, uma linha de log por instância removida", async () => {
+    const viva = instanciaFake({ id: "viva", uazapiInstanceId: "uaz-viva", nome: "Viva" });
+    const fantasma1 = instanciaFake({ id: "f1", uazapiInstanceId: "uaz-f1", nome: "F1" });
+    const fantasma2 = instanciaFake({ id: "f2", uazapiInstanceId: "uaz-f2", nome: "F2" });
+
+    repo.listar.mockResolvedValueOnce([viva, fantasma1, fantasma2]).mockResolvedValueOnce([viva]);
+    client.listarTodasInstancias.mockResolvedValue([
+      {
+        id: "uaz-viva",
+        status: viva.status,
+        owner: viva.numeroConectado ?? undefined,
+        fotoPerfilUrl: viva.fotoPerfilUrl ?? undefined,
+      },
+    ]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.delete).toHaveBeenCalledTimes(2);
+    expect(repo.delete).toHaveBeenCalledWith("f1", expect.anything());
+    expect(repo.delete).toHaveBeenCalledWith("f2", expect.anything());
+    expect(repo.delete).not.toHaveBeenCalledWith("viva", expect.anything());
+    expect(logs.registrar).toHaveBeenCalledTimes(2);
   });
 
   it("atualiza e loga só as instâncias que realmente mudaram — uma linha de log por instância alterada, zero para as que não mudaram", async () => {
@@ -504,12 +555,12 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
         fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
       }, // idêntico ao local, não muda
       { id: "uaz-c", status: "estado-invalido" }, // status fora do enum, deve ser pulado sem travar o lote
-      // uaz-d: ausente da resposta remota, deve ser ignorado
+      // uaz-d: ausente da resposta remota — instância fantasma, deve ser excluída
     ]);
     repo.atualizarConexao.mockResolvedValue(
       instanciaFake({ id: "a", status: "connected", numeroConectado: "5511999999999" })
     );
-    repo.listar.mockResolvedValueOnce([a, b, c, d]);
+    repo.listar.mockResolvedValueOnce([a, b, c]);
 
     const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
 
@@ -520,7 +571,9 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
       { status: "connected", numeroConectado: "5511999999999", fotoPerfilUrl: null },
       expect.anything()
     );
-    expect(logs.registrar).toHaveBeenCalledTimes(1);
+    expect(repo.delete).toHaveBeenCalledTimes(1);
+    expect(repo.delete).toHaveBeenCalledWith("d", expect.anything());
+    expect(logs.registrar).toHaveBeenCalledTimes(2);
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx(),
       expect.objectContaining({
@@ -531,7 +584,17 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
       }),
       expect.anything()
     );
-    expect(resultado).toHaveLength(4);
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx(),
+      expect.objectContaining({
+        acao: "excluir",
+        entidade: "instancia_whatsapp",
+        entidadeId: "d",
+        resumo: expect.stringContaining("D"),
+      }),
+      expect.anything()
+    );
+    expect(resultado).toHaveLength(3);
     for (const item of resultado) {
       expect(item).not.toHaveProperty("uazapiToken");
     }

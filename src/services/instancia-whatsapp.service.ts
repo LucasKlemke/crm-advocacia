@@ -267,8 +267,24 @@ export const instanciaWhatsappService = {
 
     for (const local of locais) {
       const remota = porId.get(local.uazapiInstanceId);
-      // Não apareceu na resposta da UAZAPI: sem evidência de mudança, não mexe.
-      if (!remota) continue;
+      // Não apareceu na resposta da UAZAPI (que lista TODAS as instâncias da conta):
+      // não existe mais do lado de lá — instância "fantasma", remove daqui também.
+      if (!remota) {
+        await prisma.$transaction(async (tx) => {
+          await instanciaWhatsappRepository.delete(local.id, tx);
+          await logService.registrar(
+            ctx,
+            {
+              acao: "excluir",
+              entidade: "instancia_whatsapp",
+              entidadeId: local.id,
+              resumo: `Instância ${local.nome} removida (não encontrada na UAZAPI)`,
+            },
+            tx
+          );
+        });
+        continue;
+      }
 
       let statusValidado: StatusInstanciaWhatsapp;
       try {
