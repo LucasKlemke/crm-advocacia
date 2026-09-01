@@ -252,7 +252,9 @@ export const instanciaWhatsappService = {
   // acontece inteiramente aqui: só instâncias já presentes em `locais` (linhas que já
   // são deste escritório) podem ser tocadas, casadas pelo `uazapiInstanceId` que já
   // guardamos localmente. Uma entrada remota sem correspondência local nunca vira uma
-  // linha nova e nunca é usada pra atualizar outra coisa.
+  // linha nova e nunca é usada pra atualizar outra coisa. E o inverso: uma linha JÁ
+  // deste escritório sem correspondência remota é tratada como instância fantasma
+  // (removida direto na UAZAPI) e é excluída daqui também — nunca fica só "ignorada".
   async sincronizarTodas(ctx: TenantContext): Promise<InstanciaSemToken[]> {
     const locais = await instanciaWhatsappRepository.listar(ctx.escritorioId);
 

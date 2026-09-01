@@ -51,6 +51,8 @@ export const instanciaWhatsappRepository = {
     return db.instanciaWhatsapp.update({ where: { id }, data });
   },
 
+  // Sem filtro de escritorioId, igual findById/atualizarConexao — quem escopa é o
+  // Service, que só deve chamar isto com um id já confirmado como deste tenant.
   async delete(id: string, db: Db = prisma): Promise<InstanciaWhatsapp> {
     return db.instanciaWhatsapp.delete({ where: { id } });
   },
