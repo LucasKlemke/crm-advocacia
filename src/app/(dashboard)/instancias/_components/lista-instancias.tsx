@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Wifi } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import {
   useInstanciasWhatsapp,
   useReconectarInstanciaWhatsapp,
   useSincronizarInstanciasWhatsapp,
+  useVerificarStatusInstanciaWhatsapp,
 } from "@/hooks/use-instancias-whatsapp";
 import {
   Table,
@@ -38,12 +39,19 @@ const STATUS_RECONECTAVEIS: ReadonlySet<InstanciaWhatsappDTO["status"]> = new Se
 export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
   const { data, isLoading, isError } = useInstanciasWhatsapp();
   const reconectar = useReconectarInstanciaWhatsapp();
+  const verificarStatus = useVerificarStatusInstanciaWhatsapp();
   const sincronizar = useSincronizarInstanciasWhatsapp();
 
   const [criando, setCriando] = useState(false);
   const [qrcode, setQrcode] = useState<QrcodeDialogState | null>(null);
 
   const instancias = data?.instancias ?? [];
+
+  // As mutations de Reconectar/Verificar status são compartilhadas por todas as linhas
+  // da tabela — sem isolar por `variables`, clicar numa linha desabilitaria o botão de
+  // todas as outras enquanto a chamada dessa linha estivesse pendente.
+  const reconectandoId = reconectar.isPending ? reconectar.variables : undefined;
+  const verificandoId = verificarStatus.isPending ? verificarStatus.variables : undefined;
 
   async function handleReconectar(instancia: InstanciaWhatsappDTO) {
     try {
@@ -57,6 +65,17 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
     } catch (erro) {
       toast.error(
         erro instanceof ApiError ? erro.message : "Não foi possível reconectar a instância."
+      );
+    }
+  }
+
+  async function handleVerificarStatus(instancia: InstanciaWhatsappDTO) {
+    try {
+      await verificarStatus.mutateAsync(instancia.id);
+      toast.success("Status verificado.");
+    } catch (erro) {
+      toast.error(
+        erro instanceof ApiError ? erro.message : "Não foi possível verificar o status da instância."
       );
     }
   }
@@ -117,7 +136,7 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
               <TableHead className="px-4">Instância</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Número conectado</TableHead>
-              {!somenteLeitura ? <TableHead className="w-32 px-4" /> : null}
+              {!somenteLeitura ? <TableHead className="w-56 px-4" /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -146,19 +165,29 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
                     {instancia.numeroConectado ? formatarTelefone(instancia.numeroConectado) : "–"}
                   </TableCell>
                   {!somenteLeitura ? (
-                    <TableCell className="px-4">
+                    <TableCell className="flex items-center gap-1 px-4">
                       {STATUS_RECONECTAVEIS.has(instancia.status) ? (
                         <Button
                           variant="ghost"
                           size="sm"
                           aria-label={`Reconectar ${instancia.nome}`}
-                          disabled={reconectar.isPending}
+                          disabled={reconectandoId === instancia.id}
                           onClick={() => handleReconectar(instancia)}
                         >
                           <RefreshCw />
                           Reconectar
                         </Button>
                       ) : null}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Verificar status ${instancia.nome}`}
+                        disabled={verificandoId === instancia.id}
+                        onClick={() => handleVerificarStatus(instancia)}
+                      >
+                        <Wifi className={verificandoId === instancia.id ? "animate-pulse" : undefined} />
+                        Verificar status
+                      </Button>
                     </TableCell>
                   ) : null}
                 </TableRow>

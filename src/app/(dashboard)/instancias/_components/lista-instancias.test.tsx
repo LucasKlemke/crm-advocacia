@@ -70,6 +70,13 @@ function mockFetch(instancias: InstanciaWhatsappDTO[] = []): typeof fetch {
         }),
       } as Response);
     }
+    if (url.endsWith("/status") && (!init || init.method === undefined)) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ instancia: CONECTADA }),
+      } as Response);
+    }
     if (url === "/api/instancias/sincronizar" && init?.method === "POST") {
       return Promise.resolve({
         ok: true,
@@ -263,6 +270,97 @@ describe("ListaInstancias", () => {
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Instâncias sincronizadas."));
     await waitFor(() => expect(botao).not.toBeDisabled());
+  });
+
+  it("mostra ação Verificar status em toda instância, independente do status atual", async () => {
+    global.fetch = mockFetch([CONECTADA, DESCONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await screen.findByText("Financeiro");
+
+    expect(
+      screen.getByRole("button", { name: "Verificar status Atendimento principal" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Verificar status Financeiro" })
+    ).toBeInTheDocument();
+  });
+
+  it("esconde a ação Verificar status quando somenteLeitura", async () => {
+    global.fetch = mockFetch([DESCONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura />);
+
+    await screen.findByText("Financeiro");
+
+    expect(
+      screen.queryByRole("button", { name: "Verificar status Financeiro" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("clicar em Verificar status chama a rota certa (GET) e mostra toast de sucesso", async () => {
+    global.fetch = mockFetch([DESCONECTADA]);
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await usuario.click(
+      await screen.findByRole("button", { name: "Verificar status Financeiro" })
+    );
+
+    await waitFor(() => {
+      const chamada = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
+        String(url).endsWith("/status")
+      );
+      expect(chamada).toBeDefined();
+      expect(chamada[0]).toBe("/api/instancias/instancia-2/status");
+      expect(chamada[1]?.method ?? "GET").toBe("GET");
+    });
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Status verificado."));
+  });
+
+  it("verificar status de uma instância não desabilita o botão das demais", async () => {
+    let resolverStatus!: (value: Response) => void;
+    const statusPendente = new Promise<Response>((resolve) => {
+      resolverStatus = resolve;
+    });
+
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/instancias/instancia-2/status" && (!init || init.method === undefined)) {
+        return statusPendente;
+      }
+      if (url === "/api/instancias") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ instancias: [CONECTADA, DESCONECTADA] }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    }) as unknown as typeof fetch;
+
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    const botaoFinanceiro = await screen.findByRole("button", {
+      name: "Verificar status Financeiro",
+    });
+    const botaoAtendimento = screen.getByRole("button", {
+      name: "Verificar status Atendimento principal",
+    });
+
+    await usuario.click(botaoFinanceiro);
+
+    await waitFor(() => expect(botaoFinanceiro).toBeDisabled());
+    expect(botaoAtendimento).not.toBeDisabled();
+
+    resolverStatus({
+      ok: true,
+      status: 200,
+      json: async () => ({ instancia: DESCONECTADA }),
+    } as Response);
+
+    await waitFor(() => expect(botaoFinanceiro).not.toBeDisabled());
   });
 
   it("mostra toast de erro genérico quando a sincronização falha", async () => {
