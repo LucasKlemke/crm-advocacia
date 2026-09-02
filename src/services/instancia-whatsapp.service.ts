@@ -201,6 +201,15 @@ export const instanciaWhatsappService = {
     return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
   },
 
+  // Uso exclusivo de outro Service no servidor (campanha.service precisa do token para
+  // falar com a UAZAPI em nome desta instância). O retorno inclui uazapiToken: NUNCA
+  // devolva o objeto desta função numa resposta HTTP — para isso existe `listar`/
+  // `verificarStatus`, que já passam por semToken. A checagem de tenant vive aqui, e não
+  // duplicada no chamador.
+  async obterComToken(ctx: TenantContext, id: string): Promise<InstanciaWhatsapp> {
+    return obterDoTenant(ctx, id);
+  },
+
   async verificarStatus(ctx: TenantContext, id: string): Promise<InstanciaSemToken> {
     const atual = await obterDoTenant(ctx, id);
     const consulta = await uazapiClient.consultarStatus(atual.uazapiToken);
