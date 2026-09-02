@@ -29,7 +29,7 @@ describe("AppSidebar", () => {
 
     expect(screen.getByRole("link", { name: /clientes/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /processos/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /mensagens/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /campanhas/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /configurações/i })).toBeInTheDocument();
   });
 

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Briefcase,
   LayoutDashboard,
-  MessageCircle,
+  Megaphone,
   Settings,
   Smartphone,
   Users,
@@ -35,7 +35,7 @@ const NAV_GROUPS = [
   {
     label: "Disparo",
     items: [
-      { href: "/mensagens", label: "Mensagens", icon: MessageCircle },
+      { href: "/campanhas", label: "Campanhas", icon: Megaphone },
       { href: "/instancias", label: "Instâncias", icon: Smartphone },
     ],
   },
