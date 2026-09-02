@@ -196,6 +196,58 @@ describe("eventoRepository", () => {
     expect(carregado?.participantes.map((p) => p.membroId)).toEqual([outroMembroId]);
   });
 
+  it("substituirParticipantes com lista vazia limpa o evento", async () => {
+    const evento = await criar(escritorioId, {
+      titulo: "Reunião",
+      inicio: "2026-09-12T13:00:00.000Z",
+      fim: "2026-09-12T14:00:00.000Z",
+    });
+    await eventoRepository.substituirParticipantes(evento.id, [membroId]);
+    await eventoRepository.substituirParticipantes(evento.id, []);
+
+    const carregado = await eventoRepository.findById(evento.id);
+    expect(carregado?.participantes).toEqual([]);
+  });
+
+  it("substituirParticipantes deduplica ids repetidos no mesmo pedido", async () => {
+    const evento = await criar(escritorioId, {
+      titulo: "Reunião",
+      inicio: "2026-09-12T13:00:00.000Z",
+      fim: "2026-09-12T14:00:00.000Z",
+    });
+    // A unique (evento_id, membro_id) rejeitaria o insert duplicado; a dedup evita que
+    // um payload repetido derrube a transação inteira.
+    await eventoRepository.substituirParticipantes(evento.id, [membroId, membroId]);
+
+    const carregado = await eventoRepository.findById(evento.id);
+    expect(carregado?.participantes).toHaveLength(1);
+  });
+
+  it("conta eventos ativos por caso e por cliente, ignorando os excluídos", async () => {
+    const cliente = await prisma.cliente.create({
+      data: { escritorioId, nome: "Cliente Evento", cpf: `${Date.now()}`.slice(-11) },
+    });
+    const evento = await eventoRepository.create({
+      titulo: "Com cliente",
+      inicio: new Date("2026-09-10T13:00:00.000Z"),
+      fim: new Date("2026-09-10T14:00:00.000Z"),
+      modalidade: "presencial",
+      local: "Sala 1",
+      escritorio: { connect: { id: escritorioId } },
+      criadoPor: { connect: { id: membroId } },
+      cliente: { connect: { id: cliente.id } },
+    });
+
+    expect(await eventoRepository.contarPorCliente(cliente.id)).toBe(1);
+    expect(await eventoRepository.contarPorCaso(cliente.id)).toBe(0);
+
+    await eventoRepository.softDelete(evento.id);
+    expect(await eventoRepository.contarPorCliente(cliente.id)).toBe(0);
+
+    await prisma.evento.deleteMany({ where: { clienteId: cliente.id } });
+    await prisma.cliente.delete({ where: { id: cliente.id } });
+  });
+
   it("update altera os campos e mantém o escritório", async () => {
     const evento = await criar(escritorioId, {
       titulo: "Antes",

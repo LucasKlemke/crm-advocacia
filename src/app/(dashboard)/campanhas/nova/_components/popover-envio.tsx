@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { agoraParaInputLocal } from "@/lib/utils/data-input";
 import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 
 export interface ConfigEnvio {
@@ -27,17 +28,6 @@ function rotularAgendamento(iso: string): string {
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return "Agendar";
   return data.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
-
-// O `min` do datetime-local é comparado como hora local, então não pode vir de toISOString
-// (que é UTC): num fuso atrás de Greenwich isso liberaria horários já passados.
-function agoraParaInputLocal(): string {
-  const agora = new Date();
-  const doisDigitos = (valor: number) => String(valor).padStart(2, "0");
-  return (
-    `${agora.getFullYear()}-${doisDigitos(agora.getMonth() + 1)}-${doisDigitos(agora.getDate())}` +
-    `T${doisDigitos(agora.getHours())}:${doisDigitos(agora.getMinutes())}`
-  );
 }
 
 export function PopoverIntervalo({ valor, totalDestinatarios, onMudar }: PopoverEnvioProps) {

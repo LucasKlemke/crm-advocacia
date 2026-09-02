@@ -40,9 +40,19 @@ jest.mock("@/services/evento.service", () => {
     PermissaoNegadaError,
   };
 });
+// O mock aplica o callback de permissão de verdade: é ele que leva `podeEditar` ao
+// DTO (RN34), e um mock que ignora o callback esconderia a rota passando o membro errado.
 jest.mock("@/lib/api/serializa-evento", () => ({
-  serializarEvento: jest.fn(async (evento: unknown) => evento),
-  serializarEventos: jest.fn(async (eventos: unknown[]) => eventos),
+  serializarEvento: jest.fn(
+    async (evento: Record<string, unknown>, podeEditar: (e: unknown) => boolean) => ({
+      ...evento,
+      podeEditar: podeEditar(evento),
+    })
+  ),
+  serializarEventos: jest.fn(
+    async (eventos: Record<string, unknown>[], podeEditar: (e: unknown) => boolean) =>
+      eventos.map((evento) => ({ ...evento, podeEditar: podeEditar(evento) }))
+  ),
 }));
 
 const mockedGetTenantContext = getTenantContext as jest.Mock;
@@ -69,7 +79,12 @@ beforeEach(() => {
   service.membroAtual.mockResolvedValue({ id: "membro-1" } as never);
   service.podeEditar.mockReturnValue(true);
   service.obter.mockResolvedValue({ id: "evento-1", titulo: "Audiência" } as never);
-  (serializarEvento as jest.Mock).mockImplementation(async (evento: unknown) => evento);
+  (serializarEvento as jest.Mock).mockImplementation(
+    async (evento: Record<string, unknown>, podeEditar: (e: unknown) => boolean) => ({
+      ...evento,
+      podeEditar: podeEditar(evento),
+    })
+  );
 });
 
 describe("GET /api/eventos/[id]", () => {
@@ -79,6 +94,20 @@ describe("GET /api/eventos/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(corpo.evento.id).toBe("evento-1");
+  });
+
+  it("resolve podeEditar com o membro da sessão (RN34)", async () => {
+    service.podeEditar.mockReturnValue(false);
+
+    const corpo = await (
+      await GET(new Request("http://localhost/api/eventos/evento-1"), { params })
+    ).json();
+
+    expect(corpo.evento.podeEditar).toBe(false);
+    expect(service.podeEditar).toHaveBeenCalledWith(ctx, "membro-1", {
+      id: "evento-1",
+      titulo: "Audiência",
+    });
   });
 
   it("responde 404 para evento de outro escritório ou já excluído (RN19/RN34)", async () => {

@@ -1,6 +1,7 @@
 import { filtrosDashboardPadrao } from "@/types/dashboard";
 import type { FiltrosCasos } from "@/types/caso";
 import type { FiltrosDashboard } from "@/types/dashboard";
+import type { FiltrosEventos } from "@/types/evento";
 
 // Fábricas de query key do React Query. Ficam fora dos arquivos de hook (que são "use
 // client") porque o prefetch no servidor precisa montar exatamente as mesmas keys — um
@@ -29,3 +30,11 @@ export const RAIZ_DASHBOARD = ["dashboard"] as const;
 
 export const chaveDashboardResumo = (filtros: FiltrosDashboard = filtrosDashboardPadrao) =>
   [...RAIZ_DASHBOARD, "resumo", filtros] as const;
+
+// Toda key da agenda nasce sob a raiz ["eventos"]: uma escrita invalida a visão de mês,
+// de semana e de dia de uma vez, porque as três consultam o mesmo recurso com períodos
+// diferentes — sem a raiz comum, criar um evento na visão de dia deixaria a de mês stale.
+export const RAIZ_EVENTOS = ["eventos"] as const;
+
+export const chaveEventos = (filtros?: FiltrosEventos) =>
+  filtros ? ([...RAIZ_EVENTOS, "periodo", filtros.inicio, filtros.fim] as const) : RAIZ_EVENTOS;

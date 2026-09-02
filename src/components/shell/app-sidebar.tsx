@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Briefcase,
+  CalendarDays,
   LayoutDashboard,
   Megaphone,
   Settings,
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/casos", label: "Processos", icon: Briefcase },
       { href: "/clientes", label: "Clientes", icon: Users },
+      { href: "/agenda", label: "Agenda", icon: CalendarDays },
     ],
   },
   {

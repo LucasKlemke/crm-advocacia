@@ -18,7 +18,7 @@ import {
 import { CasosStatusDonutChart } from "@/components/dashboard/casos-status-donut-chart";
 import { filtrosTabelaDashboard } from "@/components/dashboard/filtros-tabela";
 import { CasoSheet } from "@/components/casos/caso-sheet";
-import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
+import { FiltroMultiSelect } from "@/components/shared/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
 import { formatarCpf } from "@/lib/utils/cpf";
 import { SEM_RESPONSAVEL } from "@/types/caso";
