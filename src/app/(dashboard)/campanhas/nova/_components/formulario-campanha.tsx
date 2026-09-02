@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MessageSquare, Send, Upload } from "lucide-react";
+import { ArrowLeft, MessageSquare, Upload } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { useCriarCampanha } from "@/hooks/use-campanhas";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,13 @@ import { Input } from "@/components/ui/input";
 import {
   extrairVariaveis,
   sugerirMapeamento,
-  variaveisNaoMapeadas,
   type ConfigVariavel,
   type MapeamentoVariaveis,
 } from "@/lib/utils/campanha-mensagem";
 import { CsvInvalidoError, lerPlanilha, sugerirColunaNumero } from "@/lib/utils/csv-campanha";
 import { CLASSE_ITEM_BARRA } from "./barra-acoes";
+import { BotaoCriarCampanha } from "./botao-criar-campanha";
+import { montarTarefas } from "./tarefas-campanha";
 import { SeletorInstancia, type InstanciaEscolhida } from "./seletor-instancia";
 import { DialogMensagem } from "./dialog-mensagem";
 import { SecaoMensagem } from "./secao-mensagem";
@@ -80,40 +81,32 @@ export function FormularioCampanha() {
   }
 
   const numerosInvalidos = contarNumerosInvalidos(linhas, colunaNumero);
-  const pendentes = variaveisNaoMapeadas(mensagem, mapeamento);
 
-  // Mesma validação que o service repete no servidor. O primeiro item não atendido também
-  // é o que o botão explica no title, para "Criar campanha" desabilitado não ser um mistério.
-  const impedimento =
-    nome.trim() === ""
-      ? "Dê um nome à campanha."
-      : !instancia
-        ? "Escolha a conexão que vai disparar."
-        : mensagem.trim() === ""
-          ? "Escreva a mensagem."
-          : pendentes.length > 0
-            ? "Escolha a coluna de cada variável da mensagem."
-            : !planilha
-              ? "Faça o upload da planilha de contatos."
-              : colunaNumero === ""
-                ? "Escolha a coluna com os números."
-                : numerosInvalidos.length > 0
-                  ? "Corrija os números inválidos da planilha."
-                  : envio.delayMax < envio.delayMin
-                    ? "O intervalo máximo precisa ser maior ou igual ao mínimo."
-                    : envio.quandoEnviar === "agendar" && envio.agendadaPara === ""
-                      ? "Informe a data e hora do agendamento."
-                      : null;
+  // Checklist do botão "Criar campanha": é a tooltip do botão bloqueado e, ao mesmo tempo,
+  // o que decide se ele responde ao clique.
+  const tarefas = montarTarefas({
+    nome,
+    temInstancia: instancia !== null,
+    mensagem,
+    mapeamento,
+    temPlanilha: planilha !== null,
+    colunaNumero,
+    numerosInvalidos: numerosInvalidos.length,
+    delayMin: envio.delayMin,
+    delayMax: envio.delayMax,
+    agendar: envio.quandoEnviar === "agendar",
+    agendadaPara: envio.agendadaPara,
+  });
 
   async function handleCriar() {
-    if (!planilha || !instancia || impedimento) return;
+    if (!planilha || !instancia || tarefas.some((tarefa) => !tarefa.concluida)) return;
     try {
       const { campanha } = await criar.mutateAsync({
         nome: nome.trim(),
         instanciaId: instancia.id,
         mensagemTemplate: mensagem.trim(),
         colunaNumero,
-        // `pendentes` está vazio aqui, então toda config restante tem coluna real.
+        // Nenhuma tarefa pendente aqui, então toda config restante tem coluna real.
         mapeamentoVariaveis: Object.fromEntries(
           Object.entries(mapeamento).filter(([, config]) => Boolean(config?.coluna))
         ) as Record<string, ConfigVariavel>,
@@ -157,24 +150,17 @@ export function FormularioCampanha() {
         </Button>
         <h1 className="text-xl font-semibold">Nova campanha de disparos</h1>
 
-        {/* O que falta para criar vive no `title` do botão desabilitado — a mesma ordem de
-            validação que o service repete no servidor. */}
-        <Button
-          type="button"
-          className={`${CLASSE_ITEM_BARRA} ml-auto`}
-          disabled={impedimento !== null || criar.isPending}
-          title={impedimento ?? undefined}
-          onClick={handleCriar}
-        >
-          <Send />
-          {criar.isPending ? "Criando..." : "Criar campanha"}
-        </Button>
+        <BotaoCriarCampanha
+          tarefas={tarefas}
+          criando={criar.isPending}
+          onCriar={handleCriar}
+        />
       </div>
 
       {/* Barra de ações: tudo que a campanha precisa numa linha só, em vez de etapas. Cada
           pílula é o próprio controle (nome, conexão, intervalo, agendamento) ou abre onde a
           escolha é feita (mensagem, contatos) — todas com a mesma altura. O "Criar campanha"
-          fica na linha do título, longe das pílulas que ainda estão sendo preenchidas. */}
+          fica na linha do título, com o checklist do que falta na própria tooltip. */}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           className={`${CLASSE_ITEM_BARRA} w-56`}

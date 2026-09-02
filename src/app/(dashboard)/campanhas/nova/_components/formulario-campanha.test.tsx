@@ -123,22 +123,44 @@ describe("FormularioCampanha — barra de ações", () => {
   });
 });
 
-// O que falta aparece no `title` do botão desabilitado, e não em texto na página.
+// O que falta aparece no checklist da tooltip do botão bloqueado, e não em texto na página.
 describe("FormularioCampanha — gate do botão criar", () => {
-  it("começa desabilitado e explica o que falta", () => {
+  async function checklist() {
+    await userEvent.hover(botaoCriar());
+    return within(await screen.findByRole("tooltip"))
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+  }
+
+  it("começa bloqueado", () => {
     renderComQuery(<FormularioCampanha />);
 
-    expect(botaoCriar()).toBeDisabled();
-    expect(botaoCriar()).toHaveAttribute("title", "Dê um nome à campanha.");
+    expect(botaoCriar()).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("avança a explicação conforme o formulário é preenchido", async () => {
+  it("lista tudo o que falta preencher num formulário vazio", async () => {
+    renderComQuery(<FormularioCampanha />);
+
+    expect(await checklist()).toEqual([
+      "Dar um nome à campanha (pendente)",
+      "Escolher a conexão que vai disparar (pendente)",
+      "Escrever a mensagem (pendente)",
+      "Fazer upload da planilha de contatos (pendente)",
+    ]);
+  });
+
+  it("marca como concluído o que já foi preenchido", async () => {
     renderComQuery(<FormularioCampanha />);
 
     await userEvent.type(screen.getByLabelText("Nome da campanha"), "Retomada");
+    await escolherInstancia();
 
-    expect(botaoCriar()).toHaveAttribute("title", expect.stringMatching(/escolha a conexão/i));
-    expect(botaoCriar()).toBeDisabled();
+    expect(await checklist()).toEqual([
+      "Dar um nome à campanha (concluído)",
+      "Escolher a conexão que vai disparar (concluído)",
+      "Escrever a mensagem (pendente)",
+      "Fazer upload da planilha de contatos (pendente)",
+    ]);
   });
 
   it("cobra a coluna da variável antes de deixar criar", async () => {
@@ -148,11 +170,18 @@ describe("FormularioCampanha — gate do botão criar", () => {
     await escolherInstancia();
     await escreverMensagem("Olá {{apelido}}");
 
-    expect(botaoCriar()).toHaveAttribute(
-      "title",
-      expect.stringMatching(/coluna de cada variável/i)
+    expect(await checklist()).toContain(
+      "Escolher a coluna de cada variável da mensagem (pendente)"
     );
-    expect(botaoCriar()).toBeDisabled();
+    expect(botaoCriar()).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("não cria nada enquanto o botão está bloqueado", async () => {
+    renderComQuery(<FormularioCampanha />);
+
+    await userEvent.click(botaoCriar());
+
+    expect(mutateCriar).not.toHaveBeenCalled();
   });
 });
 
@@ -169,8 +198,9 @@ describe("FormularioCampanha — criação", () => {
 
     await preencherTudo();
 
-    await waitFor(() => expect(botaoCriar()).toBeEnabled());
-    expect(botaoCriar()).not.toHaveAttribute("title");
+    await waitFor(() => expect(botaoCriar()).not.toHaveAttribute("aria-disabled"));
+    await userEvent.hover(botaoCriar());
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("envia as linhas cruas do CSV e o mapeamento sugerido", async () => {
