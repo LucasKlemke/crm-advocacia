@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Pause, Play } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Pause, Play, RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { useCampanha, useControlarCampanha, useMensagensCampanha } from "@/hooks/use-campanhas";
+import {
+  useCampanha,
+  useControlarCampanha,
+  useMensagensCampanha,
+  useSincronizarCampanha,
+} from "@/hooks/use-campanhas";
 import {
   Table,
   TableBody,
@@ -79,9 +84,28 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
   const [pagina, setPagina] = useState(1);
   const { data, isLoading, isError } = useCampanha(campanhaId, pagina);
   const controlar = useControlarCampanha();
+  const sincronizar = useSincronizarCampanha();
   // Só depois que o banco respondeu: a tabela de destinatários é o que dá contexto ao
   // status, e uma campanha que nem carregou não tem por que consultar a UAZAPI.
   const mensagens = useMensagensCampanha(campanhaId, data !== undefined);
+
+  // Duas chamadas à UAZAPI, diferente da listagem: /sender/listfolders pelos contadores da
+  // campanha e /sender/listmessages pelo status de cada mensagem — aqui as duas coisas
+  // estão na tela. Na listagem só a primeira existe.
+  async function handleSincronizar() {
+    try {
+      await sincronizar.mutateAsync(campanhaId);
+      // `cancelRefetch: false` aproveita o refetch que o invalidate da mutation já
+      // disparou (a query de mensagens vive sob a mesma raiz): sem isso seriam duas
+      // consultas iguais ao /sender/listmessages.
+      await mensagens.refetch({ cancelRefetch: false });
+      toast.success("Campanha e mensagens sincronizadas.");
+    } catch (erro) {
+      toast.error(
+        erro instanceof ApiError ? erro.message : "Não foi possível sincronizar a campanha."
+      );
+    }
+  }
 
   // Mesmas ações da listagem, aqui na tela onde o andamento é acompanhado. O status vem do
   // refetch que a mutation dispara — nada de estado local espelhando a campanha.
@@ -103,6 +127,7 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
   }
 
   const { campanha, itens, total, porPagina } = data;
+  const sincronizando = sincronizar.isPending || mensagens.isFetching;
   const statusPorNumero = resumirPorNumero(mensagens.data?.mensagens ?? []);
   const ultimaPagina = Math.max(1, Math.ceil(total / porPagina));
   // O Json vem cru do banco e pode estar no formato anterior aos tratamentos.
@@ -125,6 +150,16 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
           </div>
           <div className="flex items-center gap-2">
             <StatusBadgeCampanha status={campanha.status} />
+            {/* Sincronizar é leitura de estado: liberado também para o papel padrão. */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={sincronizando}
+              onClick={handleSincronizar}
+            >
+              {sincronizando ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+              Sincronizar
+            </Button>
             {!somenteLeitura && podePausar(campanha.status) ? (
               <Button
                 variant="outline"

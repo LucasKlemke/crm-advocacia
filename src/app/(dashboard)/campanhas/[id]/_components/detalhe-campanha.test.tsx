@@ -5,6 +5,8 @@ import { DetalheCampanha } from "./detalhe-campanha";
 import type { CampanhaDTO, CampanhaItemDTO, MensagemCampanhaDTO } from "@/types/campanha";
 
 const mutateControlar = jest.fn();
+const mutateSincronizar = jest.fn();
+const refetchMensagens = jest.fn();
 const useCampanhaMock = jest.fn();
 const useMensagensMock = jest.fn();
 
@@ -12,6 +14,7 @@ jest.mock("@/hooks/use-campanhas", () => ({
   useCampanha: (...args: unknown[]) => useCampanhaMock(...args),
   useMensagensCampanha: (...args: unknown[]) => useMensagensMock(...args),
   useControlarCampanha: () => ({ mutateAsync: mutateControlar, isPending: false }),
+  useSincronizarCampanha: () => ({ mutateAsync: mutateSincronizar, isPending: false }),
 }));
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
@@ -66,6 +69,7 @@ function mockMensagens(
     isLoading: estado.isLoading ?? false,
     isFetching: estado.isFetching ?? false,
     isError: estado.isError ?? false,
+    refetch: refetchMensagens,
   });
 }
 
@@ -81,6 +85,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockCampanha();
   mockMensagens();
+  mutateSincronizar.mockResolvedValue({ campanha: { id: "campanha-1" } });
+  refetchMensagens.mockResolvedValue({ data: { mensagens: [], total: 0 } });
 });
 
 describe("DetalheCampanha", () => {
@@ -164,6 +170,44 @@ describe("DetalheCampanha — status de cada mensagem", () => {
     expect(screen.getByText(/não foi possível consultar o status das mensagens/i)).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Olá Ana" })).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
+
+// Aqui sincronizar é duas coisas — diferente da listagem, onde só existe a campanha.
+describe("DetalheCampanha — sincronizar", () => {
+  it("atualiza a campanha e o status das mensagens", async () => {
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /sincronizar/i }));
+
+    await waitFor(() => expect(mutateSincronizar).toHaveBeenCalledWith("campanha-1"));
+    // `cancelRefetch: false` para aproveitar o refetch que o invalidate já disparou, em
+    // vez de fazer uma segunda consulta igual ao /sender/listmessages.
+    expect(refetchMensagens).toHaveBeenCalledWith({ cancelRefetch: false });
+  });
+
+  it("não busca o status das mensagens se a campanha falhar", async () => {
+    mutateSincronizar.mockRejectedValue(new Error("uazapi fora do ar"));
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /sincronizar/i }));
+
+    await waitFor(() => expect(mutateSincronizar).toHaveBeenCalled());
+    expect(refetchMensagens).not.toHaveBeenCalled();
+  });
+
+  // Sincronizar é leitura de estado — o service libera para qualquer papel.
+  it("fica disponível para quem só tem leitura", () => {
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura />);
+
+    expect(screen.getByRole("button", { name: /sincronizar/i })).toBeEnabled();
+  });
+
+  it("desabilita enquanto a consulta de mensagens está em andamento", () => {
+    mockMensagens([], { isFetching: true });
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    expect(screen.getByRole("button", { name: /sincronizar/i })).toBeDisabled();
   });
 });
 
