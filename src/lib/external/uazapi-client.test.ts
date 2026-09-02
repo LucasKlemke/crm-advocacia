@@ -417,4 +417,203 @@ describe("uazapiClient", () => {
       );
     });
   });
+
+  const TOKEN_INSTANCIA = "tok-instancia-1";
+
+  describe("criarEnvioAvancado", () => {
+    const envio = {
+      delayMin: 3,
+      delayMax: 6,
+      info: "Campanha de teste",
+      messages: [
+        { number: "5511999999999", type: "text" as const, text: "Olá, Ana" },
+        { number: "5511888888888", type: "text" as const, text: "Olá, Bruno" },
+      ],
+    };
+
+    it("chama POST /sender/advanced com o token da instância e as mensagens no body", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ folder_id: "folder-1", count: 2, status: "queued" })
+      );
+
+      await uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, envio);
+
+      expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/advanced`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          token: TOKEN_INSTANCIA,
+        },
+        body: JSON.stringify({
+          delayMin: 3,
+          delayMax: 6,
+          info: "Campanha de teste",
+          messages: envio.messages,
+        }),
+      });
+    });
+
+    it("inclui scheduled_for apenas quando há agendamento", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ folder_id: "folder-1", count: 2, status: "scheduled" })
+      );
+
+      await uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, { ...envio, scheduledFor: 1767225600000 });
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.scheduled_for).toBe(1767225600000);
+    });
+
+    it("devolve folderId, count e status da resposta", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ folder_id: "folder-1", count: 2, status: "queued" })
+      );
+
+      await expect(uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, envio)).resolves.toEqual({
+        folderId: "folder-1",
+        count: 2,
+        status: "queued",
+      });
+    });
+
+    // Sem folder_id não há como sincronizar nem controlar a campanha depois: é resposta
+    // fora de contrato, não um envio bem-sucedido.
+    it("lança UazapiIndisponivelError quando a resposta não traz folder_id", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ count: 2, status: "queued" }));
+
+      await expect(
+        uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, envio)
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+
+    it("usa o count do corpo ou, na falta dele, o total de mensagens enviadas", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ folder_id: "folder-1" }));
+
+      const resultado = await uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, envio);
+
+      expect(resultado.count).toBe(2);
+    });
+
+    it("lança UazapiIndisponivelError se a resposta HTTP não for 2xx", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({}, { status: 401 }));
+
+      await expect(
+        uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, envio)
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+  });
+
+  describe("listarCampanhas", () => {
+    it("chama GET /sender/listfolders com o token da instância e sem body", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake([]));
+
+      await uazapiClient.listarCampanhas(TOKEN_INSTANCIA);
+
+      const chamada = (global.fetch as jest.Mock).mock.calls[0];
+      expect(chamada[0]).toBe(`${SERVER_URL}/sender/listfolders`);
+      expect(chamada[1]).toEqual({
+        method: "GET",
+        headers: { Accept: "application/json", token: TOKEN_INSTANCIA },
+      });
+      expect(chamada[1]).not.toHaveProperty("body");
+    });
+
+    it("mapeia os contadores snake_case da UAZAPI para camelCase", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake([
+          {
+            id: "folder-1",
+            info: "Campanha de teste",
+            status: "sending",
+            log_total: 10,
+            log_sucess: 7,
+            log_failed: 1,
+            log_delivered: 6,
+            log_read: 4,
+            log_played: 2,
+          },
+        ])
+      );
+
+      await expect(uazapiClient.listarCampanhas(TOKEN_INSTANCIA)).resolves.toEqual([
+        {
+          id: "folder-1",
+          info: "Campanha de teste",
+          status: "sending",
+          logTotal: 10,
+          logSucesso: 7,
+          logFalha: 1,
+          logEntregue: 6,
+          logLido: 4,
+          logReproduzido: 2,
+        },
+      ]);
+    });
+
+    it("trata contador ausente como zero", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake([{ id: "folder-1", status: "done" }])
+      );
+
+      const [folder] = await uazapiClient.listarCampanhas(TOKEN_INSTANCIA);
+
+      expect(folder.logTotal).toBe(0);
+      expect(folder.logSucesso).toBe(0);
+      expect(folder.logFalha).toBe(0);
+    });
+
+    // Mesmo formato de /instance/all: array na raiz do corpo, e não um objeto.
+    it("lança UazapiIndisponivelError se a resposta não for um array", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ folders: [] }));
+
+      await expect(uazapiClient.listarCampanhas(TOKEN_INSTANCIA)).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+  });
+
+  describe("controlarCampanha", () => {
+    it("chama POST /sender/edit com folder_id e action", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake(null));
+
+      await uazapiClient.controlarCampanha(TOKEN_INSTANCIA, "folder-1", "stop");
+
+      expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/edit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          token: TOKEN_INSTANCIA,
+        },
+        body: JSON.stringify({ folder_id: "folder-1", action: "stop" }),
+      });
+    });
+
+    // O endpoint documenta resposta `null`. Sem tolerar corpo vazio, uma ação
+    // bem-sucedida viraria UazapiIndisponivelError (502) na cara do usuário.
+    it("aceita corpo vazio como sucesso", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake(null));
+
+      await expect(
+        uazapiClient.controlarCampanha(TOKEN_INSTANCIA, "folder-1", "continue")
+      ).resolves.toBeUndefined();
+    });
+
+    it("lança UazapiIndisponivelError se a resposta HTTP não for 2xx", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake(null, { status: 404 }));
+
+      await expect(
+        uazapiClient.controlarCampanha(TOKEN_INSTANCIA, "folder-1", "delete")
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+
+    it("lança UazapiIndisponivelError em caso de falha de rede", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"));
+
+      await expect(
+        uazapiClient.controlarCampanha(TOKEN_INSTANCIA, "folder-1", "stop")
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+  });
 });

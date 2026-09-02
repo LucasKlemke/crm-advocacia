@@ -35,7 +35,10 @@ async function chamarUazapi(
   caminho: string,
   headers: Record<string, string>,
   body?: unknown,
-  method: "GET" | "POST" = "POST"
+  method: "GET" | "POST" = "POST",
+  // /sender/edit responde 200 com corpo `null` (documentado). Sem esta saída, uma ação
+  // bem-sucedida cairia na validação de contrato abaixo e viraria 502 pro usuário.
+  aceitaCorpoVazio = false
 ): Promise<Record<string, unknown>> {
   // A URL é resolvida fora do try: env var ausente é erro de configuração explícito,
   // não pode virar UazapiIndisponivelError genérico junto com falha de rede.
@@ -60,10 +63,46 @@ async function chamarUazapi(
   // não-2xx — não pode borbulhar como SyntaxError cru (mesmo tratamento de api-client.ts).
   const corpo: unknown = await resposta.json().catch(() => null);
   if (corpo === null || typeof corpo !== "object") {
+    if (aceitaCorpoVazio) return {};
     throw new UazapiIndisponivelError();
   }
 
   return corpo as Record<string, unknown>;
+}
+
+// Uma linha do array devolvido por /sender/listfolders — os contadores chegam em
+// snake_case (e log_sucess mesmo, com um "c" só, como está na doc da UAZAPI).
+export interface CampanhaUazapi {
+  id: string;
+  info?: string;
+  status: string;
+  logTotal: number;
+  logSucesso: number;
+  logFalha: number;
+  logEntregue: number;
+  logLido: number;
+  logReproduzido: number;
+}
+
+export interface MensagemEnvioAvancado {
+  number: string;
+  type: "text";
+  text: string;
+}
+
+export interface EnvioAvancado {
+  delayMin: number;
+  delayMax: number;
+  info: string;
+  // Epoch em milissegundos. Ausente = a UAZAPI enfileira para envio imediato.
+  scheduledFor?: number;
+  messages: MensagemEnvioAvancado[];
+}
+
+export type AcaoCampanhaUazapi = "stop" | "continue" | "delete";
+
+function inteiro(valor: unknown): number {
+  return typeof valor === "number" && Number.isFinite(valor) ? valor : 0;
 }
 
 export const uazapiClient = {
@@ -207,5 +246,89 @@ export const uazapiClient = {
         adminField01: (raw.adminField01 as string | undefined) || undefined,
       };
     });
+  },
+
+  // Registra a campanha inteira na UAZAPI de uma vez: uma entrada em `messages` por
+  // destinatário, com o texto já renderizado. Autenticado com o token da instância que
+  // vai disparar (não o admintoken) — é ela que fica dona da campanha.
+  async criarEnvioAvancado(
+    uazapiToken: string,
+    envio: EnvioAvancado
+  ): Promise<{ folderId: string; count: number; status: string }> {
+    const body = await chamarUazapi(
+      "/sender/advanced",
+      {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        token: uazapiToken,
+      },
+      {
+        delayMin: envio.delayMin,
+        delayMax: envio.delayMax,
+        info: envio.info,
+        ...(envio.scheduledFor !== undefined ? { scheduled_for: envio.scheduledFor } : {}),
+        messages: envio.messages,
+      }
+    );
+
+    // Sem folder_id não dá para sincronizar estatísticas nem pausar/excluir depois — a
+    // campanha ficaria órfã na UAZAPI. Resposta assim é quebra de contrato, não sucesso.
+    const folderId = body.folder_id as string | undefined;
+    if (!folderId) {
+      throw new UazapiIndisponivelError();
+    }
+
+    return {
+      folderId,
+      count: inteiro(body.count) || envio.messages.length,
+      status: (body.status as string | undefined) ?? "",
+    };
+  },
+
+  async listarCampanhas(uazapiToken: string): Promise<CampanhaUazapi[]> {
+    const corpo = await chamarUazapi(
+      "/sender/listfolders",
+      { Accept: "application/json", token: uazapiToken },
+      undefined,
+      "GET"
+    );
+
+    // Array na raiz do corpo, como /instance/all — e chamarUazapi só garante "é objeto".
+    if (!Array.isArray(corpo)) {
+      throw new UazapiIndisponivelError();
+    }
+
+    return corpo.map((item: unknown) => {
+      const raw = item as Record<string, unknown>;
+      return {
+        id: raw.id as string,
+        info: (raw.info as string | undefined) || undefined,
+        status: raw.status as string,
+        logTotal: inteiro(raw.log_total),
+        logSucesso: inteiro(raw.log_sucess),
+        logFalha: inteiro(raw.log_failed),
+        logEntregue: inteiro(raw.log_delivered),
+        logLido: inteiro(raw.log_read),
+        logReproduzido: inteiro(raw.log_played),
+      };
+    });
+  },
+
+  async controlarCampanha(
+    uazapiToken: string,
+    folderId: string,
+    acao: AcaoCampanhaUazapi
+  ): Promise<void> {
+    await chamarUazapi(
+      "/sender/edit",
+      {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        token: uazapiToken,
+      },
+      { folder_id: folderId, action: acao },
+      "POST",
+      true
+    );
   },
 };
