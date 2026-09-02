@@ -21,6 +21,7 @@ function instancia(status: InstanciaWhatsappDTO["status"]): InstanciaWhatsappDTO
     status,
     numeroConectado: status === "connected" ? "5511999999999" : null,
     fotoPerfilUrl: null,
+    softDeletedAt: null,
     createdAt: "2026-08-01T12:00:00.000Z",
     updatedAt: "2026-08-01T12:00:00.000Z",
   };

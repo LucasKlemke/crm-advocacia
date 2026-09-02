@@ -50,7 +50,7 @@ function campanhaFake(over: Partial<CampanhaDTO> = {}): CampanhaDTO {
     sincronizadoEm: null,
     createdAt: "2026-02-01T10:00:00.000Z",
     updatedAt: "2026-02-01T10:00:00.000Z",
-    instancia: { id: "instancia-1", nome: "Atendimento", status: "connected" },
+    instancia: { id: "instancia-1", nome: "Atendimento", status: "connected", softDeletedAt: null },
     ...over,
   };
 }

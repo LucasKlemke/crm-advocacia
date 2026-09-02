@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { podePausar, podeRetomar } from "./controle-campanha";
+import { rotuloInstancia } from "./rotulo-instancia";
 import { StatusBadgeCampanha } from "./status-badge-campanha";
 import type { CampanhaDTO } from "@/types/campanha";
 
@@ -143,7 +144,7 @@ export function ListaCampanhas({ somenteLeitura }: ListaCampanhasProps) {
                         {campanha.nome}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {campanha.instancia?.nome ?? "Instância removida"} ·{" "}
+                        {rotuloInstancia(campanha.instancia)} ·{" "}
                         {campanha.totalDestinatarios} destinatário(s)
                       </p>
                     </TableCell>

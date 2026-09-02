@@ -6,7 +6,9 @@ type Db = Pick<PrismaClient, "campanha">;
 // Campanha listada com o nome da instância que dispara — a listagem sempre mostra os
 // dois juntos, e trazer só o nome evita arrastar o uazapiToken da instância pra cá.
 const COM_INSTANCIA = {
-  instancia: { select: { id: true, nome: true, status: true } },
+  // softDeletedAt vem junto porque a instância excluída continua vinculada à campanha
+  // (a exclusão é soft): a tela precisa distinguir "instância viva" de "instância excluída".
+  instancia: { select: { id: true, nome: true, status: true, softDeletedAt: true } },
 } satisfies Prisma.CampanhaInclude;
 
 export type CampanhaComInstancia = Prisma.CampanhaGetPayload<{ include: typeof COM_INSTANCIA }>;

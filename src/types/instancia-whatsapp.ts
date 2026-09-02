@@ -11,6 +11,9 @@ export interface InstanciaWhatsappDTO {
   status: StatusInstanciaWhatsapp;
   numeroConectado: string | null;
   fotoPerfilUrl: string | null;
+  // Sempre null aqui: /api/instancias só devolve as ativas. O campo existe porque semToken
+  // só remove o uazapiToken, então ele atravessa a serialização como qualquer outro.
+  softDeletedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

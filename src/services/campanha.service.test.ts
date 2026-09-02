@@ -9,7 +9,10 @@ import {
 } from "./campanha.service";
 import { campanhaRepository } from "@/repositories/campanha.repository";
 import { campanhaItemRepository } from "@/repositories/campanha-item.repository";
-import { instanciaWhatsappService } from "@/services/instancia-whatsapp.service";
+import {
+  instanciaWhatsappService,
+  InstanciaWhatsappNaoEncontradaError,
+} from "@/services/instancia-whatsapp.service";
 import { uazapiClient, UazapiIndisponivelError } from "@/lib/external/uazapi-client";
 import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
@@ -24,7 +27,7 @@ jest.mock("@/services/instancia-whatsapp.service", () => {
   const real = jest.requireActual("@/services/instancia-whatsapp.service");
   return {
     ...real,
-    instanciaWhatsappService: { obterComToken: jest.fn() },
+    instanciaWhatsappService: { obterComToken: jest.fn(), obterAtivaComToken: jest.fn() },
   };
 });
 jest.mock("@/lib/prisma", () => ({
@@ -50,6 +53,7 @@ function instanciaFake(over: Partial<InstanciaWhatsapp> = {}): InstanciaWhatsapp
     uazapiInstanceId: "uazapi-id-1",
     uazapiToken: "token-secreto",
     status: "connected",
+    softDeletedAt: null,
     numeroConectado: "5511999999999",
     fotoPerfilUrl: null,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -107,6 +111,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   logs.registrar.mockResolvedValue({} as never);
   instancias.obterComToken.mockResolvedValue(instanciaFake());
+  instancias.obterAtivaComToken.mockResolvedValue(instanciaFake());
   client.criarEnvioAvancado.mockResolvedValue({
     folderId: "folder-1",
     count: 2,
@@ -198,10 +203,23 @@ describe("campanhaService.criar", () => {
   });
 
   it("recusa instância que não está conectada", async () => {
-    instancias.obterComToken.mockResolvedValue(instanciaFake({ status: "disconnected" }));
+    instancias.obterAtivaComToken.mockResolvedValue(instanciaFake({ status: "disconnected" }));
 
     await expect(campanhaService.criar(ctx(), DADOS)).rejects.toThrow(InstanciaNaoConectadaError);
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
+  });
+
+  // Uma instância excluída mantém `status: connected` na linha local: sem resolver pela
+  // variante estrita, daria para disparar campanha nova por uma instância morta mandando
+  // o id direto pra rota (a UI só oferece as ativas).
+  it("resolve a instância pela variante que recusa instância excluída", async () => {
+    instancias.obterAtivaComToken.mockRejectedValue(new InstanciaWhatsappNaoEncontradaError());
+
+    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toThrow(
+      InstanciaWhatsappNaoEncontradaError
+    );
+    expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
+    expect(repo.create).not.toHaveBeenCalled();
   });
 
   it("recusa variável do template sem coluna mapeada", async () => {

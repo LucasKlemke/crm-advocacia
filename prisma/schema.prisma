@@ -365,6 +365,9 @@ model Caso {
 // Instância WhatsApp: vinculação entre um escritório e uma instância UAZAPI para envio de mensagens.
 // Cada escritório pode ter múltiplas instâncias (ex.: diferentes números/bots). O status acompanha
 // o ciclo de conexão (desconectado → conectando → conectado; hibernado se inativo).
+// Nunca é apagada fisicamente (RN30): "excluir" grava soft_deleted_at (ativa = NULL), porque esta
+// linha é a única cópia do uazapi_token — sem ela, toda campanha daquela instância perde o canal
+// de controle com a UAZAPI e nunca mais pode ser sincronizada, pausada ou excluída.
 model InstanciaWhatsapp {
   id               String                  @id @default(uuid())
   escritorioId     String                  @map("escritorio_id")
@@ -374,14 +377,20 @@ model InstanciaWhatsapp {
   status           StatusInstanciaWhatsapp @default(disconnected)
   numeroConectado  String?                 @map("numero_conectado") @db.VarChar(20)
   fotoPerfilUrl    String?                 @map("foto_perfil_url")
+  softDeletedAt    DateTime?               @map("soft_deleted_at")
   createdAt        DateTime                @default(now()) @map("created_at")
   updatedAt        DateTime                @updatedAt @map("updated_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   campanhas  Campanha[]
 
+  // O unique abrange as soft-deletadas de propósito (mesma escolha de Cliente com o CPF):
+  // manter o nome reservado é o que torna segura a ressurreição feita por sincronizarTodas
+  // quando a instância reaparece na UAZAPI — sem isso, um nome reaproveitado no intervalo
+  // faria a restauração estourar P2002 e derrubar o lote inteiro.
   @@unique([escritorioId, nome])
   @@index([escritorioId])
+  @@index([escritorioId, softDeletedAt])
   @@map("instancia_whatsapp")
 }
 
@@ -420,10 +429,13 @@ model Campanha {
   updatedAt           DateTime       @updatedAt @map("updated_at")
 
   escritorio Escritorio         @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
-  // SetNull, e não Restrict: instanciaWhatsappService.sincronizarTodas apaga instâncias
-  // que sumiram da UAZAPI ("fantasmas"), e um Restrict aqui faria essa limpeza estourar.
-  // Sem instância a campanha vira histórico somente-leitura (sem token, não dá para
-  // sincronizar nem controlar).
+  // SetNull, e não Restrict: a aplicação não apaga mais instância fisicamente (RN30 — a
+  // exclusão é soft, via soft_deleted_at), então esta ação referencial só existe como rede
+  // de segurança para uma remoção feita fora da aplicação. Restrict aqui quebraria o DELETE
+  // de Escritorio, cujo cascade apaga campanha e instancia_whatsapp juntas: no Postgres o
+  // RESTRICT é checado imediatamente e não pode ser adiado até o fim do statement.
+  // instancia_whatsapp_id nulo só existe em campanhas anteriores ao soft delete; elas seguem
+  // como histórico somente-leitura (sem token, não dá para sincronizar nem controlar).
   instancia  InstanciaWhatsapp? @relation(fields: [instanciaWhatsappId], references: [id], onDelete: SetNull)
   criadoPor  Usuario            @relation("CampanhaCriadaPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
   itens      CampanhaItem[]

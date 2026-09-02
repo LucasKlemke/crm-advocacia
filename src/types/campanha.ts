@@ -31,7 +31,15 @@ export interface CampanhaDTO {
   sincronizadoEm: string | null;
   createdAt: string;
   updatedAt: string;
-  instancia: { id: string; nome: string; status: StatusInstanciaWhatsapp } | null;
+  // null só em campanha anterior ao soft delete de instância, cuja FK foi zerada quando a
+  // instância era apagada de verdade. Hoje o vínculo sobrevive, e softDeletedAt diz se ela
+  // ainda está ativa.
+  instancia: {
+    id: string;
+    nome: string;
+    status: StatusInstanciaWhatsapp;
+    softDeletedAt: string | null;
+  } | null;
 }
 
 export interface CampanhaItemDTO {

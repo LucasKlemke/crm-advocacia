@@ -33,6 +33,7 @@ const CONECTADA: InstanciaWhatsappDTO = {
   status: "connected",
   numeroConectado: "5511999999999",
   fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+  softDeletedAt: null,
   createdAt: "2026-08-01T12:00:00.000Z",
   updatedAt: "2026-08-01T12:00:00.000Z",
 };
@@ -45,6 +46,7 @@ const DESCONECTADA: InstanciaWhatsappDTO = {
   status: "disconnected",
   numeroConectado: null,
   fotoPerfilUrl: null,
+  softDeletedAt: null,
   createdAt: "2026-08-01T12:00:00.000Z",
   updatedAt: "2026-08-01T12:00:00.000Z",
 };

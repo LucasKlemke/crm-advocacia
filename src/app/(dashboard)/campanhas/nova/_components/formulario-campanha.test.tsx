@@ -33,6 +33,7 @@ function instanciaFake(over: Partial<InstanciaWhatsappDTO> = {}): InstanciaWhats
     status: "connected",
     numeroConectado: "5511999998888",
     fotoPerfilUrl: null,
+    softDeletedAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...over,

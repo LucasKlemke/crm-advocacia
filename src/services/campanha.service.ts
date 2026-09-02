@@ -306,7 +306,10 @@ export const campanhaService = {
   async criar(ctx: TenantContext, dados: DadosNovaCampanha): Promise<CampanhaComInstancia> {
     exigirPapelDeGestao(ctx);
 
-    const instancia = await instanciaWhatsappService.obterComToken(ctx, dados.instanciaId);
+    // Variante estrita de propósito: uma instância excluída mantém `status: connected` na
+    // linha local, então usar obterComToken aqui deixaria disparar campanha nova por uma
+    // instância morta. O caminho permissivo é só para o histórico (sincronizar/controlar).
+    const instancia = await instanciaWhatsappService.obterAtivaComToken(ctx, dados.instanciaId);
     if (instancia.status !== "connected") {
       throw new InstanciaNaoConectadaError();
     }
@@ -374,7 +377,15 @@ export const campanhaService = {
           tx
         );
 
-        return { ...campanha, instancia: { id: instancia.id, nome: instancia.nome, status: instancia.status } };
+        return {
+          ...campanha,
+          instancia: {
+            id: instancia.id,
+            nome: instancia.nome,
+            status: instancia.status,
+            softDeletedAt: instancia.softDeletedAt,
+          },
+        };
       },
       { timeout: TIMEOUT_TRANSACAO_MS }
     );

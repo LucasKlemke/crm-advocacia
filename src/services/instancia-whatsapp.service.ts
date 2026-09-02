@@ -16,8 +16,15 @@ export class InstanciaWhatsappNaoEncontradaError extends Error {
 }
 
 export class NomeInstanciaDuplicadoError extends Error {
-  constructor() {
-    super("Já existe uma instância de WhatsApp com este nome neste escritório.");
+  // A excluída mantém o nome reservado (o @@unique abrange as duas), então o usuário
+  // precisa saber por que um nome que não aparece em lugar nenhum está ocupado — mesma
+  // distinção que CpfDuplicadoError faz no cadastro de cliente.
+  constructor(excluida: boolean) {
+    super(
+      excluida
+        ? "Já existe uma instância excluída com este nome. Escolha outro nome para a nova instância."
+        : "Já existe uma instância de WhatsApp com este nome neste escritório."
+    );
     this.name = "NomeInstanciaDuplicadoError";
   }
 }
@@ -62,6 +69,9 @@ function paraStatusInstancia(valor: string): StatusInstanciaWhatsapp {
   throw new UazapiIndisponivelError("A UAZAPI retornou um status de instância inesperado.");
 }
 
+// Permissivo quanto ao soft delete: resolve inclusive a instância excluída. É por aqui que
+// obterComToken devolve o token de uma instância removida, sem o qual as campanhas dela
+// ficariam sem canal de controle com a UAZAPI.
 async function obterDoTenant(ctx: TenantContext, id: string): Promise<InstanciaWhatsapp> {
   const instancia = await instanciaWhatsappRepository.findById(id);
   // Instância de outro escritório é tratada como inexistente — não confirma a existência.
@@ -69,6 +79,37 @@ async function obterDoTenant(ctx: TenantContext, id: string): Promise<InstanciaW
     throw new InstanciaWhatsappNaoEncontradaError();
   }
   return instancia;
+}
+
+// Estrito: instância excluída é tratada como inexistente. Usado por tudo que age sobre a
+// instância (reconectar/desconectar/verificar/excluir) e por quem cria campanha nova —
+// só a consulta ao histórico pode alcançar uma excluída.
+async function obterAtivaDoTenant(ctx: TenantContext, id: string): Promise<InstanciaWhatsapp> {
+  const instancia = await obterDoTenant(ctx, id);
+  if (instancia.softDeletedAt !== null) {
+    throw new InstanciaWhatsappNaoEncontradaError();
+  }
+  return instancia;
+}
+
+// Roda `acao` e, se ela falhar, apaga na UAZAPI a instância recém-criada cujo token ainda
+// não foi persistido. Sem isso a instância fica órfã na conta compartilhada por todos os
+// escritórios: `deletarInstancia` exige o token, que só existia nesta variável local, e
+// `sincronizarTodas` só enxerga o que está no banco.
+// A limpeza é best-effort — se ela também falhar, quem sobe é o erro original, que é o que
+// explica o problema pro usuário.
+async function comLimpezaNaUazapi<T>(token: string, acao: () => Promise<T>): Promise<T> {
+  try {
+    return await acao();
+  } catch (erro) {
+    try {
+      await uazapiClient.deletarInstancia(token);
+    } catch {
+      // Instância órfã na UAZAPI é um problema operacional; mascarar a causa raiz aqui
+      // seria pior, porque é ela que o usuário precisa ver.
+    }
+    throw erro;
+  }
 }
 
 // Compara o estado local com o que a UAZAPI acabou de devolver — mesma regra de
@@ -102,7 +143,7 @@ export const instanciaWhatsappService = {
     const nome = dados.nome.trim();
     const existente = await instanciaWhatsappRepository.findByNome(ctx.escritorioId, nome);
     if (existente) {
-      throw new NomeInstanciaDuplicadoError();
+      throw new NomeInstanciaDuplicadoError(existente.softDeletedAt !== null);
     }
 
     // A UAZAPI é uma conta única compartilhada por todos os escritórios: `nome` só é
@@ -116,44 +157,53 @@ export const instanciaWhatsappService = {
     const criada = await uazapiClient.criarInstancia(nomeNamespaced, {
       adminField01: ctx.escritorioId,
     });
-    const conexao = await uazapiClient.conectarInstancia(criada.token);
-    // Valida o status ANTES de entrar na transação: um status fora do contrato aborta
-    // aqui, sem nenhuma escrita no banco e sem log.
-    const statusValidado = paraStatusInstancia(conexao.status);
 
-    const instancia = await prisma.$transaction(async (tx) => {
-      const nova = await instanciaWhatsappRepository.create(
-        {
-          nome,
-          uazapiInstanceId: criada.id,
-          uazapiToken: criada.token,
-          status: statusValidado,
-          // Instância recém-criada normalmente ainda não tem número/foto, mas o usuário
-          // confirmou que /instance/connect às vezes já os devolve — passa adiante quando vem.
-          ...(conexao.numeroConectado !== undefined
-            ? { numeroConectado: conexao.numeroConectado }
-            : {}),
-          ...(conexao.fotoPerfilUrl !== undefined ? { fotoPerfilUrl: conexao.fotoPerfilUrl } : {}),
-          escritorio: { connect: { id: ctx.escritorioId } },
-        },
-        tx
-      );
+    // Daqui em diante a instância já existe na conta UAZAPI compartilhada, mas o token
+    // dela ainda não foi persistido. Qualquer falha antes da gravação precisa desfazer a
+    // criação lá: descartar o token deixaria a instância órfã e irremovível (deletar exige
+    // o token, e sincronizarTodas só enxerga o que está no banco).
+    return comLimpezaNaUazapi(criada.token, async () => {
+      const conexao = await uazapiClient.conectarInstancia(criada.token);
+      // Valida o status ANTES de entrar na transação: um status fora do contrato aborta
+      // aqui, sem nenhuma escrita no banco e sem log.
+      const statusValidado = paraStatusInstancia(conexao.status);
 
-      await logService.registrar(
-        ctx,
-        {
-          acao: "criar",
-          entidade: "instancia_whatsapp",
-          entidadeId: nova.id,
-          resumo: `Instância ${nova.nome} criada`,
-        },
-        tx
-      );
+      const instancia = await prisma.$transaction(async (tx) => {
+        const nova = await instanciaWhatsappRepository.create(
+          {
+            nome,
+            uazapiInstanceId: criada.id,
+            uazapiToken: criada.token,
+            status: statusValidado,
+            // Instância recém-criada normalmente ainda não tem número/foto, mas o usuário
+            // confirmou que /instance/connect às vezes já os devolve — passa adiante quando vem.
+            ...(conexao.numeroConectado !== undefined
+              ? { numeroConectado: conexao.numeroConectado }
+              : {}),
+            ...(conexao.fotoPerfilUrl !== undefined
+              ? { fotoPerfilUrl: conexao.fotoPerfilUrl }
+              : {}),
+            escritorio: { connect: { id: ctx.escritorioId } },
+          },
+          tx
+        );
 
-      return nova;
+        await logService.registrar(
+          ctx,
+          {
+            acao: "criar",
+            entidade: "instancia_whatsapp",
+            entidadeId: nova.id,
+            resumo: `Instância ${nova.nome} criada`,
+          },
+          tx
+        );
+
+        return nova;
+      });
+
+      return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
     });
-
-    return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
   },
 
   async reconectar(
@@ -162,7 +212,7 @@ export const instanciaWhatsappService = {
   ): Promise<{ instancia: InstanciaSemToken; qrcode?: string; paircode?: string }> {
     exigirPapelDeGestao(ctx);
 
-    const atual = await obterDoTenant(ctx, id);
+    const atual = await obterAtivaDoTenant(ctx, id);
     // Reusa o token já salvo — não recria a instância na UAZAPI.
     const conexao = await uazapiClient.conectarInstancia(atual.uazapiToken);
     // Valida o status ANTES de entrar na transação: um status fora do contrato aborta
@@ -206,7 +256,7 @@ export const instanciaWhatsappService = {
   async desconectar(ctx: TenantContext, id: string): Promise<InstanciaSemToken> {
     exigirPapelDeGestao(ctx);
 
-    const atual = await obterDoTenant(ctx, id);
+    const atual = await obterAtivaDoTenant(ctx, id);
     // Chamada externa fora da transação — e antes dela: se a UAZAPI recusar, o estado
     // local continua refletindo a sessão que ainda está de pé, sem log de mentira.
     await uazapiClient.desconectarInstancia(atual.uazapiToken);
@@ -239,20 +289,20 @@ export const instanciaWhatsappService = {
     return semToken(instancia);
   },
 
-  // Remove a instância dos dois lados: primeiro na UAZAPI, depois aqui. Campanhas que
-  // apontavam pra ela não são apagadas junto — a FK é onDelete: SetNull, então o
-  // histórico dos disparos sobrevive à exclusão da instância.
+  // Remove a instância dos dois lados: primeiro na UAZAPI, depois aqui. Aqui a remoção é
+  // soft (RN30): a linha guarda o uazapi_token, e apagá-la deixaria toda campanha daquela
+  // instância sem canal de controle — sem poder sincronizar, pausar nem excluir.
   async excluir(ctx: TenantContext, id: string): Promise<void> {
     exigirPapelDeGestao(ctx);
 
-    const atual = await obterDoTenant(ctx, id);
+    const atual = await obterAtivaDoTenant(ctx, id);
     // Ordem proposital: se a UAZAPI recusar, nada é removido daqui e a instância segue
     // utilizável. O inverso — apagar local e falhar lá — deixaria uma instância órfã na
     // UAZAPI, invisível pro escritório e impossível de excluir pela UI.
     await uazapiClient.deletarInstancia(atual.uazapiToken);
 
     await prisma.$transaction(async (tx) => {
-      await instanciaWhatsappRepository.delete(id, tx);
+      await instanciaWhatsappRepository.marcarExcluida(id, new Date(), tx);
 
       await logService.registrar(
         ctx,
@@ -276,8 +326,15 @@ export const instanciaWhatsappService = {
     return obterDoTenant(ctx, id);
   },
 
+  // Variante estrita de obterComToken, para quem vai iniciar um disparo novo: uma instância
+  // excluída mantém `status: connected` na linha local, então sem esta checagem daria para
+  // criar campanha numa instância morta mandando o id direto pra rota.
+  async obterAtivaComToken(ctx: TenantContext, id: string): Promise<InstanciaWhatsapp> {
+    return obterAtivaDoTenant(ctx, id);
+  },
+
   async verificarStatus(ctx: TenantContext, id: string): Promise<InstanciaSemToken> {
-    const atual = await obterDoTenant(ctx, id);
+    const atual = await obterAtivaDoTenant(ctx, id);
     const consulta = await uazapiClient.consultarStatus(atual.uazapiToken);
     // Valida o status ANTES de qualquer comparação/escrita: um status fora do contrato
     // aborta aqui, sem nenhuma escrita no banco e sem log.
@@ -329,12 +386,19 @@ export const instanciaWhatsappService = {
   // guardamos localmente. Uma entrada remota sem correspondência local nunca vira uma
   // linha nova e nunca é usada pra atualizar outra coisa. E o inverso: uma linha JÁ
   // deste escritório sem correspondência remota é tratada como instância fantasma
-  // (removida direto na UAZAPI) e é excluída daqui também — nunca fica só "ignorada".
+  // (removida direto na UAZAPI) e é marcada como excluída daqui — nunca fica só
+  // "ignorada", mas também nunca é apagada: a linha é a única cópia do token (RN30).
+  // A operação é reversível nos dois sentidos — a instância que reaparece é restaurada —,
+  // o que é o que impede uma resposta transitoriamente parcial da UAZAPI de virar perda
+  // permanente de acesso às campanhas.
   async sincronizarTodas(ctx: TenantContext): Promise<InstanciaSemToken[]> {
-    const locais = await instanciaWhatsappRepository.listar(ctx.escritorioId);
+    // Inclui as excluídas: são elas que podem reaparecer na UAZAPI e ser restauradas.
+    const locais = await instanciaWhatsappRepository.listar(ctx.escritorioId, {
+      incluirExcluidas: true,
+    });
 
-    // Escritório sem nenhuma instância: não há nada pra casar, então nem vale a pena
-    // fazer a chamada de conta inteira à UAZAPI.
+    // Escritório sem nenhuma instância (nem excluída): não há nada pra casar, então nem
+    // vale a pena fazer a chamada de conta inteira à UAZAPI.
     if (locais.length === 0) {
       return [];
     }
@@ -345,17 +409,21 @@ export const instanciaWhatsappService = {
     for (const local of locais) {
       const remota = porId.get(local.uazapiInstanceId);
       // Não apareceu na resposta da UAZAPI (que lista TODAS as instâncias da conta):
-      // não existe mais do lado de lá — instância "fantasma", remove daqui também.
+      // não existe mais do lado de lá — instância "fantasma", marcada como excluída aqui.
       if (!remota) {
+        // Já estava marcada: re-carimbar a data só produziria log de auditoria sem
+        // nenhuma mudança por trás (RN20 é sobre escrita real).
+        if (local.softDeletedAt) continue;
+
         await prisma.$transaction(async (tx) => {
-          await instanciaWhatsappRepository.delete(local.id, tx);
+          await instanciaWhatsappRepository.marcarExcluida(local.id, new Date(), tx);
           await logService.registrar(
             ctx,
             {
               acao: "excluir",
               entidade: "instancia_whatsapp",
               entidadeId: local.id,
-              resumo: `Instância ${local.nome} removida (não encontrada na UAZAPI)`,
+              resumo: `Instância ${local.nome} marcada como excluída (não encontrada na UAZAPI)`,
             },
             tx
           );
@@ -369,7 +437,8 @@ export const instanciaWhatsappService = {
       } catch {
         // Status fora do enum PARA ESSA instância não pode abortar o restante do lote —
         // diferente de verificarStatus (uma instância só), aqui um item malformado só
-        // pula ele mesmo e o loop segue pras outras.
+        // pula ele mesmo e o loop segue pras outras. Uma instância excluída que reaparece
+        // assim também não é restaurada: sem status confiável, não há o que gravar.
         continue;
       }
 
@@ -379,25 +448,39 @@ export const instanciaWhatsappService = {
         fotoPerfilUrl: remota.fotoPerfilUrl,
       });
 
+      // Reapareceu na UAZAPI depois de ter sido marcada: volta a valer. É o que torna a
+      // marcação reversível — sem isso, uma resposta parcial da UAZAPI sumiria com a
+      // instância para sempre, já que não há tela de restaurar.
+      const ressuscitar = local.softDeletedAt !== null;
+
       // Nada mudou pra essa instância: não escreve, não loga (RN20 é sobre escrita real).
-      if (!mudou) continue;
+      // A restauração conta como mudança mesmo com status idêntico ao que já estava salvo.
+      if (!mudou && !ressuscitar) continue;
 
       await prisma.$transaction(async (tx) => {
-        const atualizada = await instanciaWhatsappRepository.atualizarConexao(
-          local.id,
-          { status: statusValidado, numeroConectado, fotoPerfilUrl },
-          tx
-        );
+        if (ressuscitar) {
+          await instanciaWhatsappRepository.restaurar(local.id, tx);
+        }
+
+        const atualizada = mudou
+          ? await instanciaWhatsappRepository.atualizarConexao(
+              local.id,
+              { status: statusValidado, numeroConectado, fotoPerfilUrl },
+              tx
+            )
+          : local;
 
         // Uma linha de log por entidade efetivamente alterada (ação em lote — nunca um
         // log combinado do lote inteiro).
         await logService.registrar(
           ctx,
           {
-            acao: "atualizar",
+            acao: ressuscitar ? "restaurar" : "atualizar",
             entidade: "instancia_whatsapp",
             entidadeId: atualizada.id,
-            resumo: `Instância ${atualizada.nome} sincronizada`,
+            resumo: ressuscitar
+              ? `Instância ${atualizada.nome} reapareceu na UAZAPI e foi restaurada`
+              : `Instância ${atualizada.nome} sincronizada`,
           },
           tx
         );

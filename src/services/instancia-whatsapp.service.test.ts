@@ -34,6 +34,7 @@ function instanciaFake(over: Partial<InstanciaWhatsapp> = {}): InstanciaWhatsapp
     uazapiInstanceId: "uazapi-id-1",
     uazapiToken: "token-secreto",
     status: "connected",
+    softDeletedAt: null,
     numeroConectado: "5511999999999",
     fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -200,6 +201,59 @@ describe("instanciaWhatsappService.criarEConectar", () => {
       expect.anything()
     );
     expect(resultado.instancia.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto.jpg");
+  });
+
+  // A conta UAZAPI é compartilhada por todos os escritórios. Sem compensar, o token da
+  // instância recém-criada é descartado e ela fica lá para sempre: deletarInstancia exige
+  // esse token, e sincronizarTodas só enxerga o que existe no banco.
+  it("apaga a instância recém-criada na UAZAPI quando a conexão falha depois da criação", async () => {
+    repo.findByNome.mockResolvedValue(null);
+    client.criarInstancia.mockResolvedValue({
+      id: "uazapi-id-1",
+      token: "token-orfao",
+      status: "disconnected",
+    });
+    client.conectarInstancia.mockRejectedValue(new UazapiIndisponivelError());
+    client.deletarInstancia.mockResolvedValue(undefined);
+
+    await expect(instanciaWhatsappService.criarEConectar(ctx(), dados)).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(client.deletarInstancia).toHaveBeenCalledWith("token-orfao");
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  it("apaga a instância recém-criada quando o status vem fora do enum", async () => {
+    repo.findByNome.mockResolvedValue(null);
+    client.criarInstancia.mockResolvedValue({
+      id: "uazapi-id-1",
+      token: "token-orfao",
+      status: "disconnected",
+    });
+    client.conectarInstancia.mockResolvedValue({ status: "loading" });
+    client.deletarInstancia.mockResolvedValue(undefined);
+
+    await expect(instanciaWhatsappService.criarEConectar(ctx(), dados)).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(client.deletarInstancia).toHaveBeenCalledWith("token-orfao");
+  });
+
+  // A limpeza é best-effort: se ela também falhar, quem precisa chegar ao usuário é a
+  // causa original, não o erro da compensação.
+  it("propaga o erro original mesmo se a limpeza na UAZAPI também falhar", async () => {
+    repo.findByNome.mockResolvedValue(null);
+    client.criarInstancia.mockResolvedValue({
+      id: "uazapi-id-1",
+      token: "token-orfao",
+      status: "disconnected",
+    });
+    const original = new UazapiIndisponivelError("Falha original.");
+    client.conectarInstancia.mockRejectedValue(original);
+    client.deletarInstancia.mockRejectedValue(new Error("limpeza falhou"));
+
+    await expect(instanciaWhatsappService.criarEConectar(ctx(), dados)).rejects.toBe(original);
   });
 });
 
@@ -470,11 +524,15 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
     await instanciaWhatsappService.sincronizarTodas(ctx());
 
     expect(repo.atualizarConexao).not.toHaveBeenCalled();
-    expect(repo.delete).toHaveBeenCalledTimes(1);
-    expect(repo.delete).not.toHaveBeenCalledWith("uaz-de-outro-escritorio", expect.anything());
+    expect(repo.marcarExcluida).toHaveBeenCalledTimes(1);
+    expect(repo.marcarExcluida).not.toHaveBeenCalledWith(
+      "uaz-de-outro-escritorio",
+      expect.anything(),
+      expect.anything()
+    );
   });
 
-  it("exclui (e loga) uma instância local que não aparece mais na resposta da UAZAPI — instância fantasma", async () => {
+  it("marca como excluída (e loga) uma instância local que não aparece mais na resposta da UAZAPI — instância fantasma", async () => {
     const fantasma = instanciaFake({
       id: "instancia-1",
       nome: "Fantasma",
@@ -485,8 +543,12 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
 
     const resultado = await instanciaWhatsappService.sincronizarTodas(ctx());
 
-    expect(repo.delete).toHaveBeenCalledTimes(1);
-    expect(repo.delete).toHaveBeenCalledWith("instancia-1", expect.anything());
+    expect(repo.marcarExcluida).toHaveBeenCalledTimes(1);
+    expect(repo.marcarExcluida).toHaveBeenCalledWith(
+      "instancia-1",
+      expect.any(Date),
+      expect.anything()
+    );
     expect(logs.registrar).toHaveBeenCalledTimes(1);
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx(),
@@ -501,7 +563,19 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
     expect(resultado).toEqual([]);
   });
 
-  it("exclui várias instâncias fantasma no mesmo lote, uma linha de log por instância removida", async () => {
+  // O token é a única coisa que liga uma campanha antiga à UAZAPI: apagar a linha o
+  // destruiria e deixaria a campanha sem canal de controle para sempre.
+  it("nunca apaga fisicamente uma instância fantasma — o token é preservado", async () => {
+    const fantasma = instanciaFake({ id: "instancia-1", uazapiInstanceId: "uaz-1" });
+    repo.listar.mockResolvedValueOnce([fantasma]).mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo).not.toHaveProperty("delete");
+  });
+
+  it("marca várias instâncias fantasma no mesmo lote, uma linha de log por instância", async () => {
     const viva = instanciaFake({ id: "viva", uazapiInstanceId: "uaz-viva", nome: "Viva" });
     const fantasma1 = instanciaFake({ id: "f1", uazapiInstanceId: "uaz-f1", nome: "F1" });
     const fantasma2 = instanciaFake({ id: "f2", uazapiInstanceId: "uaz-f2", nome: "F2" });
@@ -518,11 +592,136 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
 
     await instanciaWhatsappService.sincronizarTodas(ctx());
 
-    expect(repo.delete).toHaveBeenCalledTimes(2);
-    expect(repo.delete).toHaveBeenCalledWith("f1", expect.anything());
-    expect(repo.delete).toHaveBeenCalledWith("f2", expect.anything());
-    expect(repo.delete).not.toHaveBeenCalledWith("viva", expect.anything());
+    expect(repo.marcarExcluida).toHaveBeenCalledTimes(2);
+    expect(repo.marcarExcluida).toHaveBeenCalledWith("f1", expect.any(Date), expect.anything());
+    expect(repo.marcarExcluida).toHaveBeenCalledWith("f2", expect.any(Date), expect.anything());
+    expect(repo.marcarExcluida).not.toHaveBeenCalledWith(
+      "viva",
+      expect.any(Date),
+      expect.anything()
+    );
     expect(logs.registrar).toHaveBeenCalledTimes(2);
+  });
+
+  // RN20 é sobre escrita real: a linha já está marcada, então re-carimbar a data a cada
+  // sincronização só produziria log de auditoria sem mudança nenhuma por trás.
+  it("não reescreve nem loga uma instância que já estava marcada como excluída", async () => {
+    const jaExcluida = instanciaFake({
+      id: "instancia-1",
+      uazapiInstanceId: "uaz-1",
+      softDeletedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    repo.listar.mockResolvedValueOnce([jaExcluida]).mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.marcarExcluida).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  it("busca as excluídas na primeira leitura e devolve só as ativas no fim", async () => {
+    repo.listar.mockResolvedValueOnce([instanciaFake()]).mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.listar).toHaveBeenNthCalledWith(1, "esc-1", { incluirExcluidas: true });
+    expect(repo.listar).toHaveBeenNthCalledWith(2, "esc-1");
+  });
+
+  // Auto-cura: se a instância sumiu por uma resposta transitoriamente parcial da UAZAPI,
+  // ela volta sozinha assim que reaparece — sem isso, o sumiço seria irreversível pela UI.
+  it("restaura uma instância soft-deletada que reaparece na UAZAPI com o mesmo status", async () => {
+    const excluida = instanciaFake({
+      id: "instancia-1",
+      nome: "Voltou",
+      uazapiInstanceId: "uaz-1",
+      softDeletedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    repo.listar.mockResolvedValueOnce([excluida]).mockResolvedValueOnce([excluida]);
+    client.listarTodasInstancias.mockResolvedValue([
+      {
+        id: "uaz-1",
+        status: excluida.status,
+        owner: excluida.numeroConectado ?? undefined,
+        fotoPerfilUrl: excluida.fotoPerfilUrl ?? undefined,
+      },
+    ]);
+    repo.restaurar.mockResolvedValue(instanciaFake({ id: "instancia-1", nome: "Voltou" }));
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.restaurar).toHaveBeenCalledWith("instancia-1", expect.anything());
+    expect(repo.atualizarConexao).not.toHaveBeenCalled();
+    expect(logs.registrar).toHaveBeenCalledTimes(1);
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx(),
+      expect.objectContaining({
+        acao: "restaurar",
+        entidade: "instancia_whatsapp",
+        entidadeId: "instancia-1",
+        resumo: expect.stringContaining("Voltou"),
+      }),
+      expect.anything()
+    );
+  });
+
+  it("restaura e atualiza numa transação só quando a instância volta com status diferente", async () => {
+    const excluida = instanciaFake({
+      id: "instancia-1",
+      uazapiInstanceId: "uaz-1",
+      status: "disconnected",
+      numeroConectado: null,
+      fotoPerfilUrl: null,
+      softDeletedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    repo.listar.mockResolvedValueOnce([excluida]).mockResolvedValueOnce([excluida]);
+    client.listarTodasInstancias.mockResolvedValue([
+      { id: "uaz-1", status: "connected", owner: "5511999999999" },
+    ]);
+    repo.restaurar.mockResolvedValue(instanciaFake({ id: "instancia-1" }));
+    repo.atualizarConexao.mockResolvedValue(instanciaFake({ id: "instancia-1" }));
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.restaurar).toHaveBeenCalledTimes(1);
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "instancia-1",
+      { status: "connected", numeroConectado: "5511999999999", fotoPerfilUrl: null },
+      expect.anything()
+    );
+    expect(logs.registrar).toHaveBeenCalledTimes(1);
+  });
+
+  it("não restaura uma instância que reaparece com status fora do enum", async () => {
+    const excluida = instanciaFake({
+      id: "instancia-1",
+      uazapiInstanceId: "uaz-1",
+      softDeletedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    repo.listar.mockResolvedValueOnce([excluida]).mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([
+      { id: "uaz-1", status: "estado-que-nao-existe" },
+    ]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(repo.restaurar).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  // Sem isso um escritório cujas instâncias foram todas marcadas nunca mais consultaria a
+  // UAZAPI — e portanto nunca poderia se recuperar.
+  it("consulta a UAZAPI mesmo quando o escritório só tem instâncias excluídas", async () => {
+    repo.listar
+      .mockResolvedValueOnce([instanciaFake({ softDeletedAt: new Date() })])
+      .mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(client.listarTodasInstancias).toHaveBeenCalledTimes(1);
   });
 
   it("atualiza e loga só as instâncias que realmente mudaram — uma linha de log por instância alterada, zero para as que não mudaram", async () => {
@@ -571,8 +770,8 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
       { status: "connected", numeroConectado: "5511999999999", fotoPerfilUrl: null },
       expect.anything()
     );
-    expect(repo.delete).toHaveBeenCalledTimes(1);
-    expect(repo.delete).toHaveBeenCalledWith("d", expect.anything());
+    expect(repo.marcarExcluida).toHaveBeenCalledTimes(1);
+    expect(repo.marcarExcluida).toHaveBeenCalledWith("d", expect.any(Date), expect.anything());
     expect(logs.registrar).toHaveBeenCalledTimes(2);
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx(),
@@ -720,7 +919,7 @@ describe("instanciaWhatsappService.excluir", () => {
       InstanciaWhatsappNaoEncontradaError
     );
     expect(client.deletarInstancia).not.toHaveBeenCalled();
-    expect(repo.delete).not.toHaveBeenCalled();
+    expect(repo.marcarExcluida).not.toHaveBeenCalled();
   });
 
   it("rejeita id inexistente", async () => {
@@ -730,15 +929,19 @@ describe("instanciaWhatsappService.excluir", () => {
     );
   });
 
-  it("remove na UAZAPI com o token salvo, apaga a linha local e loga", async () => {
+  it("remove na UAZAPI com o token salvo, marca a linha local como excluída e loga", async () => {
     repo.findById.mockResolvedValue(instanciaFake());
     client.deletarInstancia.mockResolvedValue(undefined);
-    repo.delete.mockResolvedValue(instanciaFake());
+    repo.marcarExcluida.mockResolvedValue(instanciaFake());
 
     await instanciaWhatsappService.excluir(ctx(), "instancia-1");
 
     expect(client.deletarInstancia).toHaveBeenCalledWith("token-secreto");
-    expect(repo.delete).toHaveBeenCalledWith("instancia-1", expect.anything());
+    expect(repo.marcarExcluida).toHaveBeenCalledWith(
+      "instancia-1",
+      expect.any(Date),
+      expect.anything()
+    );
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx(),
       expect.objectContaining({
@@ -753,14 +956,78 @@ describe("instanciaWhatsappService.excluir", () => {
 
   // A remoção externa vem antes da local: se a UAZAPI recusar, a instância continua
   // inteira dos dois lados em vez de sumir daqui e ficar órfã lá.
-  it("não apaga a linha local nem loga quando a UAZAPI falha", async () => {
+  it("não marca a linha local nem loga quando a UAZAPI falha", async () => {
     repo.findById.mockResolvedValue(instanciaFake());
     client.deletarInstancia.mockRejectedValue(new UazapiIndisponivelError());
 
     await expect(instanciaWhatsappService.excluir(ctx(), "instancia-1")).rejects.toBeInstanceOf(
       UazapiIndisponivelError
     );
-    expect(repo.delete).not.toHaveBeenCalled();
+    expect(repo.marcarExcluida).not.toHaveBeenCalled();
     expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  // Idempotência: sem isso o segundo DELETE chamaria a UAZAPI com um token já morto.
+  it("trata instância já excluída como inexistente", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ softDeletedAt: new Date() }));
+
+    await expect(instanciaWhatsappService.excluir(ctx(), "instancia-1")).rejects.toThrow(
+      InstanciaWhatsappNaoEncontradaError
+    );
+    expect(client.deletarInstancia).not.toHaveBeenCalled();
+  });
+});
+
+describe("instanciaWhatsappService — instância excluída", () => {
+  // Esta é a razão de existir do soft delete: a campanha antiga precisa continuar
+  // resolvendo o token para poder ser sincronizada, pausada e excluída.
+  it("obterComToken continua resolvendo uma instância excluída, com o token", async () => {
+    const excluida = instanciaFake({ softDeletedAt: new Date() });
+    repo.findById.mockResolvedValue(excluida);
+
+    const resultado = await instanciaWhatsappService.obterComToken(ctx(), "instancia-1");
+
+    expect(resultado.uazapiToken).toBe("token-secreto");
+  });
+
+  it("obterAtivaComToken recusa uma instância excluída", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ softDeletedAt: new Date() }));
+
+    await expect(
+      instanciaWhatsappService.obterAtivaComToken(ctx(), "instancia-1")
+    ).rejects.toThrow(InstanciaWhatsappNaoEncontradaError);
+  });
+
+  it("listar só pede as instâncias ativas ao repositório", async () => {
+    repo.listar.mockResolvedValue([]);
+
+    await instanciaWhatsappService.listar(ctx());
+
+    expect(repo.listar).toHaveBeenCalledWith("esc-1");
+  });
+
+  it.each([
+    ["reconectar", () => instanciaWhatsappService.reconectar(ctx(), "instancia-1")],
+    ["desconectar", () => instanciaWhatsappService.desconectar(ctx(), "instancia-1")],
+    ["verificarStatus", () => instanciaWhatsappService.verificarStatus(ctx(), "instancia-1")],
+  ])("%s recusa uma instância excluída sem tocar na UAZAPI", async (_nome, chamar) => {
+    repo.findById.mockResolvedValue(instanciaFake({ softDeletedAt: new Date() }));
+
+    await expect(chamar()).rejects.toThrow(InstanciaWhatsappNaoEncontradaError);
+    expect(client.conectarInstancia).not.toHaveBeenCalled();
+    expect(client.desconectarInstancia).not.toHaveBeenCalled();
+    expect(client.consultarStatus).not.toHaveBeenCalled();
+  });
+
+  it("criarEConectar explica que o nome está reservado por uma instância excluída", async () => {
+    repo.findByNome.mockResolvedValue(instanciaFake({ softDeletedAt: new Date() }));
+
+    const erro: unknown = await instanciaWhatsappService
+      .criarEConectar(ctx(), { nome: "Atendimento" })
+      .catch((e: unknown) => e);
+
+    expect(erro).toBeInstanceOf(NomeInstanciaDuplicadoError);
+    expect((erro as Error).message).toContain("excluída");
+    expect(client.criarInstancia).not.toHaveBeenCalled();
   });
 });

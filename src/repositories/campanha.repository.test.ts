@@ -90,6 +90,7 @@ describe("campanhaRepository", () => {
       id: instanciaId,
       nome: "Disparo",
       status: "disconnected",
+      softDeletedAt: null,
     });
     expect(achada?.instancia).not.toHaveProperty("uazapiToken");
   });
@@ -134,8 +135,9 @@ describe("campanhaRepository", () => {
     expect(await campanhaRepository.findById(campanha.id)).toBeNull();
   });
 
-  // onDelete: SetNull — sincronizarTodas apaga instâncias fantasma, e a campanha precisa
-  // sobreviver a isso como histórico em vez de bloquear a limpeza.
+  // onDelete: SetNull é a rede de segurança para uma remoção feita FORA da aplicação: o
+  // service não apaga mais instância fisicamente (a exclusão é soft), justamente porque
+  // zerar este vínculo custa à campanha o token e, com ele, o controle do disparo.
   it("mantém a campanha e zera o vínculo quando a instância é excluída", async () => {
     const instancia = await instanciaWhatsappRepository.create({
       nome: "Efêmera",
@@ -156,7 +158,8 @@ describe("campanhaRepository", () => {
       instancia: { connect: { id: instancia.id } },
     });
 
-    await instanciaWhatsappRepository.delete(instancia.id);
+    // Direto no Prisma: o repositório não expõe delete físico de propósito.
+    await prisma.instanciaWhatsapp.delete({ where: { id: instancia.id } });
 
     const achada = await campanhaRepository.findById(campanha.id);
     expect(achada).not.toBeNull();

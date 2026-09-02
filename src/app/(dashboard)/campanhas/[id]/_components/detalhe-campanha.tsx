@@ -29,6 +29,7 @@ import {
   type ResumoMensagem,
 } from "@/lib/utils/campanha-status-mensagem";
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
+import { rotuloInstancia } from "../../_components/rotulo-instancia";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
 import { StatusBadgeMensagem } from "./status-badge-mensagem";
 
@@ -144,7 +145,7 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
           <div>
             <h1 className="text-xl font-semibold">{campanha.nome}</h1>
             <p className="text-sm text-muted-foreground">
-              {campanha.instancia?.nome ?? "Instância removida"} · {campanha.totalDestinatarios}{" "}
+              {rotuloInstancia(campanha.instancia)} · {campanha.totalDestinatarios}{" "}
               destinatário(s) · intervalo de {campanha.delayMin}s a {campanha.delayMax}s
             </p>
           </div>

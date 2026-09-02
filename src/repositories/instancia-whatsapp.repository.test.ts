@@ -124,11 +124,75 @@ describe("instanciaWhatsappRepository", () => {
     expect(atualizada.fotoPerfilUrl).toBe("https://pps.whatsapp.net/foto-original.jpg");
   });
 
-  it("delete remove a instância", async () => {
-    const instancia = await criar(escritorioId, "Fantasma");
+  it("listar esconde as instâncias soft-deletadas", async () => {
+    const ativa = await criar(escritorioId, "Ativa");
+    const excluida = await criar(escritorioId, "Excluída");
+    await instanciaWhatsappRepository.marcarExcluida(excluida.id, new Date());
 
-    await instanciaWhatsappRepository.delete(instancia.id);
+    const instancias = await instanciaWhatsappRepository.listar(escritorioId);
 
-    expect(await instanciaWhatsappRepository.findById(instancia.id)).toBeNull();
+    expect(instancias.map((i) => i.id)).toEqual([ativa.id]);
+  });
+
+  it("listar com incluirExcluidas traz ativas e excluídas na ordem de criação", async () => {
+    const primeira = await criar(escritorioId, "Primeira Ativa");
+    const segunda = await criar(escritorioId, "Segunda Excluída");
+    await instanciaWhatsappRepository.marcarExcluida(segunda.id, new Date());
+
+    const instancias = await instanciaWhatsappRepository.listar(escritorioId, {
+      incluirExcluidas: true,
+    });
+
+    expect(instancias.map((i) => i.id)).toEqual([primeira.id, segunda.id]);
+  });
+
+  // findById e findByNome não filtram de propósito: é por eles que o Service resolve o
+  // token de uma instância soft-deletada (campanha antiga precisa continuar controlável)
+  // e detecta o nome ainda reservado por uma excluída.
+  it("findById continua encontrando uma instância soft-deletada", async () => {
+    const instancia = await criar(escritorioId, "Sumida");
+    await instanciaWhatsappRepository.marcarExcluida(instancia.id, new Date());
+
+    const encontrada = await instanciaWhatsappRepository.findById(instancia.id);
+
+    expect(encontrada?.uazapiToken).toBe("token-secreto");
+  });
+
+  it("findByNome continua encontrando uma instância soft-deletada", async () => {
+    const instancia = await criar(escritorioId, "Reservada");
+    await instanciaWhatsappRepository.marcarExcluida(instancia.id, new Date());
+
+    const encontrada = await instanciaWhatsappRepository.findByNome(escritorioId, "Reservada");
+
+    expect(encontrada?.id).toBe(instancia.id);
+  });
+
+  it("recusa criar outra instância com o nome de uma soft-deletada", async () => {
+    const instancia = await criar(escritorioId, "Nome Queimado");
+    await instanciaWhatsappRepository.marcarExcluida(instancia.id, new Date());
+
+    await expect(criar(escritorioId, "Nome Queimado")).rejects.toThrow();
+  });
+
+  it("marcarExcluida grava a data sem tocar no token nem no vínculo com a UAZAPI", async () => {
+    const instancia = await criar(escritorioId, "Marcada");
+    const quando = new Date("2026-03-01T12:00:00.000Z");
+
+    const excluida = await instanciaWhatsappRepository.marcarExcluida(instancia.id, quando);
+
+    expect(excluida.softDeletedAt).toEqual(quando);
+    expect(excluida.uazapiToken).toBe(instancia.uazapiToken);
+    expect(excluida.uazapiInstanceId).toBe(instancia.uazapiInstanceId);
+    expect(excluida.status).toBe(instancia.status);
+  });
+
+  it("restaurar zera o softDeletedAt", async () => {
+    const instancia = await criar(escritorioId, "Ressuscitada");
+    await instanciaWhatsappRepository.marcarExcluida(instancia.id, new Date());
+
+    const restaurada = await instanciaWhatsappRepository.restaurar(instancia.id);
+
+    expect(restaurada.softDeletedAt).toBeNull();
+    expect(await instanciaWhatsappRepository.listar(escritorioId)).toHaveLength(1);
   });
 });
