@@ -16,6 +16,7 @@ import {
 import { uazapiClient, UazapiIndisponivelError } from "@/lib/external/uazapi-client";
 import { logService } from "@/services/log.service";
 import { prisma } from "@/lib/prisma";
+import { MAX_DESTINATARIOS } from "@/lib/api/schemas-campanha";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { InstanciaWhatsapp } from "@prisma/client";
 import type { CampanhaComInstancia } from "@/repositories/campanha.repository";
@@ -454,6 +455,20 @@ describe("campanhaService.listarMensagens", () => {
     >;
   }
 
+  function itemFake(over: Record<string, unknown> = {}) {
+    return {
+      id: "item-1",
+      escritorioId: "esc-1",
+      campanhaId: "campanha-1",
+      linha: 1,
+      numero: "5511999998888",
+      mensagem: "Olá",
+      variaveis: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      ...over,
+    };
+  }
+
   function mensagemFake(over: Record<string, unknown> = {}) {
     return {
       id: "msg-1",
@@ -468,15 +483,23 @@ describe("campanhaService.listarMensagens", () => {
   it("consulta a UAZAPI com o folder da campanha e normaliza cada mensagem", async () => {
     repo.findById.mockResolvedValue(campanhaFake());
     instancias.obterComToken.mockResolvedValue(instanciaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([
+      itemFake({ numero: "5511999998888" }),
+    ] as never);
     client.listarMensagensCampanha.mockResolvedValue(
       paginaFake([mensagemFake(), mensagemFake({ status: "Failed", erro: "bloqueado" })], 2)
     );
 
-    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
-    expect(client.listarMensagensCampanha).toHaveBeenCalledWith("token-secreto", "folder-1");
+    expect(client.listarMensagensCampanha).toHaveBeenCalledWith(
+      "token-secreto",
+      "folder-1",
+      expect.objectContaining({ offset: 0 })
+    );
     expect(resposta).toEqual({
       total: 2,
+      truncado: false,
       mensagens: [
         {
           numero: "5511999998888",
@@ -500,10 +523,9 @@ describe("campanhaService.listarMensagens", () => {
     instancias.obterComToken.mockResolvedValue(instanciaFake());
     client.listarMensagensCampanha.mockResolvedValue(paginaFake([], 0));
 
-    await expect(campanhaService.listarMensagens(ctx("padrao"), "campanha-1")).resolves.toEqual({
-      mensagens: [],
-      total: 0,
-    });
+    await expect(
+      campanhaService.listarMensagens(ctx("padrao"), "campanha-1", { pagina: 1 })
+    ).resolves.toEqual({ mensagens: [], total: 0, truncado: false });
   });
 
   // Consultar o histórico não é disparar: o token da instância continua valendo.
@@ -513,7 +535,7 @@ describe("campanhaService.listarMensagens", () => {
     client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 1));
 
     await expect(
-      campanhaService.listarMensagens(ctx(), "campanha-1")
+      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 })
     ).resolves.toHaveProperty("total", 1);
   });
 
@@ -521,7 +543,7 @@ describe("campanhaService.listarMensagens", () => {
     repo.findById.mockResolvedValue(campanhaFake({ escritorioId: "esc-2" }));
 
     await expect(
-      campanhaService.listarMensagens(ctx(), "campanha-1")
+      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 })
     ).rejects.toBeInstanceOf(CampanhaNaoEncontradaError);
     expect(client.listarMensagensCampanha).not.toHaveBeenCalled();
   });
@@ -530,21 +552,128 @@ describe("campanhaService.listarMensagens", () => {
     repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null }));
 
     await expect(
-      campanhaService.listarMensagens(ctx(), "campanha-1")
+      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 })
     ).rejects.toBeInstanceOf(CampanhaSemInstanciaError);
   });
 
-  // Uma chamada só: a campanha inteira vem numa resposta.
-  it("não pagina", async () => {
-    repo.findById.mockResolvedValue(campanhaFake());
-    instancias.obterComToken.mockResolvedValue(instanciaFake());
-    const lote = Array.from({ length: 700 }, () => mensagemFake());
-    client.listarMensagensCampanha.mockResolvedValue(paginaFake(lote, 700));
+  // O limit sai do tamanho da campanha, não da página da tela: a janela precisa conter as
+  // mensagens de qualquer destinatário, e a UAZAPI não garante devolvê-las na ordem das
+  // linhas do CSV. Pedir por página faria destinatário real aparecer como "sem mensagem".
+  it("pede um limit dimensionado pela campanha, não pela página", async () => {
+    repo.findById.mockResolvedValue(campanhaFake({ totalDestinatarios: 700 }));
+    itensRepo.listarPorCampanha.mockResolvedValue([]);
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([], 0));
 
-    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
+    await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 3 });
 
-    expect(resposta.mensagens).toHaveLength(700);
+    const opcoes = client.listarMensagensCampanha.mock.calls[0][2];
+    expect(opcoes?.limit).toBeGreaterThanOrEqual(700);
+    expect(opcoes?.offset).toBe(0);
     expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(1);
+  });
+
+  it("limita o pedido ao teto de destinatários por campanha", async () => {
+    repo.findById.mockResolvedValue(campanhaFake({ totalDestinatarios: 5000 }));
+    itensRepo.listarPorCampanha.mockResolvedValue([]);
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([], 0));
+
+    await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
+
+    expect(client.listarMensagensCampanha.mock.calls[0][2]?.limit).toBe(MAX_DESTINATARIOS);
+  });
+
+  // O join acontece aqui para o browser não receber milhares de objetos só para desenhar
+  // 50 linhas. Como resumirPorNumero roda sobre o conjunto completo, gravidade e contagem
+  // por número continuam exatas.
+  it("devolve só as mensagens dos destinatários da página pedida", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([
+      itemFake({ numero: "5511999998888" }),
+    ] as never);
+    client.listarMensagensCampanha.mockResolvedValue(
+      paginaFake(
+        [
+          mensagemFake({ chatid: "5511999998888@s.whatsapp.net" }),
+          mensagemFake({ chatid: "5511777776666@s.whatsapp.net" }),
+        ],
+        2
+      )
+    );
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
+
+    expect(resposta.mensagens.map((m) => m.numero)).toEqual(["5511999998888"]);
+  });
+
+  it("busca os itens da página certa para montar o join", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([]);
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([], 0));
+
+    await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 3 });
+
+    expect(itensRepo.listarPorCampanha).toHaveBeenCalledWith("campanha-1", {
+      pular: 100,
+      limite: 50,
+    });
+  });
+
+  // O WhatsApp devolve o jid do celular brasileiro sem o nono dígito; o CRM grava com ele.
+  // Sem normalizar os dois lados no filtro, nenhuma mensagem casaria com seu destinatário.
+  it("casa o destinatário com a mensagem mesmo sem o nono dígito", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([
+      itemFake({ numero: "5547997355799" }),
+    ] as never);
+    client.listarMensagensCampanha.mockResolvedValue(
+      paginaFake([mensagemFake({ chatid: "554797355799@s.whatsapp.net" })], 1)
+    );
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
+
+    expect(resposta.mensagens).toHaveLength(1);
+  });
+
+  it("mantém as duas mensagens quando o mesmo número aparece repetido", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([
+      itemFake({ numero: "5511999998888" }),
+    ] as never);
+    client.listarMensagensCampanha.mockResolvedValue(
+      paginaFake(
+        [
+          mensagemFake({ chatid: "5511999998888@s.whatsapp.net", status: "Sent" }),
+          mensagemFake({ chatid: "5511999998888@s.whatsapp.net", status: "Failed" }),
+        ],
+        2
+      )
+    );
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
+
+    expect(resposta.mensagens).toHaveLength(2);
+  });
+
+  // O endpoint tem teto próprio: sem avisar, os destinatários que ficaram de fora
+  // apareceriam como se nunca tivessem recebido mensagem.
+  it("avisa quando a UAZAPI devolveu menos mensagens que o total", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([]);
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 800));
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
+
+    expect(resposta.truncado).toBe(true);
+  });
+
+  it("página além do fim devolve lista vazia sem estourar", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    itensRepo.listarPorCampanha.mockResolvedValue([]);
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 1));
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 99 });
+
+    expect(resposta.mensagens).toEqual([]);
   });
 });
 

@@ -12,6 +12,7 @@ import {
   type MensagemCampanhaUazapi,
   type MensagemEnvioAvancado,
 } from "@/lib/external/uazapi-client";
+import { MAX_DESTINATARIOS } from "@/lib/api/schemas-campanha";
 import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
 import {
   extrairVariaveis,
@@ -21,6 +22,7 @@ import {
   type LinhaCsv,
 } from "@/lib/utils/campanha-mensagem";
 import {
+  chaveTelefone,
   numeroDoChatid,
   paraDataMensagem,
   paraStatusMensagem,
@@ -89,6 +91,9 @@ export interface DadosNovaCampanha {
 }
 
 export const ITENS_POR_PAGINA = 50;
+// Folga sobre o total de destinatários ao pedir as mensagens: a UAZAPI pode ter mais de
+// uma mensagem por número (retentativa), e pedir de menos deixaria destinatário sem status.
+const MENSAGENS_POR_DESTINATARIO = 2;
 // Quantas linhas de CSV são citadas na mensagem de erro antes de virar "e mais N".
 const MAX_LINHAS_NO_ERRO = 5;
 // createMany de milhares de linhas + o log ainda cabem folgado nisso, mas o default de
@@ -301,16 +306,45 @@ export const campanhaService = {
   // papel — e sem exigir instância conectada: consultar histórico não é disparar.
   async listarMensagens(
     ctx: TenantContext,
-    id: string
-  ): Promise<{ mensagens: MensagemDaCampanha[]; total: number }> {
+    id: string,
+    { pagina }: { pagina: number }
+  ): Promise<{ mensagens: MensagemDaCampanha[]; total: number; truncado: boolean }> {
     const campanha = await obterDoTenant(ctx, id);
     const token = await obterTokenDaInstancia(ctx, campanha);
 
-    const resposta = await uazapiClient.listarMensagensCampanha(token, campanha.uazapiFolderId);
+    // A janela é dimensionada pela campanha, não pela página da tela. Recortá-la por
+    // página seria mais barato, mas a UAZAPI não garante devolver as mensagens na ordem
+    // das linhas do CSV (o delay é sorteado e há retentativas), e o mesmo número pode
+    // aparecer em linhas diferentes: um destinatário real cairia fora da janela e a tela
+    // afirmaria que a UAZAPI não devolveu mensagem para ele — inventar ausência é o que
+    // a RN29 proíbe. O `limit` explícito também evita depender do teto padrão do endpoint.
+    const limit = Math.min(
+      campanha.totalDestinatarios * MENSAGENS_POR_DESTINATARIO,
+      MAX_DESTINATARIOS
+    );
+    const resposta = await uazapiClient.listarMensagensCampanha(token, campanha.uazapiFolderId, {
+      limit,
+      offset: 0,
+    });
+
+    // O join fica no servidor: a página do banco diz QUAIS números interessam e só as
+    // mensagens deles atravessam para o browser, que antes recebia a campanha inteira
+    // (até 5000 objetos) para desenhar 50 linhas. O casamento é por número normalizado —
+    // nunca por posição —, então o resumo por gravidade/contagem segue exato no cliente.
+    const itens = await campanhaItemRepository.listarPorCampanha(id, {
+      pular: (pagina - 1) * ITENS_POR_PAGINA,
+      limite: ITENS_POR_PAGINA,
+    });
+    const daPagina = new Set(itens.map((item) => chaveTelefone(item.numero)));
 
     return {
-      mensagens: resposta.mensagens.map(paraMensagemDaCampanha),
+      mensagens: resposta.mensagens
+        .map(paraMensagemDaCampanha)
+        .filter((mensagem) => daPagina.has(chaveTelefone(mensagem.numero))),
       total: resposta.total,
+      // A UAZAPI devolveu menos do que diz existir: alguns destinatários vão aparecer sem
+      // status, e a tela precisa dizer isso em vez de deixar parecer "nunca enviada".
+      truncado: resposta.total > resposta.mensagens.length,
     };
   },
 

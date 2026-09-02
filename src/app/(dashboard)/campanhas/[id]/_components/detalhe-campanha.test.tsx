@@ -62,10 +62,17 @@ const ITEM: CampanhaItemDTO = {
 
 function mockMensagens(
   mensagens: MensagemCampanhaDTO[] = [],
-  estado: { isLoading?: boolean; isFetching?: boolean; isError?: boolean } = {}
+  estado: {
+    isLoading?: boolean;
+    isFetching?: boolean;
+    isError?: boolean;
+    truncado?: boolean;
+  } = {}
 ) {
   useMensagensMock.mockReturnValue({
-    data: estado.isError ? undefined : { mensagens, total: mensagens.length },
+    data: estado.isError
+      ? undefined
+      : { mensagens, total: mensagens.length, truncado: estado.truncado ?? false },
     isLoading: estado.isLoading ?? false,
     isFetching: estado.isFetching ?? false,
     isError: estado.isError ?? false,
@@ -114,17 +121,33 @@ describe("DetalheCampanha", () => {
 
 // O status de cada mensagem vem da UAZAPI e é casado com o item do banco pelo número.
 describe("DetalheCampanha — status de cada mensagem", () => {
-  it("consulta a UAZAPI só depois que o banco respondeu", () => {
+  it("consulta a UAZAPI só depois que o banco respondeu, na página aberta", () => {
     renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
 
-    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", true);
+    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", 1, true);
   });
 
   it("não consulta enquanto o detalhe não carregou", () => {
     useCampanhaMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
 
-    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", false);
+    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", 1, false);
+  });
+
+  // Dizer que a lista veio cortada evita que o "—" de quem ficou de fora seja lido como
+  // "a mensagem nunca saiu".
+  it("avisa quando a UAZAPI devolveu só parte das mensagens", () => {
+    mockMensagens([], { truncado: true });
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    expect(screen.getByText(/só parte das mensagens/i)).toBeInTheDocument();
+  });
+
+  it("não mostra o aviso quando a lista veio completa", () => {
+    mockMensagens([]);
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    expect(screen.queryByText(/só parte das mensagens/i)).not.toBeInTheDocument();
   });
 
   // O item gravado tem o nono dígito (5511999998888); o jid do WhatsApp vem sem ele.

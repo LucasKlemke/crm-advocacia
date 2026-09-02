@@ -2,6 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import {
+  chaveMensagensCampanha,
   RAIZ_CAMPANHAS,
   useCampanha,
   useCampanhas,
@@ -68,22 +69,49 @@ describe("queries de campanha", () => {
     );
   });
 
-  it("useMensagensCampanha busca o status na rota de mensagens", async () => {
+  it("useMensagensCampanha busca o status da página pedida", async () => {
     const { Wrapper } = criarWrapper();
-    const { result } = renderHook(() => useMensagensCampanha("campanha-1"), { wrapper: Wrapper });
+    const { result } = renderHook(() => useMensagensCampanha("campanha-1", 3), {
+      wrapper: Wrapper,
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/campanhas/campanha-1/mensagens",
+      "/api/campanhas/campanha-1/mensagens?pagina=3",
       expect.anything()
     );
+  });
+
+  // Páginas diferentes trazem destinatários diferentes, então não podem compartilhar a
+  // mesma entrada de cache — senão a página 2 mostraria o status casado da página 1.
+  it("useMensagensCampanha guarda cada página numa entrada de cache própria", async () => {
+    const { Wrapper } = criarWrapper();
+    const { rerender } = renderHook(({ pagina }) => useMensagensCampanha("campanha-1", pagina), {
+      wrapper: Wrapper,
+      initialProps: { pagina: 1 },
+    });
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    rerender({ pagina: 2 });
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      "/api/campanhas/campanha-1/mensagens?pagina=2",
+      expect.anything()
+    );
+  });
+
+  // O invalidate das mutations alcança a query pela raiz: é o que faz "Sincronizar"
+  // atualizar o status sem uma segunda chamada ao /sender/listmessages.
+  it("a chave das mensagens continua sob a raiz de campanhas", () => {
+    expect(chaveMensagensCampanha("campanha-1", 2)[0]).toBe(RAIZ_CAMPANHAS[0]);
   });
 
   // A ordem pedida: banco primeiro, UAZAPI depois. Enquanto o detalhe não respondeu, a
   // consulta externa não sai.
   it("useMensagensCampanha não consulta nada enquanto está desabilitada", async () => {
     const { Wrapper } = criarWrapper();
-    const { result } = renderHook(() => useMensagensCampanha("campanha-1", false), {
+    const { result } = renderHook(() => useMensagensCampanha("campanha-1", 1, false), {
       wrapper: Wrapper,
     });
 

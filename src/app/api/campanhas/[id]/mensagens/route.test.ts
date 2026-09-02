@@ -48,8 +48,11 @@ const service = campanhaService as jest.Mocked<typeof campanhaService>;
 const ctx = { usuarioId: "user-1", escritorioId: "esc-1", role: "padrao" as const };
 const params = Promise.resolve({ id: "campanha-1" });
 
-function get() {
-  return GET(new Request("http://localhost/api/campanhas/campanha-1/mensagens"), { params });
+function get(query = "") {
+  return GET(
+    new Request(`http://localhost/api/campanhas/campanha-1/mensagens${query}`),
+    { params }
+  );
 }
 
 beforeEach(() => {
@@ -60,6 +63,7 @@ beforeEach(() => {
       { numero: "5511999998888", status: "enviada", erro: null, enviadaEm: new Date(0) },
     ],
     total: 1,
+    truncado: false,
   } as never);
 });
 
@@ -75,7 +79,7 @@ describe("GET /api/campanhas/[id]/mensagens", () => {
   it("devolve as mensagens, inclusive para role padrao", async () => {
     const response = await get();
 
-    expect(service.listarMensagens).toHaveBeenCalledWith(ctx, "campanha-1");
+    expect(service.listarMensagens).toHaveBeenCalledWith(ctx, "campanha-1", { pagina: 1 });
     await expect(response.json()).resolves.toEqual({
       mensagens: [
         {
@@ -86,8 +90,26 @@ describe("GET /api/campanhas/[id]/mensagens", () => {
         },
       ],
       total: 1,
+      truncado: false,
     });
   });
+
+  it("repassa a página pedida ao service", async () => {
+    await get("?pagina=3");
+
+    expect(service.listarMensagens).toHaveBeenCalledWith(ctx, "campanha-1", { pagina: 3 });
+  });
+
+  // Mesmo comportamento tolerante da listagem de itens: página inválida vira a primeira,
+  // em vez de devolver 400 por causa de um parâmetro de navegação.
+  it.each(["?pagina=abc", "?pagina=0", "?pagina=-2"])(
+    "trata %s como primeira página",
+    async (query) => {
+      await get(query);
+
+      expect(service.listarMensagens).toHaveBeenCalledWith(ctx, "campanha-1", { pagina: 1 });
+    }
+  );
 
   it("retorna 404 para campanha de outro escritório", async () => {
     const { CampanhaNaoEncontradaError } = jest.requireMock("@/services/campanha.service");

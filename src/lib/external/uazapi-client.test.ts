@@ -663,7 +663,7 @@ describe("uazapiClient", () => {
   describe("listarMensagensCampanha", () => {
     // O body leva só o folder_id: limit, offset e messageStatus são opcionais do endpoint
     // e ficam de fora.
-    it("chama POST /sender/listmessages só com o folder_id", async () => {
+    it("manda só o folder_id quando não recebe opções", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
 
       await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1");
@@ -678,6 +678,45 @@ describe("uazapiClient", () => {
         },
         body: JSON.stringify({ folder_id: "folder-1" }),
       });
+    });
+
+    // Chave ausente e chave com `undefined` não são a mesma coisa depois do JSON.stringify:
+    // este teste é o que garante que o spread condicional não injeta uma nem outra.
+    it("inclui limit e offset no body quando informados", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
+
+      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1", {
+        limit: 100,
+        offset: 50,
+      });
+
+      const body = (global.fetch as jest.Mock).mock.calls[0][1].body;
+      expect(body).toBe(JSON.stringify({ folder_id: "folder-1", limit: 100, offset: 50 }));
+    });
+
+    it("trata limit 0 como valor informado, não como ausente", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
+
+      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1", { limit: 0 });
+
+      const body = (global.fetch as jest.Mock).mock.calls[0][1].body;
+      expect(body).toBe(JSON.stringify({ folder_id: "folder-1", limit: 0 }));
+    });
+
+    // O endpoint tem limite próprio (a resposta ecoa limit:50 mesmo sem pedirmos), então
+    // total > mensagens recebidas é o sinal de que a campanha veio cortada.
+    it("preserva o total mesmo quando vieram menos mensagens que ele", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({
+          messages: [{ id: "m1", chatid: "5511999998888@s.whatsapp.net", status: "sent" }],
+          pagination: { totalRecords: 800, limit: 50, offset: 0 },
+        })
+      );
+
+      const resultado = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1");
+
+      expect(resultado.total).toBe(800);
+      expect(resultado.mensagens).toHaveLength(1);
     });
 
     it("devolve só destino, status, erro e horário de cada mensagem", async () => {

@@ -87,8 +87,9 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
   const controlar = useControlarCampanha();
   const sincronizar = useSincronizarCampanha();
   // Só depois que o banco respondeu: a tabela de destinatários é o que dá contexto ao
-  // status, e uma campanha que nem carregou não tem por que consultar a UAZAPI.
-  const mensagens = useMensagensCampanha(campanhaId, data !== undefined);
+  // status, e uma campanha que nem carregou não tem por que consultar a UAZAPI. A página
+  // vai junto porque o servidor devolve só o status dos destinatários dela.
+  const mensagens = useMensagensCampanha(campanhaId, pagina, data !== undefined);
 
   // Duas chamadas à UAZAPI, diferente da listagem: /sender/listfolders pelos contadores da
   // campanha e /sender/listmessages pelo status de cada mensagem — aqui as duas coisas
@@ -230,6 +231,14 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
           {mensagens.isError ? (
             <span className="text-xs text-muted-foreground">
               Não foi possível consultar o status das mensagens na UAZAPI.
+            </span>
+          ) : null}
+          {/* Dizer que a lista veio cortada é melhor do que deixar o "—" passar por
+              "mensagem nunca enviada" em quem ficou de fora da resposta. */}
+          {mensagens.data?.truncado ? (
+            <span className="text-xs text-muted-foreground">
+              A UAZAPI devolveu só parte das mensagens desta campanha; alguns destinatários
+              podem aparecer sem status.
             </span>
           ) : null}
         </div>

@@ -62,8 +62,15 @@ export interface MensagemCampanhaDTO {
 }
 
 export interface RespostaMensagensCampanha {
+  // Só as mensagens dos destinatários da página pedida: o join com os itens do banco é
+  // feito no servidor para o browser não receber a campanha inteira por 50 linhas.
   mensagens: MensagemCampanhaDTO[];
+  // Quantas mensagens a UAZAPI diz existir na campanha — pode ser maior que o que ela
+  // devolveu, e é dessa diferença que sai o `truncado`.
   total: number;
+  // A UAZAPI cortou a resposta: parte dos destinatários vai aparecer sem status, e a tela
+  // precisa dizer isso em vez de deixar parecer que a mensagem nunca saiu.
+  truncado: boolean;
 }
 
 export interface ListaCampanhas {

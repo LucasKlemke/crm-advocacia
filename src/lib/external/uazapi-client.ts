@@ -101,6 +101,14 @@ export interface CampanhaUazapi {
   logReproduzido: number;
 }
 
+// Opções de /sender/listmessages. Todas opcionais do lado do endpoint; `limit` é o que
+// evita depender do teto padrão dele (ver comentário em listarMensagensCampanha).
+export interface OpcoesListagemMensagens {
+  limit?: number;
+  offset?: number;
+  messageStatus?: string;
+}
+
 // Uma instância como /instance/all a devolve, já reduzida aos campos que atravessam a
 // fronteira: `token` e outros dados sensíveis dos demais tenants ficam de fora.
 export interface InstanciaUazapi {
@@ -395,11 +403,15 @@ export const uazapiClient = {
 
   // Status mensagem a mensagem de uma campanha. Diferente do /sender/listfolders (que dá
   // só os contadores agregados), aqui dá para dizer o que aconteceu com cada destinatário.
-  // O body leva apenas o folder_id: `limit`, `offset` e `messageStatus` são opcionais do
-  // endpoint e ficam de fora — a campanha vem inteira numa resposta só.
+  //
+  // `limit` importa: a resposta ecoa `limit: 50` mesmo quando não mandamos nenhum, ou seja
+  // o endpoint tem um teto próprio. Sem pedir explicitamente, campanha grande volta cortada
+  // em silêncio e os destinatários do fim aparecem sem status como se nunca tivessem
+  // recebido nada. Comparar `total` com o número de mensagens recebidas denuncia o corte.
   async listarMensagensCampanha(
     uazapiToken: string,
-    folderId: string
+    folderId: string,
+    opcoes: OpcoesListagemMensagens = {}
   ): Promise<{ mensagens: MensagemCampanhaUazapi[]; total: number }> {
     const corpo = await chamarUazapi(
       "/sender/listmessages",
@@ -408,7 +420,15 @@ export const uazapiClient = {
         Accept: "application/json",
         token: uazapiToken,
       },
-      { folder_id: folderId }
+      {
+        folder_id: folderId,
+        // Spread condicional em vez de passar `undefined`: o JSON.stringify omitiria a
+        // chave de qualquer jeito, mas mandar a chave só quando ela tem valor deixa o
+        // body idêntico ao de antes quando não há opções.
+        ...(opcoes.limit !== undefined ? { limit: opcoes.limit } : {}),
+        ...(opcoes.offset !== undefined ? { offset: opcoes.offset } : {}),
+        ...(opcoes.messageStatus !== undefined ? { messageStatus: opcoes.messageStatus } : {}),
+      }
     );
 
     // `messages` ausente ou de outro tipo é quebra de contrato: sem isso não há resposta
