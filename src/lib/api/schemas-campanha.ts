@@ -7,6 +7,10 @@ import { TRATAMENTOS_DISPONIVEIS, type Tratamento } from "@/lib/utils/campanha-t
 // do volume por escritório previsto nos requisitos não funcionais.
 export const MAX_DESTINATARIOS = 5000;
 
+// Folga entre o instante escolhido na tela e a chegada do payload na rota. Sem ela,
+// agendar "para daqui a pouco" viraria erro de validação só pelo tempo do round-trip.
+const TOLERANCIA_AGENDAMENTO_MS = 60_000;
+
 // Delay entre mensagens, em segundos — a UAZAPI usa isso para espaçar o envio e reduzir
 // o risco de bloqueio do número.
 const delaySchema = z.number().int().min(1).max(600);
@@ -39,8 +43,15 @@ export const novaCampanhaSchema = z
     mapeamentoVariaveis: z.record(z.string(), configVariavelSchema).default({}),
     delayMin: delaySchema,
     delayMax: delaySchema,
-    // Ausente = a UAZAPI enfileira para envio imediato.
-    agendadaPara: z.iso.datetime({ message: "Data de agendamento inválida." }).optional(),
+    // Ausente = a UAZAPI enfileira para envio imediato. Precisa ser futura: com data
+    // passada a UAZAPI dispara na hora enquanto a campanha é gravada como "agendada", e a
+    // tela passa a anunciar um agendamento para algo que já está saindo.
+    agendadaPara: z.iso
+      .datetime({ message: "Data de agendamento inválida." })
+      .refine((valor) => new Date(valor).getTime() > Date.now() - TOLERANCIA_AGENDAMENTO_MS, {
+        message: "O agendamento precisa ser no futuro.",
+      })
+      .optional(),
     arquivoCsvNome: nomeArquivoSchema.optional(),
     linhas: z
       .array(linhaCsvSchema)

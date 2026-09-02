@@ -29,6 +29,17 @@ function rotularAgendamento(iso: string): string {
   return data.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
+// O `min` do datetime-local é comparado como hora local, então não pode vir de toISOString
+// (que é UTC): num fuso atrás de Greenwich isso liberaria horários já passados.
+function agoraParaInputLocal(): string {
+  const agora = new Date();
+  const doisDigitos = (valor: number) => String(valor).padStart(2, "0");
+  return (
+    `${agora.getFullYear()}-${doisDigitos(agora.getMonth() + 1)}-${doisDigitos(agora.getDate())}` +
+    `T${doisDigitos(agora.getHours())}:${doisDigitos(agora.getMinutes())}`
+  );
+}
+
 export function PopoverIntervalo({ valor, totalDestinatarios, onMudar }: PopoverEnvioProps) {
   // Estimativa grosseira só para dar noção de duração: a UAZAPI sorteia um intervalo
   // entre delayMin e delayMax a cada mensagem.
@@ -148,6 +159,9 @@ export function PopoverAgendamento({ valor, onMudar }: Omit<PopoverEnvioProps, "
               <Input
                 id="agendada-para"
                 type="datetime-local"
+                // Data passada faz a UAZAPI disparar na hora enquanto a campanha aparece
+                // como "agendada" — a API recusa, e o `min` evita chegar até lá.
+                min={agoraParaInputLocal()}
                 value={valor.agendadaPara}
                 onChange={(evento) => onMudar("agendadaPara", evento.target.value)}
               />

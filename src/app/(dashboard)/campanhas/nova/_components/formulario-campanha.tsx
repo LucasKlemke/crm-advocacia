@@ -62,6 +62,13 @@ export function FormularioCampanha() {
       // é recasado contra o cabeçalho novo.
       setMapeamento(sugerirMapeamento(extrairVariaveis(mensagem), lida.colunas));
     } catch (falha) {
+      // Descarta a planilha anterior junto com o erro. Mantê-la deixaria a campanha
+      // pronta para disparar com a lista antiga: a barra continuaria contando os contatos
+      // de antes e o botão criar seguiria liberado, então quem trocou de arquivo e viu a
+      // mensagem de erro mandaria mensagem para as pessoas erradas sem perceber.
+      setPlanilha(null);
+      setColunaNumero("");
+      setMapeamento(sugerirMapeamento(extrairVariaveis(mensagem), []));
       setErroPlanilha(
         falha instanceof CsvInvalidoError ? falha.message : "Não foi possível ler a planilha."
       );
@@ -136,7 +143,14 @@ export function FormularioCampanha() {
         accept=".csv,text/csv"
         className="sr-only"
         aria-label="Arquivo CSV"
-        onChange={(evento) => handleArquivo(evento.target.files?.[0])}
+        onChange={(evento) => {
+          const arquivo = evento.target.files?.[0];
+          // Limpa o value para que escolher o MESMO arquivo de novo volte a disparar
+          // onChange: sem isso, quem corrigiu a planilha fora do navegador e a selecionou
+          // outra vez ficaria preso na mensagem de erro, sem nada acontecendo.
+          evento.target.value = "";
+          handleArquivo(arquivo);
+        }}
       />
 
       <div className="flex flex-wrap items-center gap-2">

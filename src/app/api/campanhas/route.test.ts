@@ -110,13 +110,25 @@ describe("POST /api/campanhas", () => {
 
   it("converte agendadaPara de ISO para Date antes de chamar o service", async () => {
     service.criar.mockResolvedValue({ id: "campanha-1" } as never);
+    // Relativo ao agora: o schema recusa agendamento no passado, então uma data fixa
+    // faria este teste passar a falhar sozinho com o tempo.
+    const daquiADuasHoras = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
-    await post({ ...CORPO_VALIDO, agendadaPara: "2026-03-01T12:00:00.000Z" });
+    await post({ ...CORPO_VALIDO, agendadaPara: daquiADuasHoras.toISOString() });
 
     expect(service.criar).toHaveBeenCalledWith(
       ctx,
-      expect.objectContaining({ agendadaPara: new Date("2026-03-01T12:00:00.000Z") })
+      expect.objectContaining({ agendadaPara: daquiADuasHoras })
     );
+  });
+
+  it("recusa agendamento no passado", async () => {
+    const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const response = await post({ ...CORPO_VALIDO, agendadaPara: ontem.toISOString() });
+
+    expect(response.status).toBe(400);
+    expect(service.criar).not.toHaveBeenCalled();
   });
 
   it("não repassa agendadaPara quando o corpo não traz agendamento", async () => {

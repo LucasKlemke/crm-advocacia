@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderComQuery } from "@/lib/test-utils";
 import { FormularioCampanha } from "./formulario-campanha";
 import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
+import { CsvInvalidoError } from "@/lib/utils/csv-campanha";
 
 const mutateCriar = jest.fn();
 const push = jest.fn();
@@ -79,6 +80,69 @@ async function subirPlanilha() {
   await userEvent.upload(screen.getByLabelText("Arquivo CSV"), arquivo);
   await waitFor(() => expect(screen.getByText("contatos.csv")).toBeInTheDocument());
 }
+
+// Trocar de planilha e a leitura falhar não pode deixar a lista anterior pronta para
+// disparar: o usuário vê o erro, clica em criar e mandaria mensagem para os contatos
+// errados sem nenhum sinal de que isso aconteceu.
+describe("FormularioCampanha — planilha inválida", () => {
+  async function subirPlanilhaQuebrada() {
+    lerPlanilhaMock.mockRejectedValueOnce(
+      new CsvInvalidoError("A planilha precisa ter uma linha de cabeçalho.")
+    );
+    const arquivo = new File(["???"], "quebrada.csv", { type: "text/csv" });
+    await userEvent.upload(screen.getByLabelText("Arquivo CSV"), arquivo);
+    await screen.findByText(/linha de cabeçalho/i);
+  }
+
+  it("descarta a planilha anterior quando a nova falha", async () => {
+    renderComQuery(<FormularioCampanha />);
+    await subirPlanilha();
+    expect(screen.getByRole("button", { name: /1 contato\(s\)/i })).toBeInTheDocument();
+
+    await subirPlanilhaQuebrada();
+
+    expect(screen.getByRole("button", { name: /fazer upload de contatos/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /contato\(s\)/i })).not.toBeInTheDocument();
+  });
+
+  it("volta a exigir a planilha no checklist depois da falha", async () => {
+    renderComQuery(<FormularioCampanha />);
+    await subirPlanilha();
+    await subirPlanilhaQuebrada();
+
+    await userEvent.hover(botaoCriar());
+    const itens = within(await screen.findByRole("tooltip"))
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+
+    expect(itens).toContain("Fazer upload da planilha de contatos (pendente)");
+  });
+
+  it("não cria a campanha com a lista antiga depois de uma planilha inválida", async () => {
+    renderComQuery(<FormularioCampanha />);
+    await escolherInstancia();
+    await escreverMensagem("Olá!");
+    await subirPlanilha();
+    await subirPlanilhaQuebrada();
+
+    await userEvent.click(botaoCriar());
+
+    expect(mutateCriar).not.toHaveBeenCalled();
+  });
+
+  // Sem limpar o value do input, escolher de novo o MESMO arquivo (já corrigido fora do
+  // navegador) não dispara onChange e a tela fica presa no erro.
+  it("relê o mesmo arquivo quando ele é escolhido outra vez", async () => {
+    renderComQuery(<FormularioCampanha />);
+    const input = screen.getByLabelText("Arquivo CSV") as HTMLInputElement;
+    const arquivo = new File(["Nome,numero"], "contatos.csv", { type: "text/csv" });
+
+    await userEvent.upload(input, arquivo);
+    await waitFor(() => expect(screen.getByText("contatos.csv")).toBeInTheDocument());
+
+    expect(input.value).toBe("");
+  });
+});
 
 // Tudo numa página só: nome, conexão, mensagem, contatos e intervalo convivem sem etapas.
 describe("FormularioCampanha — barra de ações", () => {
