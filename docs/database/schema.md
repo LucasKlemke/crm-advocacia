@@ -297,6 +297,82 @@ Arquivos anexados a um caso.
 | tamanho_kb | int | Máx. 10.240 KB = 10 MB (RN17) |
 | created_at | timestamp | |
 
+## `instancia_whatsapp`
+
+Vinculação entre um escritório e uma instância UAZAPI para envio de mensagens WhatsApp. Cada escritório pode registrar múltiplas instâncias (ex.: números/bots diferentes) para diversificar canais de comunicação. O status acompanha o ciclo de conexão via QR code, consultado sob demanda pela aplicação (sem webhook).
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório — escopo de tenant) |
+| nome | varchar(60) | Identificador legível da instância (ex.: "Bot Principal", "Suporte"), único por escritório |
+| uazapi_instance_id | varchar(100) | ID da instância UAZAPI retornado ao criar via API |
+| uazapi_token | varchar(255) | Token de acesso da instância, armazenado como texto pleno protegido pelo controle de acesso normal do banco de dados |
+| status | enum | `disconnected` (não conectado), `connecting` (QR code exibido, aguardando escanear), `connected` (conectado e pronto), `hibernated` (desativado temporariamente) |
+| numero_conectado | varchar(20) | Número WhatsApp conectado (ex.: "5548999999999"), preenchido quando transiciona para `connected` |
+| foto_perfil_url | text | URL da foto de perfil do WhatsApp conectado (`profilePicUrl` da UAZAPI), sem limite de tamanho declarado — URLs do CDN do WhatsApp variam de tamanho e não têm teto documentado |
+| soft_deleted_at | timestamp? | Exclusão lógica (RN30): ativa = `NULL`. A linha nunca é apagada porque é a única cópia do `uazapi_token` |
+| created_at / updated_at | timestamp | |
+
+`@@unique([escritorio_id, nome])` garante que nomes de instância são únicos por escritório — e **abrange as instâncias soft-deletadas**, de propósito: manter o nome reservado é o que torna segura a restauração feita pela sincronização (sem isso, um nome reaproveitado no intervalo faria a restauração estourar violação de unicidade). Tentar criar uma instância com o nome de uma excluída é recusado com uma mensagem que explica isso, como acontece com o CPF em `cliente`. `@@index([escritorio_id])` permite consultar as instâncias de um tenant rapidamente, e `@@index([escritorio_id, soft_deleted_at])` cobre a listagem, que só enxerga as ativas.
+
+Fluxo de conexão: criar instância com status `disconnected` → chamar UAZAPI para gerar QR → status muda pra `connecting` → usuário escaneia QR no celular → aplicação consulta `GET /api/instancias/[id]/status` (poll manual no endpoint `/instance/status` da UAZAPI, sem webhook) → status muda pra `connected` + `numero_conectado` preenchido. Desconexão (erro de rede, sessão expirada) reafirma `disconnected` ou `hibernated` conforme a razão.
+
+Desconexão manual (`POST /api/instancias/[id]/desconectar`, endpoint `/instance/disconnect` da UAZAPI): encerra a sessão do WhatsApp sem apagar a linha — `status` volta pra `disconnected` e `numero_conectado`/`foto_perfil_url` são zerados, porque pertenciam à sessão encerrada e o próximo QR pode ser lido por outro número. O `uazapi_instance_id`/`uazapi_token` continuam válidos, então reconectar é só escanear um QR novo (diferente de hibernar, que só pausa a conexão). O `status` devolvido pela UAZAPI nessa chamada é ignorado: a doc dela exemplifica a resposta com `connected` mesmo descrevendo `disconnected`/`connecting` como os estados possíveis — `/instance/status` segue como fonte da verdade.
+
+Exclusão manual (`DELETE /api/instancias/[id]`, endpoint `DELETE /instance` da UAZAPI): remove a instância na UAZAPI e a marca como excluída aqui (`soft_deleted_at`, RN30). A chamada externa vem antes da escrita local de propósito — se ela recusar, nada muda aqui e a instância continua utilizável; a ordem inversa deixaria uma instância órfã na UAZAPI, invisível pro escritório. A rota da UAZAPI não recebe id: a instância excluída é a dona do `uazapi_token` enviado no header (nunca o `admintoken`). Escrita restrita a owner/admin, como criar/reconectar. Um segundo DELETE na mesma instância responde 404 em vez de chamar a UAZAPI com um token já morto.
+
+A criação também compensa: se a conexão falhar depois de a instância já ter sido criada na UAZAPI, ela é apagada de lá antes de o erro subir. Sem isso o token seria descartado sem nunca ser gravado, e como `DELETE /instance` exige justamente esse token, a instância ficaria para sempre na conta compartilhada — invisível para o escritório e impossível de remover.
+
+Sincronização em lote (`POST /api/instancias/sincronizar`, endpoint `/instance/all` da UAZAPI): além de atualizar status/número/foto das instâncias que ainda existem do lado da UAZAPI, **marca como excluída** (nunca apaga) toda instância local cujo `uazapi_instance_id` não aparece mais na resposta — uma instância "fantasma", removida diretamente na UAZAPI. A marcação é reversível: a instância que reaparece numa sincronização seguinte é restaurada (`acao: restaurar`), o que impede que uma resposta parcial da UAZAPI, ou um `UAZAPI_SERVER_URL` apontando para outro servidor, vire perda permanente do controle das campanhas. Cada mudança gera uma linha em `log` na mesma transação, uma por instância; instância já marcada não é re-carimbada nem gera log novo (RN20 é sobre escrita real).
+
+Instância excluída sai das listagens e recusa reconectar/desconectar/verificar/excluir, mas continua resolvível internamente para que as campanhas dela sigam consultáveis e controláveis. Criar campanha nova, porém, passa por uma variante estrita que a recusa — o `status` da linha continua `connected` mesmo depois da exclusão, então sem essa checagem daria para disparar por uma instância morta enviando o id direto para a rota.
+
+## `campanha`
+
+Disparo em massa de WhatsApp a partir de uma planilha CSV. A campanha nasce já registrada na UAZAPI (`POST /sender/advanced`, que devolve o `uazapi_folder_id`) e é gerenciada depois por `POST /sender/edit` (pausar/retomar/excluir) e `GET /sender/listfolders` (estatísticas).
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | uuid | PK |
+| `escritorio_id` | uuid | FK `escritorio`, `onDelete: Cascade` |
+| `instancia_whatsapp_id` | uuid? | FK `instancia_whatsapp`, **`onDelete: SetNull`** |
+| `criado_por_id` | uuid | FK `usuario`, `onDelete: Restrict` |
+| `nome` | varchar(120) | Vai como `info` na UAZAPI |
+| `mensagem_template` | text | Mensagem-modelo com `{{variaveis}}` |
+| `mapeamento_variaveis` | jsonb? | `{{variavel}}` → `{ coluna, tratamentos[], padrao? }` (ver RN24a/RN24b). Campanhas anteriores aos tratamentos guardaram `{{variavel}}` → `"Coluna"`; a leitura normaliza os dois formatos |
+| `coluna_numero` | varchar(120) | Coluna do CSV com o telefone de destino |
+| `arquivo_csv_nome` | varchar(255)? | Só o nome; o CSV em si não é persistido |
+| `delay_min` / `delay_max` | int | Intervalo (segundos) sorteado entre mensagens |
+| `agendada_para` | timestamp? | Vira `scheduled_for` (epoch ms) na UAZAPI |
+| `status` | `StatusCampanha` | `agendada`/`enviando`/`pausada`/`concluida`/`excluindo` |
+| `uazapi_folder_id` | varchar(100) | Identificador da campanha na UAZAPI |
+| `total_destinatarios` | int | Quantidade de itens gerados |
+| `log_total`, `log_sucesso`, `log_falha`, `log_entregue`, `log_lido`, `log_reproduzido` | int | Contadores espelhados do `listfolders` |
+| `sincronizado_em` | timestamp? | Última sincronização bem-sucedida |
+
+`instancia_whatsapp_id` é **opcional com `SetNull`**, e não `Restrict`: a aplicação não apaga mais instância fisicamente (RN30), então esta ação referencial só existe como rede de segurança para uma remoção feita fora da aplicação. `Restrict` quebraria o `DELETE` de `escritorio`, cujo cascade apaga `campanha` e `instancia_whatsapp` juntas — no Postgres o RESTRICT é checado imediatamente e não pode ser adiado até o fim do statement. Valor nulo só existe em campanhas anteriores ao soft delete; elas permanecem como histórico somente-leitura (sem o token não há como sincronizar nem controlar).
+
+O status mensagem a mensagem não tem coluna: vem de `POST /sender/listmessages` na hora em que a campanha é aberta, casado com `campanha_item` pelo número (RN29). Só os contadores agregados do folder são espelhados aqui.
+
+Sincronizar só escreve (e só gera `log`) quando algum contador ou o status mudou — o mesmo critério de `verificarStatus` em `instancia_whatsapp`. A ação `delete` remove a linha local depois que a UAZAPI confirma, porque o `listfolders` nunca mais devolveria aquela campanha; o rastro fica no `log` append-only.
+
+## `campanha_item`
+
+Uma mensagem já renderizada por destinatário — o que de fato foi entregue à UAZAPI.
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | uuid | PK |
+| `escritorio_id` | uuid | FK `escritorio`, `onDelete: Cascade` (desnormalizado, RN19) |
+| `campanha_id` | uuid | FK `campanha`, `onDelete: Cascade` |
+| `linha` | int | Número da linha na planilha (1-based, sem cabeçalho); `@@unique([campanha_id, linha])` |
+| `numero` | varchar(20) | Só dígitos, `55 + DDD + 9` (mesmo formato de `cliente.telefone`) |
+| `mensagem` | text | Texto já com as variáveis substituídas |
+| `variaveis` | jsonb? | Valores **já tratados** que entraram na mensagem — só os usados pelo template, não a linha inteira do CSV |
+
+Sem `updated_at`: o item é snapshot imutável do que foi enviado (mesmo critério de `log`) — reprocessar o template depois daria um texto diferente do que o cliente recebeu.
+
 ## Relacionamentos
 
 | Origem | Cardinalidade | Destino |
@@ -322,6 +398,12 @@ Arquivos anexados a um caso.
 | `historico_mensagem` | N:1 | `cliente` |
 | `historico_mensagem` | N:1 | `template_mensagem` |
 | `historico_mensagem` | N:1 | `usuario` (autoria, opcional) |
+| `instancia_whatsapp` | N:1 | `escritorio` |
+| `campanha` | N:1 | `escritorio` |
+| `campanha` | N:1 | `instancia_whatsapp` (opcional, SetNull) |
+| `campanha` | N:1 | `usuario` (criada por) |
+| `campanha_item` | N:1 | `escritorio` |
+| `campanha_item` | N:1 | `campanha` |
 
 ## Notas de implementação (Prisma)
 

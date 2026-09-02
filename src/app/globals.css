@@ -6,6 +6,13 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-zap-fundo: var(--zap-fundo);
+  --color-zap-bolha-recebida: var(--zap-bolha-recebida);
+  --color-zap-bolha-enviada: var(--zap-bolha-enviada);
+  --color-zap-texto: var(--zap-texto);
+  --color-zap-meta: var(--zap-meta);
+  --color-zap-cabecalho: var(--zap-cabecalho);
+  --color-zap-cabecalho-texto: var(--zap-cabecalho-texto);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -97,6 +104,19 @@
   --gold-soft: oklch(0.955 0.008 90);
   --gold: oklch(0.875 0.06 88);
   --overlay: oklch(0.145 0 0);
+
+  /* Paleta do WhatsApp, usada só na prévia da mensagem de campanha. São as cores exatas
+     do produto da Meta, não da identidade do CRM — existem aqui como token (e não como
+     classe literal no componente) para o dark mode continuar funcionando e para ficar
+     evidente que mexer nelas é copiar o WhatsApp, não redefinir o tema. */
+  --zap-fundo: #efeae2;
+  --zap-bolha-recebida: #ffffff;
+  --zap-bolha-enviada: #d9fdd3;
+  --zap-texto: #111b21;
+  --zap-meta: #667781;
+  --zap-cabecalho: #f0f2f5;
+  --zap-cabecalho-texto: #111b21;
+  --zap-rabiscos: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%20viewBox='0%200%20140%20140'%3E%3Cg%20fill='none'%20stroke='%23000'%20stroke-opacity='0.06'%20stroke-width='1.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='20'%20cy='26'%20r='6'/%3E%20%3Cpath%20d='M58%2016h12M64%2010v12'/%3E%20%3Cpath%20d='M104%2034c4-6%2012-6%2016%200'/%3E%20%3Cpath%20d='M16%2074h18a3%203%200%200%201%203%203v10a3%203%200%200%201-3%203h-9l-6%205v-5h-3a3%203%200%200%201-3-3V77a3%203%200%200%201%203-3z'/%3E%20%3Cpath%20d='M84%2082c-6-5-10-8-10-12a5%205%200%200%201%209-3%205%205%200%200%201%209%203c0%204-4%207-8%2012z'/%3E%20%3Cpath%20d='M122%2066v12M116%2069l12%206M128%2069l-12%206'/%3E%20%3Cpath%20d='M36%20118l5%205%209-11'/%3E%20%3Ccircle%20cx='100'%20cy='118'%20r='5'/%3E%20%3Cpath%20d='M60%20104h20v14H60zM60%20104l10%208%2010-8'/%3E%20%3Cpath%20d='M128%20104h8v8a4%204%200%200%201-4%204%204%204%200%200%201-4-4z'/%3E%20%3Cpath%20d='M8%20100c5-4%2011-2%2012%204'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .dark {
@@ -139,6 +159,15 @@
   --gold-soft: oklch(0.26 0.006 90);
   --gold: oklch(0.36 0.035 85);
   --overlay: oklch(0.145 0 0);
+
+  --zap-fundo: #0b141a;
+  --zap-bolha-recebida: #202c33;
+  --zap-bolha-enviada: #005c4b;
+  --zap-texto: #e9edef;
+  --zap-meta: #8696a0;
+  --zap-cabecalho: #202c33;
+  --zap-cabecalho-texto: #e9edef;
+  --zap-rabiscos: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%20viewBox='0%200%20140%20140'%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-opacity='0.05'%20stroke-width='1.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='20'%20cy='26'%20r='6'/%3E%20%3Cpath%20d='M58%2016h12M64%2010v12'/%3E%20%3Cpath%20d='M104%2034c4-6%2012-6%2016%200'/%3E%20%3Cpath%20d='M16%2074h18a3%203%200%200%201%203%203v10a3%203%200%200%201-3%203h-9l-6%205v-5h-3a3%203%200%200%201-3-3V77a3%203%200%200%201%203-3z'/%3E%20%3Cpath%20d='M84%2082c-6-5-10-8-10-12a5%205%200%200%201%209-3%205%205%200%200%201%209%203c0%204-4%207-8%2012z'/%3E%20%3Cpath%20d='M122%2066v12M116%2069l12%206M128%2069l-12%206'/%3E%20%3Cpath%20d='M36%20118l5%205%209-11'/%3E%20%3Ccircle%20cx='100'%20cy='118'%20r='5'/%3E%20%3Cpath%20d='M60%20104h20v14H60zM60%20104l10%208%2010-8'/%3E%20%3Cpath%20d='M128%20104h8v8a4%204%200%200%201-4%204%204%204%200%200%201-4-4z'/%3E%20%3Cpath%20d='M8%20100c5-4%2011-2%2012%204'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 @layer base {

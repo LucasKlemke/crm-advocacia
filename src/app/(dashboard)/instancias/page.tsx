@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
-import { EmConstrucao } from "@/components/shared/em-construcao";
+import { getTenantContextOuRedirect } from "../_lib/tenant-context-pagina";
+import { PageContainer } from "@/components/shared/page-container";
+import { ListaInstancias } from "./_components/lista-instancias";
 
 export const metadata: Metadata = {
   title: "Instâncias",
 };
 
-export default function InstanciasPage() {
+export default async function InstanciasPage() {
+  const ctx = await getTenantContextOuRedirect();
+
   return (
-    <EmConstrucao
-      titulo="Instâncias de WhatsApp"
-      descricao="Aqui você vai conectar o WhatsApp do escritório por QR Code e acompanhar o status de cada instância conectada. Estamos construindo essa tela."
-    />
+    <PageContainer className="max-w-5xl">
+      <ListaInstancias somenteLeitura={ctx.role === "padrao"} />
+    </PageContainer>
   );
 }

@@ -56,9 +56,24 @@ describe("formatarTelefone", () => {
     expect(formatarTelefone("5547999998888")).toBe("+55 (47) 99999-8888");
   });
 
-  it("devolve o valor original quando não é um celular válido", () => {
+  // O `owner` que a UAZAPI devolve para a instância conectada costuma vir sem o 9º
+  // dígito (55 + DDD + 8), e sem isso o número da instância aparecia cru na tela.
+  it("aplica a máscara também no formato antigo, de 8 dígitos", () => {
+    expect(formatarTelefone("554797355799")).toBe("+55 (47) 9735-5799");
+  });
+
+  it("devolve o valor original quando não dá para reconhecer o formato", () => {
     expect(formatarTelefone("47999998888")).toBe("47999998888");
+    expect(formatarTelefone("5547")).toBe("5547");
+    expect(formatarTelefone("55479999988887777")).toBe("55479999988887777");
     expect(formatarTelefone("")).toBe("");
+  });
+
+  // Continua sendo só apresentação: o que pode receber disparo segue decidido por
+  // telefoneValido (RN13), que exige o celular de 9 dígitos.
+  it("mascarar não implica que o número é válido para disparo", () => {
+    expect(formatarTelefone("554797355799")).toBe("+55 (47) 9735-5799");
+    expect(telefoneValido("554797355799")).toBe(false);
   });
 });
 

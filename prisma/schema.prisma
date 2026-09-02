@@ -45,6 +45,8 @@ enum EntidadeLog {
   tipo_processo
   membro
   documento
+  instancia_whatsapp
+  campanha
 }
 
 enum AcaoLog {
@@ -68,6 +70,24 @@ enum EstadoCivilCliente {
   uniao_estavel
 }
 
+enum StatusInstanciaWhatsapp {
+  disconnected
+  connecting
+  connected
+  hibernated
+}
+
+// Espelha 1:1 o ciclo de vida de uma campanha na UAZAPI (scheduled/sending/paused/done/
+// deleting), traduzido para o vocabulário do resto do schema. `excluindo` existe porque o
+// delete do /sender/edit é assíncrono lá — o estado é observável enquanto não conclui.
+enum StatusCampanha {
+  agendada
+  enviando
+  pausada
+  concluida
+  excluindo
+}
+
 model Escritorio {
   id               String   @id @default(uuid())
   nome             String   @db.VarChar(140)
@@ -77,15 +97,18 @@ model Escritorio {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  membros       Membro[]
-  convites      Convite[]
-  clientes      Cliente[]
-  comentarios   Comentario[]
-  logs          Log[]
-  status        Status[]
-  tiposProcesso TipoProcesso[]
-  casos         Caso[]
-  documentos    Documento[]
+  membros            Membro[]
+  convites           Convite[]
+  clientes           Cliente[]
+  comentarios        Comentario[]
+  logs               Log[]
+  status             Status[]
+  tiposProcesso      TipoProcesso[]
+  casos              Caso[]
+  documentos         Documento[]
+  instanciasWhatsapp InstanciaWhatsapp[]
+  campanhas          Campanha[]
+  campanhaItens      CampanhaItem[]
 
   @@map("escritorio")
 }
@@ -108,6 +131,7 @@ model Usuario {
   convitesEnviados Convite[]    @relation("ConviteCriadoPor")
   comentarios      Comentario[] @relation("ComentarioAutor")
   logs             Log[]        @relation("LogAutor")
+  campanhas        Campanha[]   @relation("CampanhaCriadaPor")
 
   @@map("usuario")
 }
@@ -336,4 +360,109 @@ model Caso {
   @@index([escritorioId, responsavelMembroId])
   @@index([escritorioId, tipoProcessoId])
   @@map("caso")
+}
+
+// Instância WhatsApp: vinculação entre um escritório e uma instância UAZAPI para envio de mensagens.
+// Cada escritório pode ter múltiplas instâncias (ex.: diferentes números/bots). O status acompanha
+// o ciclo de conexão (desconectado → conectando → conectado; hibernado se inativo).
+// Nunca é apagada fisicamente (RN30): "excluir" grava soft_deleted_at (ativa = NULL), porque esta
+// linha é a única cópia do uazapi_token — sem ela, toda campanha daquela instância perde o canal
+// de controle com a UAZAPI e nunca mais pode ser sincronizada, pausada ou excluída.
+model InstanciaWhatsapp {
+  id               String                  @id @default(uuid())
+  escritorioId     String                  @map("escritorio_id")
+  nome             String                  @db.VarChar(60)
+  uazapiInstanceId String                  @map("uazapi_instance_id") @db.VarChar(100)
+  uazapiToken      String                  @map("uazapi_token") @db.VarChar(255)
+  status           StatusInstanciaWhatsapp @default(disconnected)
+  numeroConectado  String?                 @map("numero_conectado") @db.VarChar(20)
+  fotoPerfilUrl    String?                 @map("foto_perfil_url")
+  softDeletedAt    DateTime?               @map("soft_deleted_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  campanhas  Campanha[]
+
+  // O unique abrange as soft-deletadas de propósito (mesma escolha de Cliente com o CPF):
+  // manter o nome reservado é o que torna segura a ressurreição feita por sincronizarTodas
+  // quando a instância reaparece na UAZAPI — sem isso, um nome reaproveitado no intervalo
+  // faria a restauração estourar P2002 e derrubar o lote inteiro.
+  @@unique([escritorioId, nome])
+  @@index([escritorioId])
+  @@index([escritorioId, softDeletedAt])
+  @@map("instancia_whatsapp")
+}
+
+// Campanha de disparo em massa: um CSV de destinatários + uma mensagem-modelo com
+// {{variaveis}}, materializados em N mensagens (CampanhaItem) e registrados na UAZAPI via
+// POST /sender/advanced — que devolve o `uazapi_folder_id` usado depois para sincronizar
+// estatísticas (/sender/listfolders) e controlar o envio (/sender/edit).
+model Campanha {
+  id                  String         @id @default(uuid())
+  escritorioId        String         @map("escritorio_id")
+  instanciaWhatsappId String?        @map("instancia_whatsapp_id")
+  criadoPorId         String         @map("criado_por_id")
+  nome                String         @db.VarChar(120)
+  mensagemTemplate    String         @map("mensagem_template") @db.Text
+  // {{variavel}} -> nome da coluna do CSV que a preenche. Guardado para a tela de detalhe
+  // explicar de onde veio cada valor, já que o CSV em si não é persistido.
+  mapeamentoVariaveis Json?          @map("mapeamento_variaveis")
+  colunaNumero        String         @map("coluna_numero") @db.VarChar(120)
+  arquivoCsvNome      String?        @map("arquivo_csv_nome") @db.VarChar(255)
+  delayMin            Int            @map("delay_min")
+  delayMax            Int            @map("delay_max")
+  agendadaPara        DateTime?      @map("agendada_para")
+  status              StatusCampanha @default(agendada)
+  uazapiFolderId      String         @map("uazapi_folder_id") @db.VarChar(100)
+  totalDestinatarios  Int            @map("total_destinatarios")
+  // Contadores espelhados do /sender/listfolders na última sincronização — a UAZAPI é a
+  // fonte da verdade do envio; aqui é só cache para a listagem não depender dela.
+  logTotal            Int            @default(0) @map("log_total")
+  logSucesso          Int            @default(0) @map("log_sucesso")
+  logFalha            Int            @default(0) @map("log_falha")
+  logEntregue         Int            @default(0) @map("log_entregue")
+  logLido             Int            @default(0) @map("log_lido")
+  logReproduzido      Int            @default(0) @map("log_reproduzido")
+  sincronizadoEm      DateTime?      @map("sincronizado_em")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  escritorio Escritorio         @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  // SetNull, e não Restrict: a aplicação não apaga mais instância fisicamente (RN30 — a
+  // exclusão é soft, via soft_deleted_at), então esta ação referencial só existe como rede
+  // de segurança para uma remoção feita fora da aplicação. Restrict aqui quebraria o DELETE
+  // de Escritorio, cujo cascade apaga campanha e instancia_whatsapp juntas: no Postgres o
+  // RESTRICT é checado imediatamente e não pode ser adiado até o fim do statement.
+  // instancia_whatsapp_id nulo só existe em campanhas anteriores ao soft delete; elas seguem
+  // como histórico somente-leitura (sem token, não dá para sincronizar nem controlar).
+  instancia  InstanciaWhatsapp? @relation(fields: [instanciaWhatsappId], references: [id], onDelete: SetNull)
+  criadoPor  Usuario            @relation("CampanhaCriadaPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  itens      CampanhaItem[]
+
+  @@index([escritorioId, createdAt])
+  @@index([instanciaWhatsappId])
+  @@map("campanha")
+}
+
+// Uma mensagem já renderizada para um destinatário — o que de fato foi entregue à UAZAPI.
+// Snapshot imutável (sem updated_at, como Log): reprocessar o template depois daria um
+// texto diferente do que o cliente recebeu.
+model CampanhaItem {
+  id           String   @id @default(uuid())
+  escritorioId String   @map("escritorio_id")
+  campanhaId   String   @map("campanha_id")
+  linha        Int
+  numero       String   @db.VarChar(20)
+  mensagem     String   @db.Text
+  variaveis    Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  campanha   Campanha   @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+
+  @@unique([campanhaId, linha])
+  @@index([campanhaId])
+  @@index([escritorioId])
+  @@map("campanha_item")
 }
