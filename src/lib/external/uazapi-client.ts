@@ -31,6 +31,20 @@ function corpoInstancia(body: Record<string, unknown>): Record<string, unknown> 
   return instance && typeof instance === "object" ? (instance as Record<string, unknown>) : body;
 }
 
+// Prazo máximo de uma chamada à UAZAPI. Sem ele o fetch espera indefinidamente e o route
+// handler fica pendurado até a plataforma matá-lo — pior ainda em /sender/advanced, onde o
+// envio pode já ter sido aceito do outro lado enquanto o chamador vê um timeout.
+const TIMEOUT_PADRAO_MS = 15_000;
+
+// /sender/advanced sobe a campanha inteira (até 5000 mensagens) e /sender/listmessages
+// devolve todas elas: são legitimamente lentas, e o prazo curto acima as mataria.
+const TIMEOUT_CAMPANHA_MS = 60_000;
+
+const TIMEOUT_POR_CAMINHO: Record<string, number> = {
+  "/sender/advanced": TIMEOUT_CAMPANHA_MS,
+  "/sender/listmessages": TIMEOUT_CAMPANHA_MS,
+};
+
 async function chamarUazapi(
   caminho: string,
   headers: Record<string, string>,
@@ -49,6 +63,9 @@ async function chamarUazapi(
     resposta = await fetch(url, {
       method,
       headers,
+      // Estourar o prazo cai no mesmo catch da falha de rede: das duas o chamador só
+      // precisa saber que a UAZAPI não respondeu.
+      signal: AbortSignal.timeout(TIMEOUT_POR_CAMINHO[caminho] ?? TIMEOUT_PADRAO_MS),
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
@@ -82,6 +99,16 @@ export interface CampanhaUazapi {
   logEntregue: number;
   logLido: number;
   logReproduzido: number;
+}
+
+// Uma instância como /instance/all a devolve, já reduzida aos campos que atravessam a
+// fronteira: `token` e outros dados sensíveis dos demais tenants ficam de fora.
+export interface InstanciaUazapi {
+  id: string;
+  status: string;
+  owner?: string;
+  fotoPerfilUrl?: string;
+  adminField01?: string;
 }
 
 export interface MensagemEnvioAvancado {
@@ -249,15 +276,7 @@ export const uazapiClient = {
     };
   },
 
-  async listarTodasInstancias(): Promise<
-    Array<{
-      id: string;
-      status: string;
-      owner?: string;
-      fotoPerfilUrl?: string;
-      adminField01?: string;
-    }>
-  > {
+  async listarTodasInstancias(): Promise<InstanciaUazapi[]> {
     // /instance/all exige admintoken (mesmo nível de /instance/create) — não o token de
     // uma instância individual — e devolve TODAS as instâncias da conta UAZAPI inteira,
     // de todos os escritórios que usam essa conta compartilhada, não só o do chamador.
@@ -283,16 +302,29 @@ export const uazapiClient = {
     // (possivelmente de outro escritório) e outros campos sensíveis (ex.: openai_apikey).
     // Só os campos abaixo sobrevivem ao mapeamento — nada além disso, especialmente não
     // `token`, passa adiante pro Service/logs/testes.
-    return corpo.map((item: unknown) => {
+    //
+    // Item sem id/status utilizável é descartado em vez de virar `undefined` cast pra
+    // string: quem consome esta lista indexa as instâncias por id, e um `undefined` ali
+    // colapsaria os itens malformados numa chave só — fazendo instâncias legítimas
+    // falharem o casamento e serem tratadas como se tivessem sumido da UAZAPI. Descartar
+    // só o item ruim (em vez de recusar a resposta inteira) mantém o mesmo espírito do
+    // lote de sincronizarTodas: um item malformado não derruba os outros.
+    const instancias: InstanciaUazapi[] = [];
+    for (const item of corpo) {
       const raw = item as Record<string, unknown>;
-      return {
-        id: raw.id as string,
-        status: raw.status as string,
+      const id = typeof raw.id === "string" ? raw.id : "";
+      const status = typeof raw.status === "string" ? raw.status : "";
+      if (!id || !status) continue;
+
+      instancias.push({
+        id,
+        status,
         owner: (raw.owner as string | undefined) || undefined,
         fotoPerfilUrl: (raw.profilePicUrl as string | undefined) || undefined,
         adminField01: (raw.adminField01 as string | undefined) || undefined,
-      };
-    });
+      });
+    }
+    return instancias;
   },
 
   // Registra a campanha inteira na UAZAPI de uma vez: uma entrada em `messages` por

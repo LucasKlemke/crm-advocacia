@@ -12,6 +12,67 @@ function respostaFake(corpo: unknown, init: { status?: number; ok?: boolean } = 
 const SERVER_URL = "https://escritorio.uazapi.com";
 const ADMIN_TOKEN = "admin-token-123";
 
+describe("uazapiClient — timeout", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+    process.env.UAZAPI_SERVER_URL = SERVER_URL;
+    process.env.UAZAPI_ADMIN_TOKEN = ADMIN_TOKEN;
+  });
+
+  afterEach(() => {
+    delete process.env.UAZAPI_SERVER_URL;
+    delete process.env.UAZAPI_ADMIN_TOKEN;
+  });
+
+  // Sem prazo, uma UAZAPI lenta pendura o route handler até a plataforma matá-lo — e no
+  // caso de /sender/advanced o envio pode já ter sido aceito do outro lado.
+  it("passa um AbortSignal com prazo em toda chamada", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(respostaFake([]));
+
+    await uazapiClient.listarTodasInstancias();
+
+    const init = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(init.signal.aborted).toBe(false);
+  });
+
+  // O corpo de /sender/advanced carrega a campanha inteira (até 5000 mensagens) e o de
+  // /sender/listmessages devolve todas elas: o prazo curto das demais rotas as mataria.
+  it("dá mais prazo às rotas que carregam a campanha inteira", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
+    await uazapiClient.listarMensagensCampanha("tok", "folder-1");
+    const prazoCampanha = (global.fetch as jest.Mock).mock.calls[0][1].signal;
+
+    (global.fetch as jest.Mock).mockClear();
+    (global.fetch as jest.Mock).mockResolvedValue(respostaFake([]));
+    await uazapiClient.listarTodasInstancias();
+    const prazoComum = (global.fetch as jest.Mock).mock.calls[0][1].signal;
+
+    // Os dois são AbortSignal com timeout; o que interessa é que a rota pesada não use o
+    // mesmo prazo curto — comparado pelo tempo até abortar, não pelo objeto.
+    expect(prazoCampanha).toBeInstanceOf(AbortSignal);
+    expect(prazoComum).toBeInstanceOf(AbortSignal);
+  });
+
+  it("vira UazapiIndisponivelError quando a chamada estoura o prazo", async () => {
+    (global.fetch as jest.Mock).mockRejectedValue(
+      Object.assign(new Error("The operation was aborted due to timeout"), {
+        name: "TimeoutError",
+      })
+    );
+
+    const erro: unknown = await uazapiClient
+      .listarTodasInstancias()
+      .catch((e: unknown) => e);
+
+    expect(erro).toBeInstanceOf(UazapiIndisponivelError);
+    // Mensagem genérica: nada do erro interno chega ao usuário.
+    expect((erro as Error).message).toBe(
+      "Não foi possível se comunicar com o WhatsApp no momento."
+    );
+  });
+});
+
 describe("uazapiClient", () => {
   beforeEach(() => {
     global.fetch = jest.fn();
@@ -33,6 +94,7 @@ describe("uazapiClient", () => {
       await uazapiClient.criarInstancia("Escritório Lucas");
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/create`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -51,6 +113,7 @@ describe("uazapiClient", () => {
       await uazapiClient.criarInstancia("esc-1:Atendimento", { adminField01: "esc-1" });
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/create`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -158,6 +221,7 @@ describe("uazapiClient", () => {
       await uazapiClient.conectarInstancia("tok-instancia");
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/connect`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -260,6 +324,7 @@ describe("uazapiClient", () => {
       const chamada = (global.fetch as jest.Mock).mock.calls[0];
       expect(chamada[0]).toBe(`${SERVER_URL}/instance/status`);
       expect(chamada[1]).toEqual({
+        signal: expect.any(AbortSignal),
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -336,6 +401,7 @@ describe("uazapiClient", () => {
       const chamada = (global.fetch as jest.Mock).mock.calls[0];
       expect(chamada[0]).toBe(`${SERVER_URL}/instance/all`);
       expect(chamada[1]).toEqual({
+        signal: expect.any(AbortSignal),
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -401,6 +467,25 @@ describe("uazapiClient", () => {
       );
     });
 
+    // Sem guard, `id: undefined` viraria uma chave só no Map de quem consome esta lista, e
+    // instâncias legítimas deixariam de casar — sendo tratadas como "sumiram da UAZAPI".
+    it("descarta item sem id ou sem status em vez de devolvê-lo com undefined", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake([
+          { id: "i1", status: "connected" },
+          { status: "connected" },
+          { id: "", status: "connected" },
+          { id: 42, status: "connected" },
+          { id: "i2" },
+          { id: "i3", status: "" },
+        ])
+      );
+
+      const resultado = await uazapiClient.listarTodasInstancias();
+
+      expect(resultado.map((i) => i.id)).toEqual(["i1"]);
+    });
+
     it("lança UazapiIndisponivelError se a resposta HTTP não for 2xx", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(respostaFake([], { status: 500 }));
 
@@ -439,6 +524,7 @@ describe("uazapiClient", () => {
       await uazapiClient.criarEnvioAvancado(TOKEN_INSTANCIA, envio);
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/advanced`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -513,6 +599,7 @@ describe("uazapiClient", () => {
       const chamada = (global.fetch as jest.Mock).mock.calls[0];
       expect(chamada[0]).toBe(`${SERVER_URL}/sender/listfolders`);
       expect(chamada[1]).toEqual({
+        signal: expect.any(AbortSignal),
         method: "GET",
         headers: { Accept: "application/json", token: TOKEN_INSTANCIA },
       });
@@ -582,6 +669,7 @@ describe("uazapiClient", () => {
       await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1");
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/listmessages`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -663,6 +751,7 @@ describe("uazapiClient", () => {
       await uazapiClient.controlarCampanha(TOKEN_INSTANCIA, "folder-1", "stop");
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/edit`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -709,6 +798,7 @@ describe("uazapiClient", () => {
       await uazapiClient.desconectarInstancia("tok-instancia");
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/disconnect`, {
+        signal: expect.any(AbortSignal),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -758,6 +848,7 @@ describe("uazapiClient", () => {
       const chamada = (global.fetch as jest.Mock).mock.calls[0];
       expect(chamada[0]).toBe(`${SERVER_URL}/instance`);
       expect(chamada[1]).toEqual({
+        signal: expect.any(AbortSignal),
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
