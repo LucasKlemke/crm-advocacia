@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTenantContextOuRedirect } from "../../_lib/tenant-context-pagina";
 import { PageContainer } from "@/components/shared/page-container";
-import { WizardCampanha } from "./_components/wizard-campanha";
+import { FormularioCampanha } from "./_components/formulario-campanha";
 
 export const metadata: Metadata = {
   title: "Nova campanha",
@@ -15,8 +15,8 @@ export default async function NovaCampanhaPage() {
   if (ctx.role === "padrao") redirect("/campanhas");
 
   return (
-    <PageContainer className="max-w-3xl">
-      <WizardCampanha />
+    <PageContainer className="max-w-6xl">
+      <FormularioCampanha />
     </PageContainer>
   );
 }

@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { renderComQuery } from "@/lib/test-utils";
-import { PassoInstancia } from "./passo-instancia";
+import { SeletorInstancia } from "./seletor-instancia";
 import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
 
 const useInstanciasMock = jest.fn();
@@ -32,9 +32,9 @@ beforeEach(() => {
   });
 });
 
-describe("PassoInstancia", () => {
+describe("SeletorInstancia", () => {
   it("mostra nome, número com máscara e iniciais da instância", () => {
-    renderComQuery(<PassoInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
 
     expect(screen.getAllByText("Atendimento").length).toBeGreaterThan(0);
     expect(screen.getAllByText("+55 (11) 99999-8888").length).toBeGreaterThan(0);
@@ -44,7 +44,7 @@ describe("PassoInstancia", () => {
   // Regressão: o conteúdo ficava dentro de um SelectValue, e o `line-clamp-1` que o
   // SelectTrigger aplica nesse slot virava `display:-webkit-box` e desmontava as duas linhas.
   it("mostra nome e número dentro do próprio gatilho do select", () => {
-    renderComQuery(<PassoInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
 
     const gatilho = screen.getByRole("combobox");
     expect(gatilho).toHaveTextContent("Atendimento");
@@ -53,9 +53,9 @@ describe("PassoInstancia", () => {
   });
 
   it("mostra o texto de escolha enquanto nenhuma instância está selecionada", () => {
-    renderComQuery(<PassoInstancia instanciaId="" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="" onSelecionar={jest.fn()} />);
 
-    expect(screen.getByRole("combobox")).toHaveTextContent(/escolha a instância/i);
+    expect(screen.getByRole("combobox")).toHaveTextContent(/selecionar conexão/i);
   });
 
   // Regressão: o `owner` da UAZAPI costuma vir sem o 9º dígito, e nesse caso o número
@@ -67,7 +67,7 @@ describe("PassoInstancia", () => {
       isError: false,
     });
 
-    renderComQuery(<PassoInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
 
     expect(screen.getAllByText("+55 (47) 9735-5799").length).toBeGreaterThan(0);
     expect(screen.queryByText("554797355799")).not.toBeInTheDocument();
@@ -80,7 +80,7 @@ describe("PassoInstancia", () => {
       isError: false,
     });
 
-    renderComQuery(<PassoInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
 
     expect(screen.getAllByText(/número não identificado/i).length).toBeGreaterThan(0);
   });
@@ -93,17 +93,22 @@ describe("PassoInstancia", () => {
       isError: false,
     });
 
-    renderComQuery(<PassoInstancia instanciaId="" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="" onSelecionar={jest.fn()} />);
 
     expect(screen.queryByText("Atendimento")).not.toBeInTheDocument();
-    expect(screen.getByText(/nenhuma instância conectada/i)).toBeInTheDocument();
+    // Sem número conectado não há select: a pílula vira um atalho para conectar um.
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /conectar um número/i })).toHaveAttribute(
+      "href",
+      "/instancias"
+    );
   });
 
   it("mostra erro quando a listagem falha", () => {
     useInstanciasMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
 
-    renderComQuery(<PassoInstancia instanciaId="" onSelecionar={jest.fn()} />);
+    renderComQuery(<SeletorInstancia instanciaId="" onSelecionar={jest.fn()} />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/não foi possível carregar/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/falha ao carregar/i);
   });
 });

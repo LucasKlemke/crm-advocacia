@@ -1,15 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PassoMensagem } from "./passo-mensagem";
+import { SecaoMensagem } from "./secao-mensagem";
 
 const COLUNAS = ["Nome", "numero", "Bairro"];
 const PRIMEIRA_LINHA = { Nome: "Ana", numero: "5511999999999", Bairro: "Centro" };
 
-function renderizar(over: Partial<React.ComponentProps<typeof PassoMensagem>> = {}) {
+function renderizar(over: Partial<React.ComponentProps<typeof SecaoMensagem>> = {}) {
   const onMensagem = jest.fn();
   const onConfigurar = jest.fn();
   render(
-    <PassoMensagem
+    <SecaoMensagem
       mensagem="Olá {{nome}}, tudo bem?"
       colunas={COLUNAS}
       primeiraLinha={PRIMEIRA_LINHA}
@@ -23,7 +23,7 @@ function renderizar(over: Partial<React.ComponentProps<typeof PassoMensagem>> = 
   return { onMensagem, onConfigurar };
 }
 
-describe("PassoMensagem", () => {
+describe("SecaoMensagem", () => {
   it("lista as variáveis encontradas no texto", () => {
     renderizar({
       mensagem: "Olá {{nome}} do {{bairro}}",
