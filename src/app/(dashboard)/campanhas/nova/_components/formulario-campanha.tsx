@@ -17,8 +17,10 @@ import {
   type MapeamentoVariaveis,
 } from "@/lib/utils/campanha-mensagem";
 import { CsvInvalidoError, lerPlanilha, sugerirColunaNumero } from "@/lib/utils/csv-campanha";
+import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 import { SeletorInstancia, type InstanciaEscolhida } from "./seletor-instancia";
-import { SecaoMensagem, ID_CAMPO_MENSAGEM } from "./secao-mensagem";
+import { DialogMensagem } from "./dialog-mensagem";
+import { SecaoMensagem } from "./secao-mensagem";
 import { SecaoContatos, contarNumerosInvalidos, type PlanilhaSelecionada } from "./secao-contatos";
 import { PopoverAgendamento, PopoverIntervalo, type ConfigEnvio } from "./popover-envio";
 
@@ -32,6 +34,7 @@ export function FormularioCampanha() {
   const [instancia, setInstancia] = useState<InstanciaEscolhida | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [mapeamento, setMapeamento] = useState<MapeamentoVariaveis>({});
+  const [dialogMensagem, setDialogMensagem] = useState(false);
   const [planilha, setPlanilha] = useState<PlanilhaSelecionada | null>(null);
   const [colunaNumero, setColunaNumero] = useState("");
   const [lendo, setLendo] = useState(false);
@@ -66,26 +69,14 @@ export function FormularioCampanha() {
     }
   }
 
-  // O casamento automático roda a cada digitação, mas só preenche variável ainda sem
-  // escolha: uma coluna que o usuário selecionou à mão nunca é sobrescrita pela sugestão.
-  function handleMensagem(texto: string) {
+  function handleSalvarMensagem(texto: string, mapa: MapeamentoVariaveis) {
     setMensagem(texto);
-    setMapeamento((atual) => {
-      const sugerido = sugerirMapeamento(extrairVariaveis(texto), colunas);
-      return Object.fromEntries(
-        Object.entries(sugerido).map(([variavel, config]) => [variavel, atual[variavel] ?? config])
-      );
-    });
+    setMapeamento(mapa);
+    setDialogMensagem(false);
   }
 
   function handleEnvio<C extends keyof ConfigEnvio>(campo: C, valor: ConfigEnvio[C]) {
     setEnvio((atual) => ({ ...atual, [campo]: valor }));
-  }
-
-  function focarMensagem() {
-    const campo = document.getElementById(ID_CAMPO_MENSAGEM);
-    campo?.scrollIntoView({ behavior: "smooth", block: "center" });
-    campo?.focus();
   }
 
   const numerosInvalidos = contarNumerosInvalidos(linhas, colunaNumero);
@@ -168,11 +159,11 @@ export function FormularioCampanha() {
       </div>
 
       {/* Barra de ações: tudo que a campanha precisa numa linha só, em vez de etapas. Cada
-          pílula é o próprio controle (nome, conexão, intervalo, agendamento) ou um atalho
-          para a seção correspondente (mensagem, contatos). */}
+          pílula é o próprio controle (nome, conexão, intervalo, agendamento) ou abre onde a
+          escolha é feita (mensagem, contatos) — todas com a mesma altura. */}
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          className="h-11 w-56"
+          className={`${CLASSE_ITEM_BARRA} w-56`}
           maxLength={120}
           placeholder="Nome da campanha"
           aria-label="Nome da campanha"
@@ -185,15 +176,20 @@ export function FormularioCampanha() {
           onSelecionar={(escolhida) => setInstancia(escolhida)}
         />
 
-        <Button type="button" variant="outline" className="h-11" onClick={focarMensagem}>
+        <Button
+          type="button"
+          variant="outline"
+          className={CLASSE_ITEM_BARRA}
+          onClick={() => setDialogMensagem(true)}
+        >
           <MessageSquare />
-          Escrever mensagem
+          {mensagem.trim() ? "Editar mensagem" : "Escrever mensagem"}
         </Button>
 
         <Button
           type="button"
           variant="outline"
-          className="h-11"
+          className={CLASSE_ITEM_BARRA}
           disabled={lendo}
           onClick={() => inputArquivo.current?.click()}
         >
@@ -206,7 +202,7 @@ export function FormularioCampanha() {
 
         <Button
           type="button"
-          className="h-11"
+          className={`${CLASSE_ITEM_BARRA} ml-auto`}
           disabled={impedimento !== null || criar.isPending}
           title={impedimento ?? undefined}
           onClick={handleCriar}
@@ -222,15 +218,11 @@ export function FormularioCampanha() {
 
       <SecaoMensagem
         mensagem={mensagem}
-        colunas={colunas}
-        primeiraLinha={linhas[0]}
         mapeamento={mapeamento}
+        primeiraLinha={linhas[0]}
         remetenteNome={instancia?.nome ?? ""}
         remetenteFoto={instancia?.fotoPerfilUrl}
-        onMensagem={handleMensagem}
-        onConfigurar={(variavel, config) =>
-          setMapeamento((atual) => ({ ...atual, [variavel]: config }))
-        }
+        onEditar={() => setDialogMensagem(true)}
       />
 
       <SecaoContatos
@@ -241,6 +233,21 @@ export function FormularioCampanha() {
         onAbrirSeletor={() => inputArquivo.current?.click()}
         onArquivo={handleArquivo}
         onColunaNumero={setColunaNumero}
+      />
+
+      {/* A `key` remonta o dialog a cada abertura, e é o que faz o rascunho começar do texto
+          já salvo — sem isso um "Cancelar" deixaria o rascunho antigo para a próxima vez. */}
+      <DialogMensagem
+        key={dialogMensagem ? "aberto" : "fechado"}
+        aberto={dialogMensagem}
+        mensagem={mensagem}
+        mapeamento={mapeamento}
+        colunas={colunas}
+        primeiraLinha={linhas[0]}
+        remetenteNome={instancia?.nome ?? ""}
+        remetenteFoto={instancia?.fotoPerfilUrl}
+        onAbertoChange={setDialogMensagem}
+        onSalvar={handleSalvarMensagem}
       />
     </div>
   );

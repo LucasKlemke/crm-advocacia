@@ -2,62 +2,35 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SecaoMensagem } from "./secao-mensagem";
 
-const COLUNAS = ["Nome", "numero", "Bairro"];
 const PRIMEIRA_LINHA = { Nome: "Ana", numero: "5511999999999", Bairro: "Centro" };
 
 function renderizar(over: Partial<React.ComponentProps<typeof SecaoMensagem>> = {}) {
-  const onMensagem = jest.fn();
-  const onConfigurar = jest.fn();
+  const onEditar = jest.fn();
   render(
     <SecaoMensagem
       mensagem="Olá {{nome}}, tudo bem?"
-      colunas={COLUNAS}
-      primeiraLinha={PRIMEIRA_LINHA}
       mapeamento={{ nome: { coluna: "Nome", tratamentos: [] } }}
+      primeiraLinha={PRIMEIRA_LINHA}
       remetenteNome="Atendimento"
-      onMensagem={onMensagem}
-      onConfigurar={onConfigurar}
+      onEditar={onEditar}
       {...over}
     />
   );
-  return { onMensagem, onConfigurar };
+  return { onEditar };
 }
 
+// Fora do dialog só existe a prévia: o texto e os selects de variável moram no editor.
 describe("SecaoMensagem", () => {
-  it("lista as variáveis encontradas no texto", () => {
-    renderizar({
-      mensagem: "Olá {{nome}} do {{bairro}}",
-      mapeamento: { nome: { coluna: "Nome", tratamentos: [] } },
-    });
-
-    expect(screen.getByText("{{nome}}")).toBeInTheDocument();
-    expect(screen.getByText("{{bairro}}")).toBeInTheDocument();
-  });
-
-  // O comportamento central pedido: variável sem coluna correspondente vira uma escolha
-  // explícita do usuário, e não um envio com o placeholder cru.
-  it("cobra a escolha da coluna para a variável que não casou sozinha", () => {
-    renderizar({
-      mensagem: "Olá {{nome}} do {{bairro_preferido}}",
-      mapeamento: { nome: { coluna: "Nome", tratamentos: [] }, bairro_preferido: null },
-    });
-
-    expect(screen.getByRole("alert")).toHaveTextContent("{{bairro_preferido}}");
-    expect(
-      screen.getByRole("combobox", { name: /coluna para a variável bairro_preferido/i })
-    ).toBeInTheDocument();
-  });
-
-  it("não cobra nada quando todas as variáveis têm coluna", () => {
-    renderizar();
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
   it("mostra a prévia renderizada com a primeira linha da planilha", () => {
     renderizar();
 
     expect(screen.getByText("Olá Ana, tudo bem?")).toBeInTheDocument();
+  });
+
+  it("não mostra campo de edição da mensagem", () => {
+    renderizar();
+
+    expect(screen.queryByLabelText(/texto da mensagem/i)).not.toBeInTheDocument();
   });
 
   // A prévia imita a conversa do WhatsApp: no topo aparece de quem o cliente vai receber.
@@ -67,25 +40,46 @@ describe("SecaoMensagem", () => {
     expect(screen.getByText("Atendimento")).toBeInTheDocument();
   });
 
+  it("resume a coluna, os tratamentos e o padrão de cada variável", () => {
+    renderizar({
+      mensagem: "Olá {{nome}}",
+      mapeamento: {
+        nome: { coluna: "Nome", tratamentos: ["primeiro_nome", "maiusculas"], padrao: "cliente" },
+      },
+    });
+
+    expect(screen.getByText("{{nome}}")).toBeInTheDocument();
+    expect(
+      screen.getByText(/coluna "Nome" · Só o primeiro nome → TUDO MAIÚSCULO · vazio vira "cliente"/i)
+    ).toBeInTheDocument();
+  });
+
+  it("avisa quando alguma variável ficou sem coluna", () => {
+    renderizar({ mensagem: "Olá {{apelido}}", mapeamento: { apelido: null } });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/sem coluna escolhida/i);
+  });
+
   it("mantém o placeholder na prévia enquanto a variável não tem coluna", () => {
     renderizar({ mensagem: "Olá {{apelido}}", mapeamento: { apelido: null } });
 
-    // `selector: "span"` porque a bolha renderiza o texto em segmentos; o mesmo conteúdo
-    // também está no valor do textarea, que é uma <textarea>, não um <span>.
-    expect(screen.getByText("Olá {{apelido}}", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Olá {{apelido}}")).toBeInTheDocument();
   });
 
-  it("avisa cada digitação no texto da mensagem", async () => {
-    const { onMensagem } = renderizar({ mensagem: "", mapeamento: {} });
+  it("pede a edição pelo botão do título", async () => {
+    const { onEditar } = renderizar();
 
-    await userEvent.type(screen.getByLabelText(/texto da mensagem/i), "Oi");
+    await userEvent.click(screen.getByRole("button", { name: /editar mensagem/i }));
 
-    expect(onMensagem).toHaveBeenCalled();
+    expect(onEditar).toHaveBeenCalled();
   });
 
-  it("não mostra bloco de variáveis quando a mensagem não tem nenhuma", () => {
-    renderizar({ mensagem: "Mensagem fixa", mapeamento: {} });
+  it("convida a escrever quando ainda não há mensagem", async () => {
+    const { onEditar } = renderizar({ mensagem: "", mapeamento: {} });
 
-    expect(screen.queryByText(/variáveis encontradas/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/nenhuma mensagem escrita/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /escrever agora/i }));
+
+    expect(onEditar).toHaveBeenCalled();
   });
 });

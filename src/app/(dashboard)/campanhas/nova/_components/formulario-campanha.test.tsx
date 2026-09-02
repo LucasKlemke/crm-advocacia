@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderComQuery } from "@/lib/test-utils";
 import { FormularioCampanha } from "./formulario-campanha";
@@ -62,6 +62,17 @@ async function escolherInstancia() {
   await userEvent.click(await screen.findByRole("option", { name: /atendimento/i }));
 }
 
+// A mensagem é escrita no dialog: abrir, digitar e salvar é o caminho único.
+// `fireEvent.change` e não `userEvent.type`: o userEvent trata "{{" como escape de chave
+// literal, e a mensagem sairia como "Olá {apelido}" — sem variável nenhuma.
+async function escreverMensagem(texto: string) {
+  await userEvent.click(screen.getByRole("button", { name: /escrever mensagem/i }));
+  fireEvent.change(await screen.findByLabelText(/texto da mensagem/i), {
+    target: { value: texto },
+  });
+  await userEvent.click(screen.getByRole("button", { name: /salvar mensagem/i }));
+}
+
 async function subirPlanilha() {
   const arquivo = new File(["Nome,numero"], "contatos.csv", { type: "text/csv" });
   await userEvent.upload(screen.getByLabelText("Arquivo CSV"), arquivo);
@@ -87,7 +98,20 @@ describe("FormularioCampanha — barra de ações", () => {
 
     expect(screen.getByRole("heading", { name: /mensagem/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /contatos/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/texto da mensagem/i)).toBeInTheDocument();
+  });
+
+  // O texto da mensagem mora no dialog: na página fica só a prévia do que o cliente recebe.
+  it("deixa a edição da mensagem para o dialog", async () => {
+    renderComQuery(<FormularioCampanha />);
+
+    expect(screen.queryByLabelText(/texto da mensagem/i)).not.toBeInTheDocument();
+
+    await escreverMensagem("Bom dia!");
+
+    expect(screen.queryByLabelText(/texto da mensagem/i)).not.toBeInTheDocument();
+    const secaoMensagem = within(screen.getByRole("region", { name: "Mensagem" }));
+    expect(secaoMensagem.getByText("Bom dia!")).toBeInTheDocument();
+    expect(secaoMensagem.getByRole("button", { name: /editar mensagem/i })).toBeInTheDocument();
   });
 
   it("troca o rótulo do upload pelo total de contatos carregados", async () => {
@@ -121,11 +145,7 @@ describe("FormularioCampanha — gate do botão criar", () => {
 
     await userEvent.type(screen.getByLabelText("Nome da campanha"), "Retomada");
     await escolherInstancia();
-    // fireEvent.change e não userEvent.type: o userEvent trata "{{" como escape de chave
-    // literal, e a mensagem sairia como "Olá {apelido}" — sem variável nenhuma.
-    fireEvent.change(screen.getByLabelText(/texto da mensagem/i), {
-      target: { value: "Olá {{apelido}}" },
-    });
+    await escreverMensagem("Olá {{apelido}}");
 
     expect(screen.getByText(/escolha a coluna de cada variável/i)).toBeInTheDocument();
     expect(botaoCriar()).toBeDisabled();
@@ -136,9 +156,7 @@ describe("FormularioCampanha — criação", () => {
   async function preencherTudo() {
     await userEvent.type(screen.getByLabelText("Nome da campanha"), "Retomada");
     await escolherInstancia();
-    fireEvent.change(screen.getByLabelText(/texto da mensagem/i), {
-      target: { value: "Olá {{nome}}, tudo bem?" },
-    });
+    await escreverMensagem("Olá {{nome}}, tudo bem?");
     await subirPlanilha();
   }
 

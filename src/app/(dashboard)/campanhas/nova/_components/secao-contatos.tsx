@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileSpreadsheet, Hash, Loader2, Upload, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -38,7 +39,7 @@ export interface SecaoContatosProps {
   onColunaNumero: (coluna: string) => void;
 }
 
-const LINHAS_NO_PREVIEW = 5;
+const LINHAS_NO_PREVIEW = 10;
 
 // Mesma validação que o service aplica antes de aceitar a campanha (RN13) — rodar aqui
 // evita o usuário descobrir só no fim que a planilha tem números quebrados.
@@ -64,80 +65,39 @@ export function SecaoContatos({
   const invalidas = planilha ? contarNumerosInvalidos(planilha.linhas, colunaNumero) : [];
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-2 text-base font-semibold">
-        <Users className="size-4 text-primary" />
-        Contatos
-        {planilha ? (
-          <span className="text-sm font-normal text-muted-foreground">
-            {planilha.linhas.length} destinatário(s)
-          </span>
-        ) : null}
-      </h2>
-
-      {/* A área inteira é clicável e recebe o arquivo arrastado. É um div com role/onKeyDown
-          em vez de <button> porque contém o nome do arquivo e a dica em blocos — um botão
-          com esse conteúdo vira um alvo de leitor de tela confuso. */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={planilha ? "Trocar planilha CSV" : "Selecionar planilha CSV"}
-        aria-busy={lendo}
-        onClick={onAbrirSeletor}
-        onKeyDown={(evento) => {
-          if (evento.key === "Enter" || evento.key === " ") {
-            evento.preventDefault();
-            onAbrirSeletor();
-          }
-        }}
-        onDragOver={(evento) => {
-          evento.preventDefault();
-          setArrastando(true);
-        }}
-        onDragLeave={() => setArrastando(false)}
-        onDrop={(evento) => {
-          evento.preventDefault();
-          setArrastando(false);
-          onArquivo(evento.dataTransfer.files?.[0]);
-        }}
-        className={cn(
-          "flex min-h-52 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors outline-none hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-          arrastando && "border-primary bg-primary/5",
-          lendo && "pointer-events-none opacity-60"
-        )}
-      >
-        {lendo ? (
-          <>
-            <Loader2 className="size-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Lendo a planilha...</p>
-          </>
-        ) : planilha ? (
-          <>
-            <FileSpreadsheet className="size-8 text-primary" />
-            <div>
-              <p className="text-sm font-medium">{planilha.nomeArquivo}</p>
-              <p className="text-sm text-muted-foreground">
-                {planilha.linhas.length} linha(s) · {planilha.colunas.length} coluna(s)
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Arraste outro arquivo aqui ou clique para trocar
-            </p>
-          </>
-        ) : (
-          <>
-            <span className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <Upload className="size-5 text-muted-foreground" />
+    // Arrastar vale na seção inteira, e não só na área tracejada: depois do upload a área
+    // tracejada dá lugar à tabela, e trocar a planilha continua sendo um arraste válido.
+    // O `aria-label` transforma a <section> em landmark — é o que dá nome ao alvo do arraste.
+    <section
+      aria-label="Contatos"
+      className="flex flex-col gap-3"
+      onDragOver={(evento) => {
+        evento.preventDefault();
+        setArrastando(true);
+      }}
+      onDragLeave={() => setArrastando(false)}
+      onDrop={(evento) => {
+        evento.preventDefault();
+        setArrastando(false);
+        onArquivo(evento.dataTransfer.files?.[0]);
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Users className="size-4 text-primary" />
+          Contatos
+          {planilha ? (
+            <span className="text-sm font-normal text-muted-foreground">
+              {planilha.linhas.length} destinatário(s)
             </span>
-            <div>
-              <p className="text-sm font-medium">Arraste a planilha aqui</p>
-              <p className="text-sm text-muted-foreground">
-                ou clique para escolher um arquivo do computador
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">Formato CSV, até 5.000 destinatários</p>
-          </>
-        )}
+          ) : null}
+        </h2>
+        {planilha && !lendo ? (
+          <Button type="button" variant="outline" size="sm" onClick={onAbrirSeletor}>
+            <Upload />
+            Trocar planilha
+          </Button>
+        ) : null}
       </div>
 
       {erro ? (
@@ -146,7 +106,12 @@ export function SecaoContatos({
         </p>
       ) : null}
 
-      {planilha ? (
+      {lendo ? (
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-xl border border-border p-8">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Lendo a planilha...</p>
+        </div>
+      ) : planilha ? (
         <>
           <div className="flex flex-col gap-2">
             <Label htmlFor="coluna-numero" className="flex items-center gap-1.5">
@@ -179,7 +144,13 @@ export function SecaoContatos({
             ) : null}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border">
+          {/* No lugar da área tracejada: os dados que subiram. */}
+          <div
+            className={cn(
+              "overflow-x-auto rounded-xl border border-border transition-colors",
+              arrastando && "border-primary bg-primary/5"
+            )}
+          >
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -199,7 +170,17 @@ export function SecaoContatos({
                 {planilha.linhas.slice(0, LINHAS_NO_PREVIEW).map((linha, indice) => (
                   <TableRow key={indice}>
                     {planilha.colunas.map((coluna) => (
-                      <TableCell key={coluna} className="px-4 py-2 text-sm">
+                      <TableCell
+                        key={coluna}
+                        className={cn(
+                          "px-4 py-2 text-sm",
+                          // Marca a célula do número que o disparo recusaria, para o aviso
+                          // acima ter onde ser conferido.
+                          coluna === colunaNumero &&
+                            invalidas.includes(indice + 1) &&
+                            "text-destructive"
+                        )}
+                      >
                         {linha[coluna]}
                       </TableCell>
                     ))}
@@ -208,13 +189,46 @@ export function SecaoContatos({
               </TableBody>
             </Table>
           </div>
-          {planilha.linhas.length > LINHAS_NO_PREVIEW ? (
-            <p className="text-xs text-muted-foreground">
-              Mostrando as {LINHAS_NO_PREVIEW} primeiras linhas de {planilha.linhas.length}.
-            </p>
-          ) : null}
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{planilha.nomeArquivo}</span> ·{" "}
+            {planilha.linhas.length > LINHAS_NO_PREVIEW
+              ? `mostrando as ${LINHAS_NO_PREVIEW} primeiras de ${planilha.linhas.length} linha(s)`
+              : `${planilha.linhas.length} linha(s)`}{" "}
+            · {planilha.colunas.length} coluna(s) · arraste outro arquivo aqui para trocar
+          </p>
         </>
-      ) : null}
+      ) : (
+        // A área inteira é clicável e recebe o arquivo arrastado. É um div com role/onKeyDown
+        // em vez de <button> porque contém a dica em blocos — um botão com esse conteúdo vira
+        // um alvo de leitor de tela confuso.
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Selecionar planilha CSV"
+          onClick={onAbrirSeletor}
+          onKeyDown={(evento) => {
+            if (evento.key === "Enter" || evento.key === " ") {
+              evento.preventDefault();
+              onAbrirSeletor();
+            }
+          }}
+          className={cn(
+            "flex min-h-52 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors outline-none hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+            arrastando && "border-primary bg-primary/5"
+          )}
+        >
+          <span className="flex size-12 items-center justify-center rounded-full bg-muted">
+            <FileSpreadsheet className="size-5 text-muted-foreground" />
+          </span>
+          <div>
+            <p className="text-sm font-medium">Arraste a planilha aqui</p>
+            <p className="text-sm text-muted-foreground">
+              ou clique para escolher um arquivo do computador
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">Formato CSV, até 5.000 destinatários</p>
+        </div>
+      )}
     </section>
   );
 }

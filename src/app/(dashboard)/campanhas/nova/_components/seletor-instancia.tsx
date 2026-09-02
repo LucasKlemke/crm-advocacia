@@ -10,8 +10,10 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
+import { cn } from "@/lib/utils";
 import { formatarTelefone } from "@/lib/utils/telefone";
 import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
+import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 
 export interface InstanciaEscolhida {
   id: string;
@@ -27,22 +29,21 @@ export interface SeletorInstanciaProps {
 }
 
 // Foto, nome e número com máscara. Ver a foto e o número é o que evita disparar a campanha
-// pelo WhatsApp errado quando o escritório tem mais de um número conectado.
+// pelo WhatsApp errado quando o escritório tem mais de um número conectado. Tudo numa linha
+// só para a pílula caber na mesma altura das outras da barra de ações.
 function LinhaInstancia({ instancia }: { instancia: InstanciaWhatsappDTO }) {
   return (
-    <span className="flex min-w-0 items-center gap-2.5">
+    <span className="flex min-w-0 items-center gap-2">
       <AvatarIniciais
         nome={instancia.nome}
         avatarUrl={instancia.fotoPerfilUrl}
-        className="size-8 shrink-0"
+        className="size-6 shrink-0 text-[0.65rem]"
       />
-      <span className="flex min-w-0 flex-col text-left leading-tight">
-        <span className="truncate font-medium">{instancia.nome}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          {instancia.numeroConectado
-            ? formatarTelefone(instancia.numeroConectado)
-            : "Número não identificado"}
-        </span>
+      <span className="truncate font-medium">{instancia.nome}</span>
+      <span className="truncate text-xs text-muted-foreground">
+        {instancia.numeroConectado
+          ? formatarTelefone(instancia.numeroConectado)
+          : "Número não identificado"}
       </span>
     </span>
   );
@@ -60,7 +61,12 @@ export function SeletorInstancia({ instanciaId, onSelecionar }: SeletorInstancia
 
   if (isLoading) {
     return (
-      <span className="flex h-11 items-center rounded-lg border border-border px-3 text-sm text-muted-foreground">
+      <span
+        className={cn(
+          CLASSE_ITEM_BARRA,
+          "flex items-center rounded-lg border border-border text-sm text-muted-foreground"
+        )}
+      >
         Carregando instâncias...
       </span>
     );
@@ -70,7 +76,10 @@ export function SeletorInstancia({ instanciaId, onSelecionar }: SeletorInstancia
     return (
       <span
         role="alert"
-        className="flex h-11 items-center rounded-lg border border-destructive/40 px-3 text-sm text-destructive"
+        className={cn(
+          CLASSE_ITEM_BARRA,
+          "flex items-center rounded-lg border border-destructive/40 text-sm text-destructive"
+        )}
       >
         Falha ao carregar instâncias
       </span>
@@ -81,7 +90,10 @@ export function SeletorInstancia({ instanciaId, onSelecionar }: SeletorInstancia
     return (
       <Link
         href="/instancias"
-        className="flex h-11 items-center gap-2 rounded-lg border border-dashed border-border px-3 text-sm text-muted-foreground hover:bg-muted/40"
+        className={cn(
+          CLASSE_ITEM_BARRA,
+          "flex items-center gap-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-muted/40"
+        )}
       >
         <Smartphone className="size-4" />
         Conectar um número
@@ -104,13 +116,17 @@ export function SeletorInstancia({ instanciaId, onSelecionar }: SeletorInstancia
       }}
     >
       {/* O conteúdo vai direto no gatilho, e não dentro de um SelectValue: o SelectTrigger
-          aplica `line-clamp-1` nesse slot, que vira `display:-webkit-box` e desmonta o
-          layout de foto + duas linhas. h-11 casa com a altura das outras pílulas da barra. */}
-      <SelectTrigger aria-label="Instância que vai disparar" className="h-11 min-w-56 pl-2">
+          aplica `line-clamp-1` nesse slot, que vira `display:-webkit-box` e desmonta o layout
+          de foto + texto. A altura é repetida na variante `data-[size=default]:` porque a
+          classe padrão do SelectTrigger também é prefixada — um `h-10` solto não a venceria. */}
+      <SelectTrigger
+        aria-label="Instância que vai disparar"
+        className={cn(CLASSE_ITEM_BARRA, "min-w-56 pl-2 data-[size=default]:h-10")}
+      >
         {selecionada ? (
           <LinhaInstancia instancia={selecionada} />
         ) : (
-          <span className="flex items-center gap-2 pl-1 text-muted-foreground">
+          <span className="flex items-center gap-2 text-muted-foreground">
             <Smartphone className="size-4" />
             Selecionar conexão
           </span>

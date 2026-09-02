@@ -33,8 +33,12 @@ function arquivoCsv() {
   return new File(["Nome,numero"], "contatos.csv", { type: "text/csv" });
 }
 
-describe("SecaoContatos — área de upload", () => {
-  it("convida a arrastar a planilha antes de qualquer arquivo", () => {
+function secao() {
+  return screen.getByRole("region", { name: /contatos/i });
+}
+
+describe("SecaoContatos — antes do upload", () => {
+  it("convida a arrastar a planilha", () => {
     renderizar();
 
     expect(screen.getByText(/arraste a planilha aqui/i)).toBeInTheDocument();
@@ -60,22 +64,6 @@ describe("SecaoContatos — área de upload", () => {
     expect(onArquivo).toHaveBeenCalledWith(arquivo);
   });
 
-  it("mostra o arquivo escolhido e o convite para trocar", () => {
-    renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
-
-    expect(screen.getByText("contatos.csv")).toBeInTheDocument();
-    expect(screen.getByText(/2 linha\(s\) · 2 coluna\(s\)/)).toBeInTheDocument();
-    // A própria área é o alvo de troca — não há um segundo botão para a mesma ação.
-    expect(screen.getByRole("button", { name: /trocar planilha csv/i })).toBeInTheDocument();
-    expect(screen.getByText(/arraste outro arquivo aqui/i)).toBeInTheDocument();
-  });
-
-  it("mostra o total de destinatários no título da seção", () => {
-    renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
-
-    expect(screen.getByText(/2 destinatário\(s\)/)).toBeInTheDocument();
-  });
-
   it("indica que está lendo a planilha", () => {
     renderizar({ lendo: true });
 
@@ -86,6 +74,55 @@ describe("SecaoContatos — área de upload", () => {
     renderizar({ erro: "A planilha precisa ter cabeçalho." });
 
     expect(screen.getByRole("alert")).toHaveTextContent(/precisa ter cabeçalho/i);
+  });
+});
+
+// O pedido do usuário: depois do upload a área tracejada dá lugar aos dados que subiram.
+describe("SecaoContatos — depois do upload", () => {
+  it("troca a área de arrastar pela tabela dos dados", () => {
+    renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
+
+    expect(screen.queryByText(/arraste a planilha aqui/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /selecionar planilha csv/i })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Ana" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "numero" })).toBeInTheDocument();
+  });
+
+  it("resume o arquivo carregado e oferece a troca", () => {
+    renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
+
+    expect(screen.getByText("contatos.csv")).toBeInTheDocument();
+    expect(secao()).toHaveTextContent("2 linha(s) · 2 coluna(s)");
+    expect(screen.getByRole("button", { name: /trocar planilha/i })).toBeInTheDocument();
+  });
+
+  it("continua aceitando um arquivo arrastado sobre a seção", () => {
+    const { onArquivo } = renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
+    const arquivo = arquivoCsv();
+
+    fireEvent.drop(secao(), { dataTransfer: { files: [arquivo] } });
+
+    expect(onArquivo).toHaveBeenCalledWith(arquivo);
+  });
+
+  it("mostra o total de destinatários no título da seção", () => {
+    renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
+
+    expect(screen.getByText(/2 destinatário\(s\)/)).toBeInTheDocument();
+  });
+
+  it("avisa quantas linhas está mostrando quando a planilha é grande", () => {
+    const linhas = Array.from({ length: 12 }, (_, indice) => ({
+      Nome: `Contato ${indice}`,
+      numero: "5511999998888",
+    }));
+    renderizar({ planilha: { ...PLANILHA, linhas }, colunaNumero: "numero" });
+
+    expect(screen.getAllByRole("row")).toHaveLength(11); // 10 linhas + cabeçalho
+    expect(secao()).toHaveTextContent("mostrando as 10 primeiras de 12 linha(s)");
   });
 });
 

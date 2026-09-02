@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 
 export interface ConfigEnvio {
   delayMin: number;
@@ -39,7 +40,14 @@ export function PopoverIntervalo({ valor, totalDestinatarios, onMudar }: Popover
   return (
     <Popover>
       <PopoverTrigger
-        render={<Button type="button" variant="outline" aria-label="Intervalo entre mensagens" />}
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            className={CLASSE_ITEM_BARRA}
+            aria-label="Intervalo entre mensagens"
+          />
+        }
       >
         <Timer />
         Intervalo: {valor.delayMin}–{valor.delayMax}s
@@ -97,7 +105,14 @@ export function PopoverAgendamento({ valor, onMudar }: Omit<PopoverEnvioProps, "
   return (
     <Popover>
       <PopoverTrigger
-        render={<Button type="button" variant="outline" aria-label="Quando enviar" />}
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            className={CLASSE_ITEM_BARRA}
+            aria-label="Quando enviar"
+          />
+        }
       >
         <CalendarClock />
         {agendado ? rotularAgendamento(valor.agendadaPara) : "Enviar agora"}
