@@ -10,13 +10,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { formatarTelefone } from "@/lib/utils/telefone";
+import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
 
 export interface PassoInstanciaProps {
   instanciaId: string;
-  // Devolve o nome junto do id: a tela de revisão mostra "por qual instância vai sair",
-  // e buscar o nome de novo lá exigiria repetir a query.
-  onSelecionar: (instancia: { id: string; nome: string }) => void;
+  // Devolve nome e foto junto do id: a revisão mostra "por qual instância vai sair" e a
+  // prévia do WhatsApp usa a foto no topo da conversa — buscar de novo lá exigiria
+  // repetir a query.
+  onSelecionar: (instancia: { id: string; nome: string; fotoPerfilUrl: string | null }) => void;
+}
+
+// Mesma linha no gatilho e nas opções: foto, nome e número com máscara. Ver a foto e o
+// número é o que evita disparar a campanha pelo WhatsApp errado quando o escritório tem
+// mais de um número conectado.
+function LinhaInstancia({ instancia }: { instancia: InstanciaWhatsappDTO }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <AvatarIniciais
+        nome={instancia.nome}
+        avatarUrl={instancia.fotoPerfilUrl}
+        className="size-9 shrink-0"
+      />
+      <span className="flex min-w-0 flex-col text-left">
+        <span className="truncate font-medium">{instancia.nome}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {instancia.numeroConectado
+            ? formatarTelefone(instancia.numeroConectado)
+            : "Número não identificado"}
+        </span>
+      </span>
+    </span>
+  );
 }
 
 export function PassoInstancia({ instanciaId, onSelecionar }: PassoInstanciaProps) {
@@ -62,19 +88,30 @@ export function PassoInstancia({ instanciaId, onSelecionar }: PassoInstanciaProp
             value={instanciaId}
             onValueChange={(id) => {
               const escolhida = conectadas.find((instancia) => instancia.id === id);
-              if (escolhida) onSelecionar({ id: escolhida.id, nome: escolhida.nome });
+              if (escolhida) {
+                onSelecionar({
+                  id: escolhida.id,
+                  nome: escolhida.nome,
+                  fotoPerfilUrl: escolhida.fotoPerfilUrl,
+                });
+              }
             }}
           >
-            <SelectTrigger id="instancia">
-              <SelectValue placeholder="Escolha a instância" />
+            {/* h-auto: o gatilho padrão tem altura fixa de uma linha, e aqui cabem foto +
+                duas linhas de texto. */}
+            <SelectTrigger id="instancia" className="h-auto w-full py-2">
+              <SelectValue placeholder="Escolha a instância">
+                {(valor) => {
+                  const escolhida = conectadas.find((instancia) => instancia.id === valor);
+                  if (!escolhida) return "Escolha a instância";
+                  return <LinhaInstancia instancia={escolhida} />;
+                }}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {conectadas.map((instancia) => (
-                <SelectItem key={instancia.id} value={instancia.id}>
-                  {instancia.nome}
-                  {instancia.numeroConectado
-                    ? ` — ${formatarTelefone(instancia.numeroConectado)}`
-                    : ""}
+                <SelectItem key={instancia.id} value={instancia.id} className="py-2">
+                  <LinhaInstancia instancia={instancia} />
                 </SelectItem>
               ))}
             </SelectContent>

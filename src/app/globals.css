@@ -6,6 +6,13 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-zap-fundo: var(--zap-fundo);
+  --color-zap-bolha-recebida: var(--zap-bolha-recebida);
+  --color-zap-bolha-enviada: var(--zap-bolha-enviada);
+  --color-zap-texto: var(--zap-texto);
+  --color-zap-meta: var(--zap-meta);
+  --color-zap-cabecalho: var(--zap-cabecalho);
+  --color-zap-cabecalho-texto: var(--zap-cabecalho-texto);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -97,6 +104,19 @@
   --gold-soft: oklch(0.955 0.008 90);
   --gold: oklch(0.875 0.06 88);
   --overlay: oklch(0.145 0 0);
+
+  /* Paleta do WhatsApp, usada só na prévia da mensagem de campanha. São as cores exatas
+     do produto da Meta, não da identidade do CRM — existem aqui como token (e não como
+     classe literal no componente) para o dark mode continuar funcionando e para ficar
+     evidente que mexer nelas é copiar o WhatsApp, não redefinir o tema. */
+  --zap-fundo: #efeae2;
+  --zap-bolha-recebida: #ffffff;
+  --zap-bolha-enviada: #d9fdd3;
+  --zap-texto: #111b21;
+  --zap-meta: #667781;
+  --zap-cabecalho: #f0f2f5;
+  --zap-cabecalho-texto: #111b21;
+  --zap-rabiscos: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23000' stroke-opacity='0.07' stroke-width='1.4'%3E%3Ccircle cx='14' cy='16' r='5'/%3E%3Cpath d='M40 12h12M46 6v12'/%3E%3Cpath d='M64 22c4-4 10-2 10 3'/%3E%3Cpath d='M8 52c6-6 14 0 8 7'/%3E%3Ccircle cx='44' cy='58' r='4'/%3E%3Cpath d='M66 62h10M71 57v10'/%3E%3Cpath d='M22 76c5-3 11-1 13 4'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .dark {
@@ -139,6 +159,15 @@
   --gold-soft: oklch(0.26 0.006 90);
   --gold: oklch(0.36 0.035 85);
   --overlay: oklch(0.145 0 0);
+
+  --zap-fundo: #0b141a;
+  --zap-bolha-recebida: #202c33;
+  --zap-bolha-enviada: #005c4b;
+  --zap-texto: #e9edef;
+  --zap-meta: #8696a0;
+  --zap-cabecalho: #202c33;
+  --zap-cabecalho-texto: #e9edef;
+  --zap-rabiscos: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='0.05' stroke-width='1.4'%3E%3Ccircle cx='14' cy='16' r='5'/%3E%3Cpath d='M40 12h12M46 6v12'/%3E%3Cpath d='M64 22c4-4 10-2 10 3'/%3E%3Cpath d='M8 52c6-6 14 0 8 7'/%3E%3Ccircle cx='44' cy='58' r='4'/%3E%3Cpath d='M66 62h10M71 57v10'/%3E%3Cpath d='M22 76c5-3 11-1 13 4'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 @layer base {

@@ -30,6 +30,7 @@ export function WizardCampanha() {
   const [colunaNumero, setColunaNumero] = useState("");
   const [instanciaId, setInstanciaId] = useState("");
   const [nomeInstancia, setNomeInstancia] = useState("");
+  const [fotoInstancia, setFotoInstancia] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [mapeamento, setMapeamento] = useState<MapeamentoVariaveis>({});
   const [revisao, setRevisao] = useState<DadosRevisao>({
@@ -159,6 +160,7 @@ export function WizardCampanha() {
           onSelecionar={(instancia) => {
             setInstanciaId(instancia.id);
             setNomeInstancia(instancia.nome);
+            setFotoInstancia(instancia.fotoPerfilUrl);
           }}
         />
       ) : null}
@@ -169,6 +171,8 @@ export function WizardCampanha() {
           colunas={colunas}
           primeiraLinha={linhas[0]}
           mapeamento={mapeamento}
+          remetenteNome={nomeInstancia}
+          remetenteFoto={fotoInstancia}
           onMensagem={handleMensagem}
           onConfigurar={handleConfigurar}
         />

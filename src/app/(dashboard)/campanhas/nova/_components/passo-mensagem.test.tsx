@@ -14,6 +14,7 @@ function renderizar(over: Partial<React.ComponentProps<typeof PassoMensagem>> = 
       colunas={COLUNAS}
       primeiraLinha={PRIMEIRA_LINHA}
       mapeamento={{ nome: { coluna: "Nome", tratamentos: [] } }}
+      remetenteNome="Atendimento"
       onMensagem={onMensagem}
       onConfigurar={onConfigurar}
       {...over}
@@ -59,11 +60,19 @@ describe("PassoMensagem", () => {
     expect(screen.getByText("Olá Ana, tudo bem?")).toBeInTheDocument();
   });
 
+  // A prévia imita a conversa do WhatsApp: no topo aparece de quem o cliente vai receber.
+  it("mostra o remetente no cabeçalho da prévia", () => {
+    renderizar();
+
+    expect(screen.getByText("Atendimento")).toBeInTheDocument();
+  });
+
   it("mantém o placeholder na prévia enquanto a variável não tem coluna", () => {
     renderizar({ mensagem: "Olá {{apelido}}", mapeamento: { apelido: null } });
 
-    // `selector: "p"` porque o mesmo texto também está no valor do textarea.
-    expect(screen.getByText("Olá {{apelido}}", { selector: "p" })).toBeInTheDocument();
+    // `selector: "span"` porque a bolha renderiza o texto em segmentos; o mesmo conteúdo
+    // também está no valor do textarea, que é uma <textarea>, não um <span>.
+    expect(screen.getByText("Olá {{apelido}}", { selector: "span" })).toBeInTheDocument();
   });
 
   it("avisa cada digitação no texto da mensagem", async () => {

@@ -10,12 +10,17 @@ import {
   type MapeamentoVariaveis,
 } from "@/lib/utils/campanha-mensagem";
 import { ConfigVariavelRow } from "./config-variavel";
+import { PreviewWhatsapp } from "./preview-whatsapp";
 
 export interface PassoMensagemProps {
   mensagem: string;
   colunas: string[];
   primeiraLinha: LinhaCsv | undefined;
   mapeamento: MapeamentoVariaveis;
+  // Identidade da instância escolhida no passo anterior: a prévia mostra a conversa como
+  // o cliente vai ver, e no topo dela aparece quem está mandando.
+  remetenteNome: string;
+  remetenteFoto?: string | null;
   onMensagem: (mensagem: string) => void;
   onConfigurar: (variavel: string, config: ConfigVariavel | null) => void;
 }
@@ -25,6 +30,8 @@ export function PassoMensagem({
   colunas,
   primeiraLinha,
   mapeamento,
+  remetenteNome,
+  remetenteFoto,
   onMensagem,
   onConfigurar,
 }: PassoMensagemProps) {
@@ -77,9 +84,17 @@ export function PassoMensagem({
 
       {mensagem.trim() && primeiraLinha ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Prévia com a primeira linha da planilha</p>
-          <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
-            {renderizarMensagem(mensagem, primeiraLinha, mapeamento)}
+          <p className="text-sm font-medium">
+            Prévia — como o primeiro contato da planilha vai receber
+          </p>
+          <PreviewWhatsapp
+            mensagem={renderizarMensagem(mensagem, primeiraLinha, mapeamento)}
+            remetenteNome={remetenteNome}
+            remetenteFoto={remetenteFoto}
+          />
+          <p className="text-xs text-muted-foreground">
+            O WhatsApp interpreta *negrito*, _itálico_, ~riscado~ e ```mono``` — a prévia mostra
+            o resultado final.
           </p>
         </div>
       ) : null}

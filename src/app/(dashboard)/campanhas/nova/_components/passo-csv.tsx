@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileSpreadsheet, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileSpreadsheet, Hash, Loader2, Upload } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { CsvInvalidoError, lerPlanilha, sugerirColunaNumero } from "@/lib/utils/csv-campanha";
 import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
 import type { LinhaCsv } from "@/lib/utils/campanha-mensagem";
@@ -52,6 +52,7 @@ export function PassoCsv({ planilha, colunaNumero, onPlanilha, onColunaNumero }:
   const inputRef = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [lendo, setLendo] = useState(false);
+  const [arrastando, setArrastando] = useState(false);
 
   async function handleArquivo(arquivo: File | undefined) {
     if (!arquivo) return;
@@ -67,6 +68,12 @@ export function PassoCsv({ planilha, colunaNumero, onPlanilha, onColunaNumero }:
     } finally {
       setLendo(false);
     }
+  }
+
+  function handleSoltar(evento: React.DragEvent<HTMLDivElement>) {
+    evento.preventDefault();
+    setArrastando(false);
+    handleArquivo(evento.dataTransfer.files?.[0]);
   }
 
   const invalidas = planilha ? contarNumerosInvalidos(planilha.linhas, colunaNumero) : [];
@@ -90,22 +97,66 @@ export function PassoCsv({ planilha, colunaNumero, onPlanilha, onColunaNumero }:
           aria-label="Arquivo CSV"
           onChange={(evento) => handleArquivo(evento.target.files?.[0])}
         />
-        <Button
-          variant="outline"
-          type="button"
-          disabled={lendo}
+
+        {/* A área inteira é clicável e recebe o arquivo arrastado. É um div com role/onKeyDown
+            em vez de <button> porque contém o nome do arquivo e a dica em blocos — um botão
+            com esse conteúdo vira um alvo de leitor de tela confuso. */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={planilha ? "Trocar planilha CSV" : "Selecionar planilha CSV"}
+          aria-busy={lendo}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={(evento) => {
+            if (evento.key === "Enter" || evento.key === " ") {
+              evento.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
+          onDragOver={(evento) => {
+            evento.preventDefault();
+            setArrastando(true);
+          }}
+          onDragLeave={() => setArrastando(false)}
+          onDrop={handleSoltar}
+          className={cn(
+            "flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors outline-none hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+            arrastando && "border-primary bg-primary/5",
+            lendo && "pointer-events-none opacity-60"
+          )}
         >
-          <Upload />
-          {planilha ? "Trocar planilha" : "Selecionar planilha CSV"}
-        </Button>
-        {planilha ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FileSpreadsheet className="size-4" />
-            {planilha.nomeArquivo} · {planilha.linhas.length} linha(s) ·{" "}
-            {planilha.colunas.length} coluna(s)
-          </p>
-        ) : null}
+          {lendo ? (
+            <>
+              <Loader2 className="size-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Lendo a planilha...</p>
+            </>
+          ) : planilha ? (
+            <>
+              <FileSpreadsheet className="size-8 text-primary" />
+              <div>
+                <p className="text-sm font-medium">{planilha.nomeArquivo}</p>
+                <p className="text-sm text-muted-foreground">
+                  {planilha.linhas.length} linha(s) · {planilha.colunas.length} coluna(s)
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Arraste outro arquivo aqui ou clique para trocar
+              </p>
+            </>
+          ) : (
+            <>
+              <Upload className="size-8 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Arraste a planilha aqui</p>
+                <p className="text-sm text-muted-foreground">
+                  ou clique para escolher um arquivo do computador
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">Formato CSV, até 5.000 destinatários</p>
+            </>
+          )}
+        </div>
+
         {erro ? (
           <p role="alert" className="text-sm text-destructive">
             {erro}
@@ -116,17 +167,24 @@ export function PassoCsv({ planilha, colunaNumero, onPlanilha, onColunaNumero }:
       {planilha ? (
         <>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="coluna-numero">Coluna com o número de WhatsApp</Label>
+            <Label htmlFor="coluna-numero" className="flex items-center gap-1.5">
+              <Hash className="size-4 text-muted-foreground" />
+              Coluna com o número de WhatsApp
+            </Label>
             {/* O Select do base-ui emite null ao limpar a seleção; a coluna vazia é o
                 estado "ainda não escolhida", que o wizard já trata. */}
             <Select value={colunaNumero} onValueChange={(valor) => onColunaNumero(valor ?? "")}>
-              <SelectTrigger id="coluna-numero">
+              <SelectTrigger id="coluna-numero" className="w-full">
+                <Hash className="size-4 text-muted-foreground" />
                 <SelectValue placeholder="Escolha a coluna" />
               </SelectTrigger>
               <SelectContent>
                 {planilha.colunas.map((coluna) => (
                   <SelectItem key={coluna} value={coluna}>
-                    {coluna}
+                    <span className="flex items-center gap-2">
+                      <Hash className="size-3.5 text-muted-foreground" />
+                      {coluna}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -139,13 +197,18 @@ export function PassoCsv({ planilha, colunaNumero, onPlanilha, onColunaNumero }:
             ) : null}
           </div>
 
-          <div className="rounded-xl border border-border">
+          <div className="overflow-x-auto rounded-xl border border-border">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   {planilha.colunas.map((coluna) => (
                     <TableHead key={coluna} className="px-4">
-                      {coluna}
+                      <span className="flex items-center gap-1.5">
+                        {coluna === colunaNumero ? (
+                          <Hash className="size-3.5 text-muted-foreground" />
+                        ) : null}
+                        {coluna}
+                      </span>
                     </TableHead>
                   ))}
                 </TableRow>
