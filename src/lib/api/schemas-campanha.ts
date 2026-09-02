@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { nomeArquivoSchema } from "@/lib/api/schemas-comuns";
+import { TRATAMENTOS_DISPONIVEIS, type Tratamento } from "@/lib/utils/campanha-tratamentos";
 
 // Teto de destinatários por campanha. Segura o tamanho do body (o CSV inteiro trafega
 // como JSON) e o tempo da transação que grava os itens; está na mesma ordem de grandeza
@@ -12,6 +13,21 @@ const delaySchema = z.number().int().min(1).max(600);
 
 const linhaCsvSchema = z.record(z.string(), z.string());
 
+// Deriva do catálogo em vez de repetir a lista: um tratamento novo passa a ser aceito
+// pela API no mesmo commit em que aparece na UI, sem chance de as duas divergirem.
+const tratamentoSchema = z.enum(
+  TRATAMENTOS_DISPONIVEIS.map((t) => t.id) as [Tratamento, ...Tratamento[]],
+  { message: "Tratamento de variável inválido." }
+);
+
+// Como cada {{variavel}} é preenchida. O teto de tratamentos é generoso de propósito:
+// existe só para impedir cadeia absurda vinda de payload adulterado.
+const configVariavelSchema = z.object({
+  coluna: z.string().trim().min(1, "Escolha a coluna da variável.").max(120),
+  tratamentos: z.array(tratamentoSchema).max(8).default([]),
+  padrao: z.string().trim().max(120).optional(),
+});
+
 export const novaCampanhaSchema = z
   .object({
     nome: z.string().trim().min(1, "Informe o nome da campanha.").max(120),
@@ -20,7 +36,7 @@ export const novaCampanhaSchema = z
     colunaNumero: z.string().trim().min(1, "Escolha a coluna com os números.").max(120),
     // {{variavel}} -> nome da coluna do CSV. Quais variáveis precisam estar aqui depende
     // do texto da mensagem, então a checagem de completude fica no Service.
-    mapeamentoVariaveis: z.record(z.string(), z.string()).default({}),
+    mapeamentoVariaveis: z.record(z.string(), configVariavelSchema).default({}),
     delayMin: delaySchema,
     delayMax: delaySchema,
     // Ausente = a UAZAPI enfileira para envio imediato.

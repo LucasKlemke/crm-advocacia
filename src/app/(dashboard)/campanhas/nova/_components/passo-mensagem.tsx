@@ -1,24 +1,23 @@
 "use client";
 
-import { Check, TriangleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { extrairVariaveis, renderizarMensagem, type LinhaCsv } from "@/lib/utils/campanha-mensagem";
+  extrairVariaveis,
+  renderizarMensagem,
+  type ConfigVariavel,
+  type LinhaCsv,
+  type MapeamentoVariaveis,
+} from "@/lib/utils/campanha-mensagem";
+import { ConfigVariavelRow } from "./config-variavel";
 
 export interface PassoMensagemProps {
   mensagem: string;
   colunas: string[];
   primeiraLinha: LinhaCsv | undefined;
-  mapeamento: Record<string, string | null>;
+  mapeamento: MapeamentoVariaveis;
   onMensagem: (mensagem: string) => void;
-  onMapear: (variavel: string, coluna: string) => void;
+  onConfigurar: (variavel: string, config: ConfigVariavel | null) => void;
 }
 
 export function PassoMensagem({
@@ -27,10 +26,10 @@ export function PassoMensagem({
   primeiraLinha,
   mapeamento,
   onMensagem,
-  onMapear,
+  onConfigurar,
 }: PassoMensagemProps) {
   const variaveis = extrairVariaveis(mensagem);
-  const pendentes = variaveis.filter((variavel) => !mapeamento[variavel]);
+  const pendentes = variaveis.filter((variavel) => !mapeamento[variavel]?.coluna);
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +38,7 @@ export function PassoMensagem({
         <p className="text-sm text-muted-foreground">
           Use <code className="rounded bg-muted px-1 py-0.5">{"{{variavel}}"}</code> para inserir
           um dado que muda por destinatário. O sistema procura sozinho uma coluna com o mesmo
-          nome na planilha.
+          nome na planilha, e você pode tratar o valor antes de ele entrar na mensagem.
         </p>
       </div>
 
@@ -57,45 +56,16 @@ export function PassoMensagem({
       {variaveis.length > 0 ? (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium">Variáveis encontradas</p>
-          {variaveis.map((variavel) => {
-            const coluna = mapeamento[variavel];
-            return (
-              <div
-                key={variavel}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
-              >
-                <div className="flex items-center gap-2">
-                  {coluna ? (
-                    <Check className="size-4 text-primary" />
-                  ) : (
-                    <TriangleAlert className="size-4 text-destructive" />
-                  )}
-                  <code className="text-sm">{`{{${variavel}}}`}</code>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">vem da coluna</span>
-                  <Select
-                    value={coluna ?? ""}
-                    onValueChange={(valor) => onMapear(variavel, valor ?? "")}
-                  >
-                    <SelectTrigger
-                      className="w-56"
-                      aria-label={`Coluna para a variável ${variavel}`}
-                    >
-                      <SelectValue placeholder="Escolha a coluna" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colunas.map((opcao) => (
-                        <SelectItem key={opcao} value={opcao}>
-                          {opcao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            );
-          })}
+          {variaveis.map((variavel) => (
+            <ConfigVariavelRow
+              key={variavel}
+              variavel={variavel}
+              config={mapeamento[variavel] ?? null}
+              colunas={colunas}
+              primeiraLinha={primeiraLinha}
+              onMudar={onConfigurar}
+            />
+          ))}
           {pendentes.length > 0 ? (
             <p role="alert" className="text-sm text-destructive">
               Escolha de qual coluna vem{" "}

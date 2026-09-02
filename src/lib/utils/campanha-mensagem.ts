@@ -4,11 +4,24 @@
 // gravar a mensagem final de cada CampanhaItem. Se as duas divergissem, o texto revisado na
 // tela não seria o texto entregue ao cliente.
 
+import { aplicarTratamentos, tratamentoValido, type Tratamento } from "./campanha-tratamentos";
+
+export type { Tratamento };
+
 // \p{L}\p{N} (com a flag u) aceita acento no nome da variável — "{{endereço}}" é natural em
 // pt-BR. O + exige pelo menos um caractere, então "{{}}" não vira variável de nome vazio.
 const VARIAVEL = /\{\{\s*([\p{L}\p{N}_]+)\s*\}\}/gu;
 
-export type MapeamentoVariaveis = Record<string, string | null>;
+// Como uma variável é preenchida: de qual coluna do CSV vem o valor, que tratamentos são
+// aplicados (em ordem) e o que usar quando o resultado fica vazio.
+export interface ConfigVariavel {
+  coluna: string;
+  tratamentos?: Tratamento[];
+  padrao?: string;
+}
+
+export type MapeamentoVariaveis = Record<string, ConfigVariavel | null>;
+export type MapeamentoParcial = Record<string, ConfigVariavel | null | undefined>;
 export type LinhaCsv = Record<string, string>;
 
 export function extrairVariaveis(template: string): string[] {
@@ -47,32 +60,76 @@ export function sugerirMapeamento(variaveis: string[], colunas: string[]): Mapea
 
   const mapeamento: MapeamentoVariaveis = {};
   for (const variavel of variaveis) {
-    mapeamento[variavel] = porChave.get(normalizarChave(variavel)) ?? null;
+    const coluna = porChave.get(normalizarChave(variavel));
+    // Sugestão nasce sem tratamento: adivinhar que {{nome}} quer "só o primeiro nome"
+    // seria mudar a mensagem sem o usuário pedir.
+    mapeamento[variavel] = coluna ? { coluna, tratamentos: [] } : null;
   }
   return mapeamento;
 }
 
 // Variáveis que ainda bloqueiam a criação da campanha: sem coluna definida, elas seriam
 // enviadas cruas ("Olá {{nome}}") para o destinatário.
-export function variaveisNaoMapeadas(
-  template: string,
-  mapeamento: Record<string, string | null | undefined>
-): string[] {
-  return extrairVariaveis(template).filter((variavel) => !mapeamento[variavel]);
+export function variaveisNaoMapeadas(template: string, mapeamento: MapeamentoParcial): string[] {
+  return extrairVariaveis(template).filter((variavel) => !mapeamento[variavel]?.coluna);
+}
+
+// Valor final de uma variável para uma linha: célula -> cadeia de tratamentos -> padrão
+// quando o resultado ficou vazio. Exposto porque o service também guarda esse valor no
+// snapshot de cada CampanhaItem.
+export function resolverValor(config: ConfigVariavel, linha: LinhaCsv): string {
+  const bruto = linha[config.coluna] ?? "";
+  const tratado = aplicarTratamentos(bruto, config.tratamentos ?? []);
+  // O padrão é o texto final, não entrada da cadeia: quem escreveu "tudo bem" não espera
+  // que "só o primeiro nome" o reduza a "tudo".
+  if (tratado.trim() === "") return config.padrao ?? "";
+  return tratado;
 }
 
 export function renderizarMensagem(
   template: string,
   linha: LinhaCsv,
-  mapeamento: Record<string, string | null | undefined>
+  mapeamento: MapeamentoParcial
 ): string {
   return template.replace(VARIAVEL, (original, variavel: string) => {
-    const coluna = mapeamento[variavel];
+    const config = mapeamento[variavel];
     // Sem coluna, o placeholder fica visível em vez de sumir: um texto obviamente quebrado
     // é melhor do que um buraco silencioso na mensagem (e o service rejeita antes disso).
-    if (!coluna) return original;
+    if (!config?.coluna) return original;
     // A função de replace devolve o valor literal — passar a célula como string de
     // substituição faria "$&" no CSV duplicar o trecho casado.
-    return linha[coluna] ?? "";
+    return resolverValor(config, linha);
   });
+}
+
+// O mapeamento vem de um campo Json (banco) ou de um payload HTTP, então pode estar no
+// formato antigo — { variavel: "Coluna" }, de antes dos tratamentos — ou simplesmente
+// malformado. Normaliza os dois casos para a leitura nunca quebrar a tela.
+export function normalizarMapeamento(valor: unknown): MapeamentoVariaveis {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
+
+  const mapeamento: MapeamentoVariaveis = {};
+  for (const [variavel, bruto] of Object.entries(valor as Record<string, unknown>)) {
+    if (typeof bruto === "string") {
+      if (bruto) mapeamento[variavel] = { coluna: bruto, tratamentos: [] };
+      continue;
+    }
+    if (!bruto || typeof bruto !== "object") continue;
+
+    const config = bruto as Record<string, unknown>;
+    if (typeof config.coluna !== "string" || !config.coluna) continue;
+
+    const tratamentos = Array.isArray(config.tratamentos)
+      ? config.tratamentos.filter(
+          (item): item is Tratamento => typeof item === "string" && tratamentoValido(item)
+        )
+      : [];
+
+    mapeamento[variavel] = {
+      coluna: config.coluna,
+      tratamentos,
+      ...(typeof config.padrao === "string" && config.padrao ? { padrao: config.padrao } : {}),
+    };
+  }
+  return mapeamento;
 }

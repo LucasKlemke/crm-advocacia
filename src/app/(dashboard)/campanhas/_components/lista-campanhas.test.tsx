@@ -32,7 +32,7 @@ function campanhaFake(over: Partial<CampanhaDTO> = {}): CampanhaDTO {
     criadoPorId: "user-1",
     nome: "Retomada de contato",
     mensagemTemplate: "Olá {{nome}}",
-    mapeamentoVariaveis: { nome: "Nome" },
+    mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [] } },
     colunaNumero: "numero",
     arquivoCsvNome: "lista.csv",
     delayMin: 3,

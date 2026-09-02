@@ -10,7 +10,9 @@ export interface CampanhaDTO {
   criadoPorId: string;
   nome: string;
   mensagemTemplate: string;
-  mapeamentoVariaveis: Record<string, string> | null;
+  // Json cru do banco: campanhas criadas antes dos tratamentos guardaram
+  // { variavel: "Coluna" }. Use normalizarMapeamento() antes de ler.
+  mapeamentoVariaveis: unknown;
   colunaNumero: string;
   arquivoCsvNome: string | null;
   delayMin: number;

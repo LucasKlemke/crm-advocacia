@@ -52,7 +52,7 @@ describe("campanhaRepository", () => {
     return campanhaRepository.create({
       nome,
       mensagemTemplate: "Olá {{nome}}",
-      mapeamentoVariaveis: { nome: "Nome" },
+      mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: ["primeiro_nome"] } },
       colunaNumero: "numero",
       delayMin: 3,
       delayMax: 6,
@@ -71,7 +71,9 @@ describe("campanhaRepository", () => {
     expect(campanha.instanciaWhatsappId).toBe(instanciaId);
     expect(campanha.criadoPorId).toBe(usuarioId);
     expect(campanha.mensagemTemplate).toBe("Olá {{nome}}");
-    expect(campanha.mapeamentoVariaveis).toEqual({ nome: "Nome" });
+    expect(campanha.mapeamentoVariaveis).toEqual({
+      nome: { coluna: "Nome", tratamentos: ["primeiro_nome"] },
+    });
     expect(campanha.uazapiFolderId).toBe("folder-Retomada");
     expect(campanha.status).toBe("agendada");
     expect(campanha.logTotal).toBe(0);

@@ -14,11 +14,15 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { formatarTelefone } from "@/lib/utils/telefone";
+import { normalizarMapeamento } from "@/lib/utils/campanha-mensagem";
+import { TRATAMENTOS_DISPONIVEIS } from "@/lib/utils/campanha-tratamentos";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
 
 export interface DetalheCampanhaProps {
   campanhaId: string;
 }
+
+const ROTULO_TRATAMENTO = new Map(TRATAMENTOS_DISPONIVEIS.map((t) => [t.id, t.rotulo]));
 
 function Metrica({ rotulo, valor }: { rotulo: string; valor: number }) {
   return (
@@ -43,7 +47,8 @@ export function DetalheCampanha({ campanhaId }: DetalheCampanhaProps) {
 
   const { campanha, itens, total, porPagina } = data;
   const ultimaPagina = Math.max(1, Math.ceil(total / porPagina));
-  const mapeamento = Object.entries(campanha.mapeamentoVariaveis ?? {});
+  // O Json vem cru do banco e pode estar no formato anterior aos tratamentos.
+  const mapeamento = Object.entries(normalizarMapeamento(campanha.mapeamentoVariaveis));
 
   return (
     <>
@@ -81,7 +86,15 @@ export function DetalheCampanha({ campanhaId }: DetalheCampanhaProps) {
           <p className="text-xs text-muted-foreground">
             Variáveis:{" "}
             {mapeamento
-              .map(([variavel, coluna]) => `{{${variavel}}} → coluna "${coluna}"`)
+              .map(([variavel, config]) => {
+                const tratamentos = (config?.tratamentos ?? [])
+                  .map((t) => ROTULO_TRATAMENTO.get(t) ?? t)
+                  .join(" → ");
+                const padrao = config?.padrao ? `, vazio vira "${config.padrao}"` : "";
+                return `{{${variavel}}} → coluna "${config?.coluna}"${
+                  tratamentos ? ` (${tratamentos})` : ""
+                }${padrao}`;
+              })
               .join(" · ")}
           </p>
         ) : null}

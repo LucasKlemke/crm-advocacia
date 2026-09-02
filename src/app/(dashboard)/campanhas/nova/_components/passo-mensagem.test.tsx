@@ -7,24 +7,27 @@ const PRIMEIRA_LINHA = { Nome: "Ana", numero: "5511999999999", Bairro: "Centro" 
 
 function renderizar(over: Partial<React.ComponentProps<typeof PassoMensagem>> = {}) {
   const onMensagem = jest.fn();
-  const onMapear = jest.fn();
+  const onConfigurar = jest.fn();
   render(
     <PassoMensagem
       mensagem="Olá {{nome}}, tudo bem?"
       colunas={COLUNAS}
       primeiraLinha={PRIMEIRA_LINHA}
-      mapeamento={{ nome: "Nome" }}
+      mapeamento={{ nome: { coluna: "Nome", tratamentos: [] } }}
       onMensagem={onMensagem}
-      onMapear={onMapear}
+      onConfigurar={onConfigurar}
       {...over}
     />
   );
-  return { onMensagem, onMapear };
+  return { onMensagem, onConfigurar };
 }
 
 describe("PassoMensagem", () => {
   it("lista as variáveis encontradas no texto", () => {
-    renderizar({ mensagem: "Olá {{nome}} do {{bairro}}", mapeamento: { nome: "Nome" } });
+    renderizar({
+      mensagem: "Olá {{nome}} do {{bairro}}",
+      mapeamento: { nome: { coluna: "Nome", tratamentos: [] } },
+    });
 
     expect(screen.getByText("{{nome}}")).toBeInTheDocument();
     expect(screen.getByText("{{bairro}}")).toBeInTheDocument();
@@ -35,7 +38,7 @@ describe("PassoMensagem", () => {
   it("cobra a escolha da coluna para a variável que não casou sozinha", () => {
     renderizar({
       mensagem: "Olá {{nome}} do {{bairro_preferido}}",
-      mapeamento: { nome: "Nome", bairro_preferido: null },
+      mapeamento: { nome: { coluna: "Nome", tratamentos: [] }, bairro_preferido: null },
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent("{{bairro_preferido}}");

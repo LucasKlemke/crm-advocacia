@@ -335,7 +335,7 @@ Disparo em massa de WhatsApp a partir de uma planilha CSV. A campanha nasce já 
 | `criado_por_id` | uuid | FK `usuario`, `onDelete: Restrict` |
 | `nome` | varchar(120) | Vai como `info` na UAZAPI |
 | `mensagem_template` | text | Mensagem-modelo com `{{variaveis}}` |
-| `mapeamento_variaveis` | jsonb? | `{{variavel}}` → nome da coluna do CSV |
+| `mapeamento_variaveis` | jsonb? | `{{variavel}}` → `{ coluna, tratamentos[], padrao? }` (ver RN24a/RN24b). Campanhas anteriores aos tratamentos guardaram `{{variavel}}` → `"Coluna"`; a leitura normaliza os dois formatos |
 | `coluna_numero` | varchar(120) | Coluna do CSV com o telefone de destino |
 | `arquivo_csv_nome` | varchar(255)? | Só o nome; o CSV em si não é persistido |
 | `delay_min` / `delay_max` | int | Intervalo (segundos) sorteado entre mensagens |
@@ -362,7 +362,7 @@ Uma mensagem já renderizada por destinatário — o que de fato foi entregue à
 | `linha` | int | Número da linha na planilha (1-based, sem cabeçalho); `@@unique([campanha_id, linha])` |
 | `numero` | varchar(20) | Só dígitos, `55 + DDD + 9` (mesmo formato de `cliente.telefone`) |
 | `mensagem` | text | Texto já com as variáveis substituídas |
-| `variaveis` | jsonb? | Só os valores usados pelo template, não a linha inteira do CSV |
+| `variaveis` | jsonb? | Valores **já tratados** que entraram na mensagem — só os usados pelo template, não a linha inteira do CSV |
 
 Sem `updated_at`: o item é snapshot imutável do que foi enviado (mesmo critério de `log`) — reprocessar o template depois daria um texto diferente do que o cliente recebeu.
 

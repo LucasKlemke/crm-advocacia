@@ -25,7 +25,7 @@ const NOVA_CAMPANHA = {
   instanciaId: "instancia-1",
   mensagemTemplate: "Olá {{nome}}",
   colunaNumero: "numero",
-  mapeamentoVariaveis: { nome: "Nome" },
+  mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [] } },
   delayMin: 3,
   delayMax: 6,
   linhas: [{ Nome: "Ana", numero: "5511999999999" }],

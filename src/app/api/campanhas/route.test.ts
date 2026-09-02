@@ -52,7 +52,7 @@ const CORPO_VALIDO = {
   instanciaId: "3f2c1b7e-9a4d-4c8b-9f1e-2d3a4b5c6d7e",
   mensagemTemplate: "Olá {{nome}}",
   colunaNumero: "numero",
-  mapeamentoVariaveis: { nome: "Nome" },
+  mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [] } },
   delayMin: 3,
   delayMax: 6,
   linhas: [{ Nome: "Ana", numero: "5511999999999" }],

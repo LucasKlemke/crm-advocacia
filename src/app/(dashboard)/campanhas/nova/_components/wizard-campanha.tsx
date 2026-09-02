@@ -11,6 +11,8 @@ import {
   extrairVariaveis,
   sugerirMapeamento,
   variaveisNaoMapeadas,
+  type ConfigVariavel,
+  type MapeamentoVariaveis,
 } from "@/lib/utils/campanha-mensagem";
 import { PassoCsv, contarNumerosInvalidos, type PlanilhaSelecionada } from "./passo-csv";
 import { PassoInstancia } from "./passo-instancia";
@@ -29,7 +31,7 @@ export function WizardCampanha() {
   const [instanciaId, setInstanciaId] = useState("");
   const [nomeInstancia, setNomeInstancia] = useState("");
   const [mensagem, setMensagem] = useState("");
-  const [mapeamento, setMapeamento] = useState<Record<string, string | null>>({});
+  const [mapeamento, setMapeamento] = useState<MapeamentoVariaveis>({});
   const [revisao, setRevisao] = useState<DadosRevisao>({
     nome: "",
     delayMin: 3,
@@ -64,8 +66,8 @@ export function WizardCampanha() {
     });
   }
 
-  function handleMapear(variavel: string, coluna: string) {
-    setMapeamento((atual) => ({ ...atual, [variavel]: coluna }));
+  function handleConfigurar(variavel: string, config: ConfigVariavel | null) {
+    setMapeamento((atual) => ({ ...atual, [variavel]: config }));
   }
 
   function handleRevisao<C extends keyof DadosRevisao>(campo: C, valor: DadosRevisao[C]) {
@@ -95,10 +97,10 @@ export function WizardCampanha() {
         instanciaId,
         mensagemTemplate: mensagem.trim(),
         colunaNumero,
-        // `pendentes` está vazio aqui, então todo valor do mapeamento é uma coluna real.
+        // `pendentes` está vazio aqui, então toda config restante tem coluna real.
         mapeamentoVariaveis: Object.fromEntries(
-          Object.entries(mapeamento).filter(([, coluna]) => Boolean(coluna))
-        ) as Record<string, string>,
+          Object.entries(mapeamento).filter(([, config]) => Boolean(config?.coluna))
+        ) as Record<string, ConfigVariavel>,
         delayMin: revisao.delayMin,
         delayMax: revisao.delayMax,
         // O input datetime-local devolve hora local sem fuso; o Date converte para o
@@ -168,7 +170,7 @@ export function WizardCampanha() {
           primeiraLinha={linhas[0]}
           mapeamento={mapeamento}
           onMensagem={handleMensagem}
-          onMapear={handleMapear}
+          onConfigurar={handleConfigurar}
         />
       ) : null}
 

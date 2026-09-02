@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import type { ConfigVariavel } from "@/lib/utils/campanha-mensagem";
 import type {
   AcaoCampanha,
   ListaCampanhas,
@@ -15,7 +16,7 @@ export interface DadosNovaCampanha {
   instanciaId: string;
   mensagemTemplate: string;
   colunaNumero: string;
-  mapeamentoVariaveis: Record<string, string>;
+  mapeamentoVariaveis: Record<string, ConfigVariavel>;
   delayMin: number;
   delayMax: number;
   agendadaPara?: string;

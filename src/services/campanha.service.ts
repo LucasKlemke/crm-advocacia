@@ -12,7 +12,13 @@ import {
   type MensagemEnvioAvancado,
 } from "@/lib/external/uazapi-client";
 import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
-import { extrairVariaveis, renderizarMensagem, type LinhaCsv } from "@/lib/utils/campanha-mensagem";
+import {
+  extrairVariaveis,
+  renderizarMensagem,
+  resolverValor,
+  type ConfigVariavel,
+  type LinhaCsv,
+} from "@/lib/utils/campanha-mensagem";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { CampanhaComInstancia } from "@/repositories/campanha.repository";
 import type { CampanhaItem, Prisma, StatusCampanha } from "@prisma/client";
@@ -67,7 +73,7 @@ export interface DadosNovaCampanha {
   instanciaId: string;
   mensagemTemplate: string;
   colunaNumero: string;
-  mapeamentoVariaveis: Record<string, string>;
+  mapeamentoVariaveis: Record<string, ConfigVariavel>;
   delayMin: number;
   delayMax: number;
   agendadaPara?: Date;
@@ -155,8 +161,8 @@ function montarDestinatarios(dados: DadosNovaCampanha): DestinatarioRenderizado[
   // Uma variável sem coluna (ou apontando para coluna que não existe na planilha) seria
   // enviada crua — "Olá {{nome}}" — pro cliente.
   const semColuna = extrairVariaveis(dados.mensagemTemplate).filter((variavel) => {
-    const coluna = dados.mapeamentoVariaveis[variavel];
-    return !coluna || !colunas.has(coluna);
+    const config = dados.mapeamentoVariaveis[variavel];
+    return !config?.coluna || !colunas.has(config.coluna);
   });
   if (semColuna.length > 0) {
     throw new VariavelSemColunaError(semColuna);
@@ -179,12 +185,13 @@ function montarDestinatarios(dados: DadosNovaCampanha): DestinatarioRenderizado[
       linha: numeroDaLinha,
       numero,
       mensagem: renderizarMensagem(dados.mensagemTemplate, linha, dados.mapeamentoVariaveis),
-      // Só os valores usados pelo template — guardar a linha inteira do CSV seria copiar
-      // dados pessoais que a campanha não precisa manter.
+      // Guarda o valor já tratado — o que de fato entrou na mensagem —, e não a célula
+      // crua: é o snapshot do envio. Só as variáveis usadas pelo template, porque copiar a
+      // linha inteira do CSV seria reter dado pessoal que a campanha não precisa.
       variaveis: Object.fromEntries(
-        Object.entries(dados.mapeamentoVariaveis).map(([variavel, coluna]) => [
+        Object.entries(dados.mapeamentoVariaveis).map(([variavel, config]) => [
           variavel,
-          linha[coluna] ?? "",
+          resolverValor(config, linha),
         ])
       ),
     });
@@ -287,7 +294,7 @@ export const campanhaService = {
           {
             nome: dados.nome,
             mensagemTemplate: dados.mensagemTemplate,
-            mapeamentoVariaveis: dados.mapeamentoVariaveis,
+            mapeamentoVariaveis: dados.mapeamentoVariaveis as unknown as Prisma.InputJsonValue,
             colunaNumero: dados.colunaNumero,
             ...(dados.arquivoCsvNome ? { arquivoCsvNome: dados.arquivoCsvNome } : {}),
             delayMin: dados.delayMin,

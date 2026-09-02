@@ -66,7 +66,7 @@ function campanhaFake(over: Partial<CampanhaComInstancia> = {}): CampanhaComInst
     criadoPorId: "user-1",
     nome: "Campanha de teste",
     mensagemTemplate: "Olá {{nome}}",
-    mapeamentoVariaveis: { nome: "Nome" },
+    mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [] } },
     colunaNumero: "numero",
     arquivoCsvNome: "lista.csv",
     delayMin: 3,
@@ -94,7 +94,7 @@ const DADOS = {
   instanciaId: "instancia-1",
   mensagemTemplate: "Olá {{nome}}, tudo bem?",
   colunaNumero: "numero",
-  mapeamentoVariaveis: { nome: "Nome" },
+  mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [] } },
   delayMin: 3,
   delayMax: 6,
   linhas: [
@@ -213,7 +213,7 @@ describe("campanhaService.criar", () => {
 
   it("recusa mapeamento apontando para coluna inexistente no CSV", async () => {
     await expect(
-      campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: { nome: "Apelido" } })
+      campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: { nome: { coluna: "Apelido", tratamentos: [] } } })
     ).rejects.toThrow(VariavelSemColunaError);
   });
 
@@ -235,6 +235,60 @@ describe("campanhaService.criar", () => {
     await expect(campanhaService.criar(ctx(), dados)).rejects.toThrow(DestinatariosInvalidosError);
     await expect(campanhaService.criar(ctx(), dados)).rejects.toThrow(/linha 2/i);
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
+  });
+
+  it("aplica os tratamentos da variável na mensagem enviada", async () => {
+    await campanhaService.criar(ctx(), {
+      ...DADOS,
+      linhas: [{ Nome: "ANA MARIA DA SILVA", numero: "5511999999999" }],
+      mapeamentoVariaveis: {
+        nome: { coluna: "Nome", tratamentos: ["primeiro_nome", "titulo"] },
+      },
+    });
+
+    const envio = client.criarEnvioAvancado.mock.calls[0][1];
+    expect(envio.messages[0].text).toBe("Olá Ana, tudo bem?");
+  });
+
+  it("usa o valor padrão da variável quando a célula está vazia", async () => {
+    await campanhaService.criar(ctx(), {
+      ...DADOS,
+      linhas: [{ Nome: "", numero: "5511999999999" }],
+      mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [], padrao: "tudo bem" } },
+    });
+
+    const envio = client.criarEnvioAvancado.mock.calls[0][1];
+    expect(envio.messages[0].text).toBe("Olá tudo bem, tudo bem?");
+  });
+
+  // O item é o snapshot do envio: guardar a célula crua faria o detalhe da campanha
+  // mostrar um valor diferente do que apareceu na mensagem.
+  it("guarda no item o valor já tratado, não a célula crua", async () => {
+    await campanhaService.criar(ctx(), {
+      ...DADOS,
+      linhas: [{ Nome: "ANA MARIA DA SILVA", numero: "5511999999999" }],
+      mapeamentoVariaveis: {
+        nome: { coluna: "Nome", tratamentos: ["primeiro_nome", "titulo"] },
+      },
+    });
+
+    expect(itensRepo.createMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ variaveis: { nome: "Ana" } })],
+      expect.anything()
+    );
+  });
+
+  it("grava o mapeamento com os tratamentos escolhidos", async () => {
+    const mapeamentoVariaveis = {
+      nome: { coluna: "Nome", tratamentos: ["primeiro_nome"] as const, padrao: "cliente" },
+    };
+
+    await campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: mapeamentoVariaveis as never });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ mapeamentoVariaveis }),
+      expect.anything()
+    );
   });
 
   it("grava o nome do arquivo CSV quando informado", async () => {
