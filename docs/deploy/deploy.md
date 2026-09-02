@@ -69,6 +69,8 @@ datasource db {
 | `AWS_S3_BUCKET` | nome do bucket S3 | `arquivos` |
 | `AWS_S3_ENDPOINT` | não definida | endpoint S3-compatível do Supabase Storage |
 | `AWS_S3_PREFIX` | prefixo de ambiente (ex. `production`) | prefixo de ambiente |
+| `UAZAPI_SERVER_URL` | mesmo valor | mesmo valor (conta UAZAPI do desenvolvedor, ortogonal ao provedor de banco/storage) |
+| `UAZAPI_ADMIN_TOKEN` | mesmo valor | mesmo valor (conta UAZAPI do desenvolvedor, ortogonal ao provedor de banco/storage) |
 
 Nenhuma dessas credenciais é commitada; produção usa o gerenciador de variáveis da Vercel, local usa `.env.local` (fora do controle de versão, com `.env.example` como referência e comentários explicando cada variável — ver [../database/docker-setup.md](../database/docker-setup.md)).
 

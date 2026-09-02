@@ -56,3 +56,18 @@ if (typeof window !== "undefined" && !window.ResizeObserver) {
 if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
+
+// jsdom não implementa AbortSignal.timeout (disponível no Node do runtime e no browser),
+// usado pelo uazapiClient para dar prazo a toda chamada HTTP à UAZAPI.
+if (typeof AbortSignal !== "undefined" && !AbortSignal.timeout) {
+  AbortSignal.timeout = (ms: number): AbortSignal => {
+    const controlador = new AbortController();
+    const timer = setTimeout(
+      () => controlador.abort(new DOMException("TimeoutError", "TimeoutError")),
+      ms
+    );
+    // Não segura o processo de teste vivo esperando um prazo que ninguém vai aguardar.
+    (timer as unknown as { unref?: () => void }).unref?.();
+    return controlador.signal;
+  };
+}
