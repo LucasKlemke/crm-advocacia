@@ -573,6 +573,125 @@ describe("uazapiClient", () => {
     });
   });
 
+  describe("listarMensagensCampanha", () => {
+    it("chama POST /sender/listmessages com folder_id, limit e offset", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
+
+      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
+        folderId: "folder-1",
+        limit: 500,
+        offset: 500,
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/listmessages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          token: TOKEN_INSTANCIA,
+        },
+        body: JSON.stringify({ folder_id: "folder-1", limit: 500, offset: 500 }),
+      });
+    });
+
+    it("manda messageStatus só quando o filtro é pedido", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
+
+      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
+        folderId: "folder-1",
+        limit: 50,
+        offset: 0,
+        messageStatus: "Failed",
+      });
+
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toEqual({
+        folder_id: "folder-1",
+        limit: 50,
+        offset: 0,
+        messageStatus: "Failed",
+      });
+    });
+
+    it("devolve só destino, status, erro e horário de cada mensagem", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({
+          messages: [
+            {
+              id: "msg-1",
+              chatid: "5511999998888@s.whatsapp.net",
+              status: "Sent",
+              error: "",
+              messageTimestamp: 1_777_000_000,
+              // Campos que não podem atravessar a fronteira do client.
+              sendPayload: { token: "tok-de-alguem" },
+              ai_metadata: { agent_id: "a1" },
+              text: "Olá Ana",
+            },
+          ],
+          pagination: { totalRecords: 12, limit: 50, offset: 0 },
+        })
+      );
+
+      const resposta = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
+        folderId: "folder-1",
+        limit: 50,
+        offset: 0,
+      });
+
+      expect(resposta).toEqual({
+        mensagens: [
+          {
+            id: "msg-1",
+            chatid: "5511999998888@s.whatsapp.net",
+            status: "Sent",
+            erro: undefined,
+            messageTimestamp: 1_777_000_000,
+          },
+        ],
+        total: 12,
+      });
+    });
+
+    it("usa o tamanho da página como total quando a paginação não vem", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ messages: [{ id: "m1", chatid: "55119@s.whatsapp.net", status: "Sent" }] })
+      );
+
+      const resposta = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
+        folderId: "folder-1",
+        limit: 50,
+        offset: 0,
+      });
+
+      expect(resposta.total).toBe(1);
+      expect(resposta.mensagens[0].messageTimestamp).toBe(0);
+    });
+
+    it("lança UazapiIndisponivelError quando `messages` não vem na resposta", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ pagination: {} }));
+
+      await expect(
+        uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
+          folderId: "folder-1",
+          limit: 50,
+          offset: 0,
+        })
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+
+    it("lança UazapiIndisponivelError em caso de falha de rede", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"));
+
+      await expect(
+        uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
+          folderId: "folder-1",
+          limit: 50,
+          offset: 0,
+        })
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    });
+  });
+
   describe("controlarCampanha", () => {
     it("chama POST /sender/edit com folder_id e action", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(respostaFake(null));

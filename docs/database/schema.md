@@ -348,6 +348,8 @@ Disparo em massa de WhatsApp a partir de uma planilha CSV. A campanha nasce já 
 
 `instancia_whatsapp_id` é **opcional com `SetNull`**, e não `Restrict`: a sincronização em lote de instâncias apaga instâncias "fantasma", e um `Restrict` aqui faria essa limpeza estourar violação de FK. Sem instância, a campanha permanece como histórico somente-leitura (sem o token não há como sincronizar nem controlar).
 
+O status mensagem a mensagem não tem coluna: vem de `POST /sender/listmessages` na hora em que a campanha é aberta, casado com `campanha_item` pelo número (RN29). Só os contadores agregados do folder são espelhados aqui.
+
 Sincronizar só escreve (e só gera `log`) quando algum contador ou o status mudou — o mesmo critério de `verificarStatus` em `instancia_whatsapp`. A ação `delete` remove a linha local depois que a UAZAPI confirma, porque o `listfolders` nunca mais devolveria aquela campanha; o rastro fica no `log` append-only.
 
 ## `campanha_item`

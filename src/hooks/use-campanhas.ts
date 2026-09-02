@@ -9,6 +9,7 @@ import type {
   RespostaCampanha,
   RespostaControleCampanha,
   RespostaItensCampanha,
+  RespostaMensagensCampanha,
 } from "@/types/campanha";
 
 export interface DadosNovaCampanha {
@@ -30,6 +31,8 @@ export const RAIZ_CAMPANHAS = ["campanhas"] as const;
 export const chaveCampanhas = () => RAIZ_CAMPANHAS;
 export const chaveCampanha = (id: string, pagina: number) =>
   [...RAIZ_CAMPANHAS, "detalhe", id, pagina] as const;
+export const chaveMensagensCampanha = (id: string) =>
+  [...RAIZ_CAMPANHAS, "mensagens", id] as const;
 
 export function useCampanhas() {
   return useQuery({
@@ -43,6 +46,19 @@ export function useCampanha(id: string, pagina: number) {
     queryKey: chaveCampanha(id, pagina),
     queryFn: () =>
       apiFetch<RespostaCampanha & RespostaItensCampanha>(`/api/campanhas/${id}?pagina=${pagina}`),
+  });
+}
+
+// Status de cada mensagem, direto da UAZAPI. Query separada da do detalhe de propósito: a
+// tabela do banco aparece na hora e o status chega depois, sem prender a tela na chamada
+// externa. `habilitado` é o que garante a ordem — só consulta depois que o banco respondeu.
+export function useMensagensCampanha(id: string, habilitado = true) {
+  return useQuery({
+    queryKey: chaveMensagensCampanha(id),
+    queryFn: () => apiFetch<RespostaMensagensCampanha>(`/api/campanhas/${id}/mensagens`),
+    enabled: habilitado,
+    // UAZAPI fora do ar não vale três tentativas com backoff: a tabela mostra "—" e segue.
+    retry: 1,
   });
 }
 

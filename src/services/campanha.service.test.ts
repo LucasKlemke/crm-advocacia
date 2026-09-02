@@ -407,6 +407,142 @@ describe("campanhaService.listarItens", () => {
   });
 });
 
+describe("campanhaService.listarMensagens", () => {
+  function paginaFake(mensagens: unknown[], total: number) {
+    return { mensagens, total } as Awaited<
+      ReturnType<typeof uazapiClient.listarMensagensCampanha>
+    >;
+  }
+
+  function mensagemFake(over: Record<string, unknown> = {}) {
+    return {
+      id: "msg-1",
+      chatid: "5511999998888@s.whatsapp.net",
+      status: "Sent",
+      erro: undefined,
+      messageTimestamp: 1_777_000_000,
+      ...over,
+    };
+  }
+
+  it("consulta a UAZAPI com o folder da campanha e normaliza cada mensagem", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    instancias.obterComToken.mockResolvedValue(instanciaFake());
+    client.listarMensagensCampanha.mockResolvedValue(
+      paginaFake([mensagemFake(), mensagemFake({ status: "Failed", erro: "bloqueado" })], 2)
+    );
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
+
+    expect(client.listarMensagensCampanha).toHaveBeenCalledWith("token-secreto", {
+      folderId: "folder-1",
+      limit: 500,
+      offset: 0,
+    });
+    expect(resposta).toEqual({
+      total: 2,
+      mensagens: [
+        {
+          numero: "5511999998888",
+          status: "enviada",
+          erro: null,
+          enviadaEm: new Date(1_777_000_000_000),
+        },
+        {
+          numero: "5511999998888",
+          status: "falha",
+          erro: "bloqueado",
+          enviadaEm: new Date(1_777_000_000_000),
+        },
+      ],
+    });
+  });
+
+  // Papel padrão só lê — e consultar status é leitura.
+  it("é liberada para o papel padrao", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    instancias.obterComToken.mockResolvedValue(instanciaFake());
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([], 0));
+
+    await expect(campanhaService.listarMensagens(ctx("padrao"), "campanha-1")).resolves.toEqual({
+      mensagens: [],
+      total: 0,
+    });
+  });
+
+  // Consultar o histórico não é disparar: o token da instância continua valendo.
+  it("não exige instância conectada", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    instancias.obterComToken.mockResolvedValue(instanciaFake({ status: "disconnected" }));
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 1));
+
+    await expect(
+      campanhaService.listarMensagens(ctx(), "campanha-1")
+    ).resolves.toHaveProperty("total", 1);
+  });
+
+  it("recusa campanha de outro escritório", async () => {
+    repo.findById.mockResolvedValue(campanhaFake({ escritorioId: "esc-2" }));
+
+    await expect(
+      campanhaService.listarMensagens(ctx(), "campanha-1")
+    ).rejects.toBeInstanceOf(CampanhaNaoEncontradaError);
+    expect(client.listarMensagensCampanha).not.toHaveBeenCalled();
+  });
+
+  it("recusa campanha cuja instância foi removida", async () => {
+    repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null }));
+
+    await expect(
+      campanhaService.listarMensagens(ctx(), "campanha-1")
+    ).rejects.toBeInstanceOf(CampanhaSemInstanciaError);
+  });
+
+  it("pagina até juntar o total anunciado pela UAZAPI", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    instancias.obterComToken.mockResolvedValue(instanciaFake());
+    const lote = Array.from({ length: 500 }, () => mensagemFake());
+    client.listarMensagensCampanha
+      .mockResolvedValueOnce(paginaFake(lote, 700))
+      .mockResolvedValueOnce(paginaFake(lote.slice(0, 200), 700));
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
+
+    expect(resposta.mensagens).toHaveLength(700);
+    expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(2);
+    expect(client.listarMensagensCampanha).toHaveBeenLastCalledWith("token-secreto", {
+      folderId: "folder-1",
+      limit: 500,
+      offset: 500,
+    });
+  });
+
+  // Total inflado pela UAZAPI não pode virar loop: página incompleta encerra a busca.
+  it("para na primeira página incompleta mesmo com total maior", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    instancias.obterComToken.mockResolvedValue(instanciaFake());
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 9_000));
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
+
+    expect(resposta.mensagens).toHaveLength(1);
+    expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(1);
+  });
+
+  // Teto de 10 lotes: nem uma UAZAPI que sempre devolve página cheia gira sem fim.
+  it("respeita o teto de lotes", async () => {
+    repo.findById.mockResolvedValue(campanhaFake());
+    instancias.obterComToken.mockResolvedValue(instanciaFake());
+    const lote = Array.from({ length: 500 }, () => mensagemFake());
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake(lote, 999_999));
+
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
+
+    expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(10);
+    expect(resposta.mensagens).toHaveLength(5_000);
+  });
+});
+
 describe("campanhaService.sincronizar", () => {
   beforeEach(() => {
     repo.findById.mockResolvedValue(campanhaFake());

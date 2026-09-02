@@ -101,6 +101,25 @@ export interface EnvioAvancado {
 
 export type AcaoCampanhaUazapi = "stop" | "continue" | "delete";
 
+// Uma mensagem de dentro de uma campanha (/sender/listmessages). A resposta bruta traz
+// muito mais que isso — sendPayload, ai_metadata, content, fileURL —, e nada além dos
+// campos abaixo atravessa esta fronteira: o que a tela precisa é destino, status e erro.
+export interface MensagemCampanhaUazapi {
+  id: string;
+  chatid: string;
+  status: string;
+  erro?: string;
+  messageTimestamp: number;
+}
+
+export interface ConsultaMensagensCampanha {
+  folderId: string;
+  limit: number;
+  offset: number;
+  // Filtro opcional do endpoint (Scheduled | Sent | Failed).
+  messageStatus?: string;
+}
+
 function inteiro(valor: unknown): number {
   return typeof valor === "number" && Number.isFinite(valor) ? valor : 0;
 }
@@ -348,6 +367,53 @@ export const uazapiClient = {
         logReproduzido: inteiro(raw.log_played),
       };
     });
+  },
+
+  // Status mensagem a mensagem de uma campanha. Diferente do /sender/listfolders (que dá
+  // só os contadores agregados), aqui dá para dizer o que aconteceu com cada destinatário.
+  async listarMensagensCampanha(
+    uazapiToken: string,
+    consulta: ConsultaMensagensCampanha
+  ): Promise<{ mensagens: MensagemCampanhaUazapi[]; total: number }> {
+    const corpo = await chamarUazapi(
+      "/sender/listmessages",
+      {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        token: uazapiToken,
+      },
+      {
+        folder_id: consulta.folderId,
+        limit: consulta.limit,
+        offset: consulta.offset,
+        ...(consulta.messageStatus ? { messageStatus: consulta.messageStatus } : {}),
+      }
+    );
+
+    // `messages` ausente ou de outro tipo é quebra de contrato: sem isso não há resposta
+    // nenhuma para dar, e um `[]` inventado pareceria "campanha sem mensagens".
+    const messages = corpo.messages;
+    if (!Array.isArray(messages)) {
+      throw new UazapiIndisponivelError();
+    }
+
+    const paginacao = (corpo.pagination ?? {}) as Record<string, unknown>;
+
+    return {
+      mensagens: messages.map((item: unknown) => {
+        const raw = item as Record<string, unknown>;
+        return {
+          id: (raw.id as string | undefined) ?? "",
+          chatid: (raw.chatid as string | undefined) ?? "",
+          status: (raw.status as string | undefined) ?? "",
+          erro: (raw.error as string | undefined) || undefined,
+          messageTimestamp: inteiro(raw.messageTimestamp),
+        };
+      }),
+      // Sem totalRecords, o tamanho da página é o melhor palpite — quem pagina precisa de
+      // algum total para saber que acabou.
+      total: inteiro(paginacao.totalRecords) || messages.length,
+    };
   },
 
   async controlarCampanha(

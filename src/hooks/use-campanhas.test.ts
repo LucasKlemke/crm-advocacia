@@ -7,6 +7,7 @@ import {
   useCampanhas,
   useControlarCampanha,
   useCriarCampanha,
+  useMensagensCampanha,
   useSincronizarCampanha,
 } from "./use-campanhas";
 
@@ -65,6 +66,29 @@ describe("queries de campanha", () => {
       "/api/campanhas/campanha-1?pagina=3",
       expect.anything()
     );
+  });
+
+  it("useMensagensCampanha busca o status na rota de mensagens", async () => {
+    const { Wrapper } = criarWrapper();
+    const { result } = renderHook(() => useMensagensCampanha("campanha-1"), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/campanhas/campanha-1/mensagens",
+      expect.anything()
+    );
+  });
+
+  // A ordem pedida: banco primeiro, UAZAPI depois. Enquanto o detalhe não respondeu, a
+  // consulta externa não sai.
+  it("useMensagensCampanha não consulta nada enquanto está desabilitada", async () => {
+    const { Wrapper } = criarWrapper();
+    const { result } = renderHook(() => useMensagensCampanha("campanha-1", false), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });
 

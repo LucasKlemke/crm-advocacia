@@ -1,4 +1,5 @@
 import type { StatusCampanha, StatusInstanciaWhatsapp } from "@prisma/client";
+import type { StatusMensagem } from "@/lib/utils/campanha-status-mensagem";
 
 // DTOs trafegados entre as rotas /api/campanhas e o client. Datas chegam como string
 // (JSON), por isso não dá para reusar os tipos do Prisma direto no componente. A
@@ -41,6 +42,20 @@ export interface CampanhaItemDTO {
   mensagem: string;
   variaveis: Record<string, string> | null;
   createdAt: string;
+}
+
+// Status de uma mensagem individual, consultado ao vivo na UAZAPI (/sender/listmessages).
+// Não tem correspondente no banco: `numero` é a chave para casar com o CampanhaItemDTO.
+export interface MensagemCampanhaDTO {
+  numero: string;
+  status: StatusMensagem;
+  erro: string | null;
+  enviadaEm: string | null;
+}
+
+export interface RespostaMensagensCampanha {
+  mensagens: MensagemCampanhaDTO[];
+  total: number;
 }
 
 export interface ListaCampanhas {

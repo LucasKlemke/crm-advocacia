@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Pause, Play } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { useCampanha, useControlarCampanha } from "@/hooks/use-campanhas";
+import { useCampanha, useControlarCampanha, useMensagensCampanha } from "@/hooks/use-campanhas";
 import {
   Table,
   TableBody,
@@ -18,8 +18,10 @@ import { Button } from "@/components/ui/button";
 import { formatarTelefone } from "@/lib/utils/telefone";
 import { normalizarMapeamento } from "@/lib/utils/campanha-mensagem";
 import { TRATAMENTOS_DISPONIVEIS } from "@/lib/utils/campanha-tratamentos";
+import { resumirPorNumero, type ResumoMensagem } from "@/lib/utils/campanha-status-mensagem";
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
+import { StatusBadgeMensagem } from "./status-badge-mensagem";
 
 export interface DetalheCampanhaProps {
   campanhaId: string;
@@ -27,6 +29,38 @@ export interface DetalheCampanhaProps {
 }
 
 const ROTULO_TRATAMENTO = new Map(TRATAMENTOS_DISPONIVEIS.map((t) => [t.id, t.rotulo]));
+
+// Uma célula da coluna Status: o que a UAZAPI sabe sobre a mensagem daquele destinatário.
+// Número sem mensagem correspondente fica em "—" — é bem diferente de dizer "pendente".
+function CelulaStatus({
+  resumo,
+  carregando,
+}: {
+  resumo: ResumoMensagem | undefined;
+  carregando: boolean;
+}) {
+  if (!resumo) {
+    return carregando ? (
+      <Loader2 aria-label="Buscando status" className="size-3.5 animate-spin text-muted-foreground" />
+    ) : (
+      <span className="text-muted-foreground" title="A UAZAPI não devolveu mensagem para este número">
+        —
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      <StatusBadgeMensagem status={resumo.status} />
+      {resumo.erro ? <span className="text-xs text-destructive">{resumo.erro}</span> : null}
+      {resumo.quantidade > 1 ? (
+        <span className="text-xs text-muted-foreground">
+          {resumo.quantidade} mensagens para este número
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 function Metrica({ rotulo, valor }: { rotulo: string; valor: number }) {
   return (
@@ -41,6 +75,9 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
   const [pagina, setPagina] = useState(1);
   const { data, isLoading, isError } = useCampanha(campanhaId, pagina);
   const controlar = useControlarCampanha();
+  // Só depois que o banco respondeu: a tabela de destinatários é o que dá contexto ao
+  // status, e uma campanha que nem carregou não tem por que consultar a UAZAPI.
+  const mensagens = useMensagensCampanha(campanhaId, data !== undefined);
 
   // Mesmas ações da listagem, aqui na tela onde o andamento é acompanhado. O status vem do
   // refetch que a mutation dispara — nada de estado local espelhando a campanha.
@@ -62,6 +99,7 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
   }
 
   const { campanha, itens, total, porPagina } = data;
+  const statusPorNumero = resumirPorNumero(mensagens.data?.mensagens ?? []);
   const ultimaPagina = Math.max(1, Math.ceil(total / porPagina));
   // O Json vem cru do banco e pode estar no formato anterior aos tratamentos.
   const mapeamento = Object.entries(normalizarMapeamento(campanha.mapeamentoVariaveis));
@@ -141,13 +179,27 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold">Destinatários</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Destinatários</h2>
+          {mensagens.isFetching ? (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" />
+              Consultando o status de cada mensagem na UAZAPI...
+            </span>
+          ) : null}
+          {mensagens.isError ? (
+            <span className="text-xs text-muted-foreground">
+              Não foi possível consultar o status das mensagens na UAZAPI.
+            </span>
+          ) : null}
+        </div>
         <div className="rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead className="w-16 px-4">Linha</TableHead>
-                <TableHead className="w-56">Número</TableHead>
+                <TableHead className="w-48">Número</TableHead>
+                <TableHead className="w-40">Status</TableHead>
                 <TableHead className="px-4">Mensagem enviada</TableHead>
               </TableRow>
             </TableHeader>
@@ -158,6 +210,12 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
                     {item.linha}
                   </TableCell>
                   <TableCell className="py-2 text-sm">{formatarTelefone(item.numero)}</TableCell>
+                  <TableCell className="py-2 text-sm">
+                    <CelulaStatus
+                      resumo={statusPorNumero.get(item.numero)}
+                      carregando={mensagens.isLoading}
+                    />
+                  </TableCell>
                   <TableCell className="px-4 py-2 text-sm whitespace-pre-wrap">
                     {item.mensagem}
                   </TableCell>

@@ -9,6 +9,7 @@ import {
   UazapiIndisponivelError,
   type AcaoCampanhaUazapi,
   type CampanhaUazapi,
+  type MensagemCampanhaUazapi,
   type MensagemEnvioAvancado,
 } from "@/lib/external/uazapi-client";
 import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
@@ -19,6 +20,12 @@ import {
   type ConfigVariavel,
   type LinhaCsv,
 } from "@/lib/utils/campanha-mensagem";
+import {
+  numeroDoChatid,
+  paraDataMensagem,
+  paraStatusMensagem,
+  type StatusMensagem,
+} from "@/lib/utils/campanha-status-mensagem";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { CampanhaComInstancia } from "@/repositories/campanha.repository";
 import type { CampanhaItem, Prisma, StatusCampanha } from "@prisma/client";
@@ -82,6 +89,11 @@ export interface DadosNovaCampanha {
 }
 
 export const ITENS_POR_PAGINA = 50;
+// Quantas mensagens são pedidas por chamada ao /sender/listmessages, e quantas chamadas no
+// máximo. 10 x 500 = 5.000, que é o teto de destinatários aceito na criação da campanha —
+// o limite de lotes também protege de girar sem fim se o `totalRecords` vier inconsistente.
+const MENSAGENS_POR_LOTE = 500;
+const MAX_LOTES_DE_MENSAGENS = 10;
 // Quantas linhas de CSV são citadas na mensagem de erro antes de virar "e mais N".
 const MAX_LINHAS_NO_ERRO = 5;
 // createMany de milhares de linhas + o log ainda cabem folgado nisso, mas o default de
@@ -138,6 +150,22 @@ async function obterTokenDaInstancia(
     campanha.instanciaWhatsappId
   );
   return instancia.uazapiToken;
+}
+
+export interface MensagemDaCampanha {
+  numero: string;
+  status: StatusMensagem;
+  erro: string | null;
+  enviadaEm: Date | null;
+}
+
+function paraMensagemDaCampanha(mensagem: MensagemCampanhaUazapi): MensagemDaCampanha {
+  return {
+    numero: numeroDoChatid(mensagem.chatid),
+    status: paraStatusMensagem(mensagem.status),
+    erro: mensagem.erro ?? null,
+    enviadaEm: paraDataMensagem(mensagem.messageTimestamp),
+  };
 }
 
 interface DestinatarioRenderizado {
@@ -260,6 +288,36 @@ export const campanhaService = {
     ]);
 
     return { itens, total, pagina, porPagina: ITENS_POR_PAGINA };
+  },
+
+  // O status de cada mensagem não é espelhado no banco: só a UAZAPI sabe o que aconteceu
+  // com cada destinatário, então a consulta é ao vivo. Leitura, liberada para qualquer
+  // papel — e sem exigir instância conectada: consultar histórico não é disparar.
+  async listarMensagens(
+    ctx: TenantContext,
+    id: string
+  ): Promise<{ mensagens: MensagemDaCampanha[]; total: number }> {
+    const campanha = await obterDoTenant(ctx, id);
+    const token = await obterTokenDaInstancia(ctx, campanha);
+
+    const mensagens: MensagemDaCampanha[] = [];
+    let total = 0;
+
+    for (let lote = 0; lote < MAX_LOTES_DE_MENSAGENS; lote += 1) {
+      const pagina = await uazapiClient.listarMensagensCampanha(token, {
+        folderId: campanha.uazapiFolderId,
+        limit: MENSAGENS_POR_LOTE,
+        offset: lote * MENSAGENS_POR_LOTE,
+      });
+
+      total = pagina.total;
+      mensagens.push(...pagina.mensagens.map(paraMensagemDaCampanha));
+
+      // Página incompleta significa fim da lista, independentemente do total anunciado.
+      if (pagina.mensagens.length < MENSAGENS_POR_LOTE || mensagens.length >= total) break;
+    }
+
+    return { mensagens, total };
   },
 
   async criar(ctx: TenantContext, dados: DadosNovaCampanha): Promise<CampanhaComInstancia> {
