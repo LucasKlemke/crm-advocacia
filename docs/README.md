@@ -4,8 +4,8 @@
 
 ## Produto
 
-- [produto/regras-negocio.md](produto/regras-negocio.md) — todas as regras de negócio (RN01–RN19), requisitos não funcionais relevantes e fluxos alternativos (FA-01 a FA-08). Consulte antes de implementar qualquer validação ou comportamento de domínio.
-- [produto/casos-de-uso.md](produto/casos-de-uso.md) — casos de uso/user stories por fluxo (cadastro de escritório, clientes, kanban, prazos, WhatsApp, documentos, isolamento de tenant), cada um apontando as RN/FA correspondentes. Documentação mínima exigida pela linha Web Apps do Portfólio.
+- [produto/regras-negocio.md](produto/regras-negocio.md) — todas as regras de negócio (RN01–RN35), requisitos não funcionais relevantes e fluxos alternativos (FA-01 a FA-16). Consulte antes de implementar qualquer validação ou comportamento de domínio.
+- [produto/casos-de-uso.md](produto/casos-de-uso.md) — casos de uso/user stories por fluxo (cadastro de escritório, clientes, kanban, prazos, WhatsApp, documentos, agenda, isolamento de tenant), cada um apontando as RN/FA correspondentes. Documentação mínima exigida pela linha Web Apps do Portfólio.
 
 ## Arquitetura
 
@@ -14,7 +14,7 @@
 ## Banco de dados
 
 - [database/docker-setup.md](database/docker-setup.md) — como subir o PostgreSQL local via Docker Compose, variáveis de ambiente, comandos do dia a dia.
-- [database/schema.md](database/schema.md) — as 12 tabelas do modelo de dados multi-tenant, relacionamentos e notas de implementação Prisma.
+- [database/schema.md](database/schema.md) — as 22 tabelas do modelo de dados multi-tenant, relacionamentos e notas de implementação Prisma.
 - [database/migrations-prisma.md](database/migrations-prisma.md) — fluxo obrigatório de migrations (`migrate dev`/`migrate deploy`), como reverter, nomenclatura, seeds, auditoria do histórico de schema. Consulte sempre que for alterar `schema.prisma`.
 
 ## App (Next.js)

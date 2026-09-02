@@ -7,6 +7,7 @@ import {
   podeEditarComentario,
   podeModerarComentario,
   podeModerarDocumento,
+  podeModerarEvento,
 } from "./permissoes";
 
 describe("permissoes", () => {
@@ -114,5 +115,20 @@ describe("permissoes", () => {
     it("membro padrão não exclui documento alheio", () => {
       expect(podeModerarDocumento("padrao", false)).toBe(false);
     });
+  });
+});
+
+describe("podeModerarEvento", () => {
+  it("permite ao autor editar/excluir o próprio evento (RN34)", () => {
+    expect(podeModerarEvento("padrao", true)).toBe(true);
+  });
+
+  it("permite a owner e admin moderar evento de qualquer membro (RN34)", () => {
+    expect(podeModerarEvento("owner", false)).toBe(true);
+    expect(podeModerarEvento("admin", false)).toBe(true);
+  });
+
+  it("bloqueia membro padrão em evento de outra pessoa (RN34)", () => {
+    expect(podeModerarEvento("padrao", false)).toBe(false);
   });
 });

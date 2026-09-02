@@ -2,7 +2,7 @@
 
 Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC---CRM-Advocacia (seção 5.2), evoluído para **multi-tenant**. Ver também [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md), [../produto/regras-negocio.md](../produto/regras-negocio.md) e [migrations-prisma.md](migrations-prisma.md) (como aplicar mudanças neste schema).
 
-16 tabelas (as 10 originais + `escritorio`, a evolução de `advogado` para `usuario`, `membro`/`convite` para o modelo N:N usuário↔escritório, e `comentario`/`log` para anotações por escopo e auditoria), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens, documentos e trilha de auditoria. PK `uuid` em todas.
+22 tabelas (as 10 originais + `escritorio`, a evolução de `advogado` para `usuario`, `membro`/`convite` para o modelo N:N usuário↔escritório, `comentario`/`log` para anotações por escopo e auditoria, `tipo_processo` para a natureza do processo, `instancia_whatsapp`/`campanha`/`campanha_item` para o disparo em massa e `evento`/`evento_participante` para a agenda), cobrindo tenants, autenticação, clientes, casos, pipeline, prazos, mensagens, documentos, campanhas, agenda e trilha de auditoria. PK `uuid` em todas.
 
 > **Multi-tenant real (evolução sobre o RFC original):** `usuario` deixou de pertencer a um único `escritorio` — vira um perfil global (um e-mail, uma senha), e a associação a um ou mais escritórios, com um papel por escritório, vive em `membro`. Isso permite a um mesmo profissional participar de múltiplos escritórios com papéis diferentes em cada um. `convite` guarda convites pendentes por e-mail, consumidos automaticamente no cadastro (ver [../produto/regras-negocio.md](../produto/regras-negocio.md)).
 
@@ -373,6 +373,45 @@ Uma mensagem já renderizada por destinatário — o que de fato foi entregue à
 
 Sem `updated_at`: o item é snapshot imutável do que foi enviado (mesmo critério de `log`) — reprocessar o template depois daria um texto diferente do que o cliente recebeu.
 
+## `evento`
+
+Compromisso da agenda do escritório (rota `/agenda`): audiência, reunião, prazo administrativo. É um módulo próprio, **independente de `prazo`/`notificacoes_prazo`** (RN10–RN12, ainda não implementados) — a agenda é um calendário operado à mão pelos membros, sem agendador em background nem lembretes automáticos. A tabela guarda `escritorio_id` diretamente (mesmo padrão de `cliente`/`caso`/`campanha`), porque a visão de mês/semana/dia consulta uma janela de datas do tenant inteiro e não teria como pagar um join só para descobrir o escritório.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` (obrigatório — escopo de tenant, RN19) |
+| titulo | varchar(140) | Ex.: "Audiência de instrução — Fórum de Joinville" |
+| descricao | text | Pauta/observações, opcional |
+| inicio | timestamp | Começo do evento (dia inteiro: 00:00:00.000 do dia, RN35) |
+| fim | timestamp | Fim do evento, estritamente posterior a `inicio` (dia inteiro: 23:59:59.999 do dia, RN35) |
+| dia_inteiro | boolean | `false` por padrão; `true` faz a UI esconder as horas e o Service normalizar `inicio`/`fim` |
+| modalidade | enum `ModalidadeEvento` | `presencial` (exige `local`) ou `online` (exige `link_reuniao`) — RN32 |
+| local | varchar(255) | Endereço/sala do evento presencial; `NULL` quando `online` (RN32) |
+| link_reuniao | varchar(500) | URL da sala virtual; `NULL` quando `presencial` (RN32) |
+| cliente_id | uuid? | FK → `cliente`, `onDelete: SetNull` — vínculo opcional, exclusivo com `caso_id` (RN31) |
+| caso_id | uuid? | FK → `caso`, `onDelete: SetNull` — vínculo opcional, exclusivo com `cliente_id` (RN31) |
+| criado_por_membro_id | uuid | FK → `membro`, `onDelete: Restrict` — autor do evento, quem pode editá-lo junto com `owner`/`admin` (RN34) |
+| soft_deleted_at | timestamp? | Exclusão lógica (RN34): ativo = `NULL`; a agenda lista só `soft_deleted_at IS NULL` |
+| created_at / updated_at | timestamp | |
+
+A exclusividade `caso_id` XOR `cliente_id` **não** é uma constraint de banco, e sim uma checagem do `EventoService`: assim o erro chega ao usuário como 422 com mensagem de domínio (FA-15) em vez de violação de check no meio de uma transação. As duas FKs são `SetNull` e não `Restrict` porque o vínculo é acessório — apagar o alvo (o que hoje só acontece pelo cascade de `escritorio`) não pode derrubar o compromisso já realizado; `criado_por_membro_id` é `Restrict`, já que um evento sem autor não teria a quem atribuir a permissão de edição de RN34. O alvo do vínculo é validado contra o escritório da sessão antes de qualquer escrita (RN19, FA-13), exatamente como em `comentario`.
+
+Índices: `@@index([escritorio_id, inicio])` e `@@index([escritorio_id, soft_deleted_at, inicio])` atendem à consulta central da agenda ("eventos ativos do escritório entre duas datas") nas três visões; `@@index([escritorio_id, caso_id])` e `@@index([escritorio_id, cliente_id])` servem à aba de agenda dentro de um caso/cliente; `@@index([escritorio_id, criado_por_membro_id])` cobre o filtro "meus eventos". Toda escrita gera `log` com `entidade = 'evento'` na mesma transação (RN20).
+
+## `evento_participante`
+
+Quem participa de cada evento. Tabela de junção pura entre `evento` e `membro` (RN33) — participante é sempre membro do próprio escritório, nunca e-mail livre, porque a agenda não é ferramenta de convite externo e quem não é membro não conseguiria abrir o evento de que faz parte.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid | PK |
+| evento_id | uuid | FK → `evento`, `onDelete: Cascade` |
+| membro_id | uuid | FK → `membro`, `onDelete: Cascade` |
+| created_at | timestamp | |
+
+Não carrega `escritorio_id`: a linha só é alcançável através de `evento`, que já é escopado, então o tenant vem sempre do join com ele (RN19) — mesmo raciocínio que dispensa `escritorio_id` em `notificacoes_prazo`. Sem `updated_at`, porque participação não se edita: o conjunto de participantes é substituído (`@@unique([evento_id, membro_id])` impede duplicata). `@@index([membro_id])` responde "de quais eventos este membro participa". `onDelete: Cascade` nas duas pontas é intencional — a participação não tem vida própria fora do par evento/membro. O criador do evento entra automaticamente como participante e não pode ser retirado enquanto for o autor (RN33).
+
 ## Relacionamentos
 
 | Origem | Cardinalidade | Destino |
@@ -404,6 +443,12 @@ Sem `updated_at`: o item é snapshot imutável do que foi enviado (mesmo critér
 | `campanha` | N:1 | `usuario` (criada por) |
 | `campanha_item` | N:1 | `escritorio` |
 | `campanha_item` | N:1 | `campanha` |
+| `evento` | N:1 | `escritorio` |
+| `evento` | N:1 | `cliente` (vínculo opcional, SetNull — exclusivo com `caso`) |
+| `evento` | N:1 | `caso` (vínculo opcional, SetNull — exclusivo com `cliente`) |
+| `evento` | N:1 | `membro` (autor, Restrict) |
+| `evento_participante` | N:1 | `evento` |
+| `evento_participante` | N:1 | `membro` |
 
 ## Notas de implementação (Prisma)
 
@@ -411,6 +456,9 @@ Sem `updated_at`: o item é snapshot imutável do que foi enviado (mesmo critér
 - `usuario.email` com `@unique` (global — identidade de login única, independente de quantos escritórios o usuário integra via `membro`).
 - `cliente.cpf` com `@@unique([escritorio_id, cpf])` — único **composto** por escritório, não globalmente.
 - Índice composto `@@index([escritorio_id, ...])` em `cliente`, `status`, `caso`, `template_mensagem`, `membro` para performance de queries escopadas por tenant. `caso` guarda `escritorio_id` diretamente (não resolve por join) — mesmo padrão de `cliente`/`comentario`/`log`.
+- `@@index([escritorio_id, inicio])` e `@@index([escritorio_id, soft_deleted_at, inicio])` em `evento` — a agenda sempre consulta uma janela de datas do tenant, e a versão com `soft_deleted_at` evita ler evento excluído (RN34) na visão de mês.
+- Exclusividade `caso_id` XOR `cliente_id` em `evento` fica no `EventoService`, não em check constraint: o objetivo é responder 422 com mensagem de domínio (FA-15). O mesmo vale para `modalidade` × `local`/`link_reuniao` (RN32) e para `fim > inicio` (RN35) — validados no schema zod da rota e no Service, com o campo da modalidade não escolhida gravado como `NULL`.
+- `evento_participante` não tem `escritorio_id` nem `updated_at`: o tenant vem do join com `evento` (RN19) e o conjunto de participantes é substituído, não editado linha a linha (RN33).
 - `onDelete: Restrict` em `caso.cliente_id` e `caso.status_id` para impedir exclusão física de cliente/status com casos vinculados — a regra é sempre inativar/bloquear, nunca deletar em cascata (RN04/RN09).
 - **Todo Repository que consulta `prazo`, `anotacao`, `documento` ou `historico_mensagem` deve fazer join até `caso`/`cliente` para aplicar o filtro de `escritorio_id`**, já que essas tabelas ainda não guardam o tenant diretamente — isso exige disciplina na camada de Repository (ver [../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade)). Alternativa mais defensiva, se preferível na implementação: desnormalizar `escritorio_id` também nessas tabelas para permitir filtro direto sem join — trade-off entre simplicidade de schema e robustez contra bugs de isolamento.
 - Toda alteração neste schema segue o fluxo de migrations descrito em [migrations-prisma.md](migrations-prisma.md) — nunca editar o banco diretamente.
