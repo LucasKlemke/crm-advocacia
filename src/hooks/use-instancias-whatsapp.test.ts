@@ -8,6 +8,8 @@ import {
   useReconectarInstanciaWhatsapp,
   useVerificarStatusInstanciaWhatsapp,
   useSincronizarInstanciasWhatsapp,
+  useDesconectarInstanciaWhatsapp,
+  useExcluirInstanciaWhatsapp,
 } from "./use-instancias-whatsapp";
 
 function criarWrapper() {
@@ -102,6 +104,34 @@ describe("mutations de instância de WhatsApp", () => {
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toBe("/api/instancias/sincronizar");
     expect(init.method).toBe("POST");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chaveInstanciasWhatsapp() });
+  });
+
+  it("useDesconectarInstanciaWhatsapp faz POST no id informado e invalida a lista", async () => {
+    const { Wrapper, queryClient } = criarWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useDesconectarInstanciaWhatsapp(), { wrapper: Wrapper });
+
+    result.current.mutate("instancia-1");
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe("/api/instancias/instancia-1/desconectar");
+    expect(init.method).toBe("POST");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chaveInstanciasWhatsapp() });
+  });
+
+  it("useExcluirInstanciaWhatsapp faz DELETE no id informado e invalida a lista", async () => {
+    const { Wrapper, queryClient } = criarWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useExcluirInstanciaWhatsapp(), { wrapper: Wrapper });
+
+    result.current.mutate("instancia-1");
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe("/api/instancias/instancia-1");
+    expect(init.method).toBe("DELETE");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chaveInstanciasWhatsapp() });
   });
 });

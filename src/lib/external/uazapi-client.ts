@@ -35,7 +35,7 @@ async function chamarUazapi(
   caminho: string,
   headers: Record<string, string>,
   body?: unknown,
-  method: "GET" | "POST" = "POST",
+  method: "GET" | "POST" | "DELETE" = "POST",
   // /sender/edit responde 200 com corpo `null` (documentado). Sem esta saída, uma ação
   // bem-sucedida cairia na validação de contrato abaixo e viraria 502 pro usuário.
   aceitaCorpoVazio = false
@@ -174,6 +174,42 @@ export const uazapiClient = {
       numeroConectado: instance.owner as string | undefined,
       fotoPerfilUrl: instance.profilePicUrl as string | undefined,
     };
+  },
+
+  // Encerra a sessão do WhatsApp da instância: o pareamento é desfeito e reconectar
+  // exige um QR code novo (diferente de hibernar, que só pausa a conexão).
+  //
+  // A resposta traz um objeto `instance`, mas o `status` dela não é confiável como
+  // estado novo — a própria doc da UAZAPI descreve os estados possíveis após desconectar
+  // (disconnected/connecting) e mesmo assim exemplifica a resposta com "connected". Por
+  // isso o corpo é descartado: quem chama sabe que uma desconexão bem-sucedida deixa a
+  // instância desconectada, e /instance/status continua sendo a fonte da verdade.
+  async desconectarInstancia(uazapiToken: string): Promise<void> {
+    await chamarUazapi(
+      "/instance/disconnect",
+      {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        token: uazapiToken,
+      },
+      {}
+    );
+  },
+
+  // Remove a instância do servidor da UAZAPI de vez (não só a sessão). A rota não recebe
+  // id nenhum: a instância excluída é a dona do token do header — por isso aqui vai o
+  // token da instância, nunca o admintoken (que não identificaria nada).
+  async deletarInstancia(uazapiToken: string): Promise<void> {
+    await chamarUazapi(
+      "/instance",
+      {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        token: uazapiToken,
+      },
+      undefined,
+      "DELETE"
+    );
   },
 
   async consultarStatus(uazapiToken: string): Promise<{

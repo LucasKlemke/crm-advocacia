@@ -201,6 +201,72 @@ export const instanciaWhatsappService = {
     return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
   },
 
+  // Encerra a sessão do WhatsApp sem apagar a instância: o vínculo com a UAZAPI (id +
+  // token) continua valendo, então reconectar depois é só escanear um QR novo.
+  async desconectar(ctx: TenantContext, id: string): Promise<InstanciaSemToken> {
+    exigirPapelDeGestao(ctx);
+
+    const atual = await obterDoTenant(ctx, id);
+    // Chamada externa fora da transação — e antes dela: se a UAZAPI recusar, o estado
+    // local continua refletindo a sessão que ainda está de pé, sem log de mentira.
+    await uazapiClient.desconectarInstancia(atual.uazapiToken);
+
+    const instancia = await prisma.$transaction(async (tx) => {
+      const atualizada = await instanciaWhatsappRepository.atualizarConexao(
+        id,
+        // Status fixo em vez do devolvido pela UAZAPI (ver comentário em
+        // uazapiClient.desconectarInstancia). numeroConectado/fotoPerfilUrl são limpos
+        // porque pertenciam à sessão encerrada: o próximo QR pode ser lido por outro
+        // número, e até lá exibir o antigo seria informação errada.
+        { status: "disconnected", numeroConectado: null, fotoPerfilUrl: null },
+        tx
+      );
+
+      await logService.registrar(
+        ctx,
+        {
+          acao: "atualizar",
+          entidade: "instancia_whatsapp",
+          entidadeId: atualizada.id,
+          resumo: `Instância ${atualizada.nome} desconectada`,
+        },
+        tx
+      );
+
+      return atualizada;
+    });
+
+    return semToken(instancia);
+  },
+
+  // Remove a instância dos dois lados: primeiro na UAZAPI, depois aqui. Campanhas que
+  // apontavam pra ela não são apagadas junto — a FK é onDelete: SetNull, então o
+  // histórico dos disparos sobrevive à exclusão da instância.
+  async excluir(ctx: TenantContext, id: string): Promise<void> {
+    exigirPapelDeGestao(ctx);
+
+    const atual = await obterDoTenant(ctx, id);
+    // Ordem proposital: se a UAZAPI recusar, nada é removido daqui e a instância segue
+    // utilizável. O inverso — apagar local e falhar lá — deixaria uma instância órfã na
+    // UAZAPI, invisível pro escritório e impossível de excluir pela UI.
+    await uazapiClient.deletarInstancia(atual.uazapiToken);
+
+    await prisma.$transaction(async (tx) => {
+      await instanciaWhatsappRepository.delete(id, tx);
+
+      await logService.registrar(
+        ctx,
+        {
+          acao: "excluir",
+          entidade: "instancia_whatsapp",
+          entidadeId: id,
+          resumo: `Instância ${atual.nome} excluída`,
+        },
+        tx
+      );
+    });
+  },
+
   // Uso exclusivo de outro Service no servidor (campanha.service precisa do token para
   // falar com a UAZAPI em nome desta instância). O retorno inclui uazapiToken: NUNCA
   // devolva o objeto desta função numa resposta HTTP — para isso existe `listar`/

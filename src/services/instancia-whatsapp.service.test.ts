@@ -637,3 +637,130 @@ describe("instanciaWhatsappService.sincronizarTodas", () => {
     expect(logs.registrar).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("instanciaWhatsappService.desconectar", () => {
+  it("rejeita role padrao sem tocar repository ou client", async () => {
+    await expect(
+      instanciaWhatsappService.desconectar(ctx("padrao"), "instancia-1")
+    ).rejects.toThrow(PermissaoNegadaError);
+    expect(repo.findById).not.toHaveBeenCalled();
+    expect(client.desconectarInstancia).not.toHaveBeenCalled();
+  });
+
+  it("trata instância de outro escritório como inexistente (RN19)", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ escritorioId: "esc-2" }));
+
+    await expect(instanciaWhatsappService.desconectar(ctx(), "instancia-1")).rejects.toThrow(
+      InstanciaWhatsappNaoEncontradaError
+    );
+    expect(client.desconectarInstancia).not.toHaveBeenCalled();
+  });
+
+  it("rejeita id inexistente", async () => {
+    repo.findById.mockResolvedValue(null);
+    await expect(instanciaWhatsappService.desconectar(ctx(), "sumida")).rejects.toThrow(
+      InstanciaWhatsappNaoEncontradaError
+    );
+  });
+
+  it("desconecta na UAZAPI com o token salvo, marca disconnected limpando número/foto e loga", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ status: "connected" }));
+    client.desconectarInstancia.mockResolvedValue(undefined);
+    repo.atualizarConexao.mockResolvedValue(
+      instanciaFake({ status: "disconnected", numeroConectado: null, fotoPerfilUrl: null })
+    );
+
+    const resultado = await instanciaWhatsappService.desconectar(ctx(), "instancia-1");
+
+    expect(client.desconectarInstancia).toHaveBeenCalledWith("token-secreto");
+    expect(repo.atualizarConexao).toHaveBeenCalledWith(
+      "instancia-1",
+      { status: "disconnected", numeroConectado: null, fotoPerfilUrl: null },
+      expect.anything()
+    );
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx(),
+      expect.objectContaining({
+        acao: "atualizar",
+        entidade: "instancia_whatsapp",
+        entidadeId: "instancia-1",
+        resumo: expect.stringContaining("desconectada"),
+      }),
+      expect.anything()
+    );
+    expect(resultado).not.toHaveProperty("uazapiToken");
+    expect(resultado.status).toBe("disconnected");
+  });
+
+  it("não grava nem loga quando a UAZAPI falha", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ status: "connected" }));
+    client.desconectarInstancia.mockRejectedValue(new UazapiIndisponivelError());
+
+    await expect(
+      instanciaWhatsappService.desconectar(ctx(), "instancia-1")
+    ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    expect(repo.atualizarConexao).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+});
+
+describe("instanciaWhatsappService.excluir", () => {
+  it("rejeita role padrao sem tocar repository ou client", async () => {
+    await expect(instanciaWhatsappService.excluir(ctx("padrao"), "instancia-1")).rejects.toThrow(
+      PermissaoNegadaError
+    );
+    expect(repo.findById).not.toHaveBeenCalled();
+    expect(client.deletarInstancia).not.toHaveBeenCalled();
+  });
+
+  it("trata instância de outro escritório como inexistente (RN19), sem deletar nada", async () => {
+    repo.findById.mockResolvedValue(instanciaFake({ escritorioId: "esc-2" }));
+
+    await expect(instanciaWhatsappService.excluir(ctx(), "instancia-1")).rejects.toThrow(
+      InstanciaWhatsappNaoEncontradaError
+    );
+    expect(client.deletarInstancia).not.toHaveBeenCalled();
+    expect(repo.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejeita id inexistente", async () => {
+    repo.findById.mockResolvedValue(null);
+    await expect(instanciaWhatsappService.excluir(ctx(), "sumida")).rejects.toThrow(
+      InstanciaWhatsappNaoEncontradaError
+    );
+  });
+
+  it("remove na UAZAPI com o token salvo, apaga a linha local e loga", async () => {
+    repo.findById.mockResolvedValue(instanciaFake());
+    client.deletarInstancia.mockResolvedValue(undefined);
+    repo.delete.mockResolvedValue(instanciaFake());
+
+    await instanciaWhatsappService.excluir(ctx(), "instancia-1");
+
+    expect(client.deletarInstancia).toHaveBeenCalledWith("token-secreto");
+    expect(repo.delete).toHaveBeenCalledWith("instancia-1", expect.anything());
+    expect(logs.registrar).toHaveBeenCalledWith(
+      ctx(),
+      expect.objectContaining({
+        acao: "excluir",
+        entidade: "instancia_whatsapp",
+        entidadeId: "instancia-1",
+        resumo: expect.stringContaining("excluída"),
+      }),
+      expect.anything()
+    );
+  });
+
+  // A remoção externa vem antes da local: se a UAZAPI recusar, a instância continua
+  // inteira dos dois lados em vez de sumir daqui e ficar órfã lá.
+  it("não apaga a linha local nem loga quando a UAZAPI falha", async () => {
+    repo.findById.mockResolvedValue(instanciaFake());
+    client.deletarInstancia.mockRejectedValue(new UazapiIndisponivelError());
+
+    await expect(instanciaWhatsappService.excluir(ctx(), "instancia-1")).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(repo.delete).not.toHaveBeenCalled();
+    expect(logs.registrar).not.toHaveBeenCalled();
+  });
+});

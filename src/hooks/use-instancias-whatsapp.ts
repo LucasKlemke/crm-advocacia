@@ -70,3 +70,27 @@ export function useSincronizarInstanciasWhatsapp() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
   });
 }
+
+// Encerra a sessão do WhatsApp mantendo a instância cadastrada — depois dela, a linha
+// volta pro estado "desconectada" e o botão Reconectar reaparece na listagem.
+export function useDesconectarInstanciaWhatsapp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<RespostaStatusInstanciaWhatsapp>(`/api/instancias/${id}/desconectar`, {
+        method: "POST",
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
+  });
+}
+
+// Apaga a instância aqui e na UAZAPI. Campanhas antigas continuam existindo (a FK é
+// SetNull), apenas sem instância vinculada.
+export function useExcluirInstanciaWhatsapp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: true }>(`/api/instancias/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp() }),
+  });
+}

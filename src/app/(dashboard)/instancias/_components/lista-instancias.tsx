@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Wifi } from "lucide-react";
+import { Loader2, Plus, PowerOff, RefreshCw, Trash2, Wifi } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import {
+  useDesconectarInstanciaWhatsapp,
+  useExcluirInstanciaWhatsapp,
   useInstanciasWhatsapp,
   useReconectarInstanciaWhatsapp,
   useSincronizarInstanciasWhatsapp,
@@ -18,6 +20,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { formatarTelefone } from "@/lib/utils/telefone";
@@ -36,14 +48,27 @@ const STATUS_RECONECTAVEIS: ReadonlySet<InstanciaWhatsappDTO["status"]> = new Se
   "connecting",
 ]);
 
+// Desconectar encerra a sessão do WhatsApp: só quem ainda tem alguma sessão de pé
+// (conectada, conectando ou hibernada) tem o que encerrar.
+function podeDesconectar(status: InstanciaWhatsappDTO["status"]): boolean {
+  return status !== "disconnected";
+}
+
 export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
   const { data, isLoading, isError } = useInstanciasWhatsapp();
   const reconectar = useReconectarInstanciaWhatsapp();
   const verificarStatus = useVerificarStatusInstanciaWhatsapp();
   const sincronizar = useSincronizarInstanciasWhatsapp();
+  const desconectar = useDesconectarInstanciaWhatsapp();
+  const excluir = useExcluirInstanciaWhatsapp();
 
   const [criando, setCriando] = useState(false);
   const [qrcode, setQrcode] = useState<QrcodeDialogState | null>(null);
+  // Ambas as ações são destrutivas (uma derruba a sessão, a outra apaga a instância na
+  // UAZAPI): a instância alvo fica em estado só enquanto o diálogo de confirmação está
+  // aberto, e a chamada só sai depois do confirmar.
+  const [desconectando, setDesconectando] = useState<InstanciaWhatsappDTO | null>(null);
+  const [excluindo, setExcluindo] = useState<InstanciaWhatsappDTO | null>(null);
 
   const instancias = data?.instancias ?? [];
 
@@ -76,6 +101,33 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
     } catch (erro) {
       toast.error(
         erro instanceof ApiError ? erro.message : "Não foi possível verificar o status da instância."
+      );
+    }
+  }
+
+  async function handleDesconectar() {
+    if (!desconectando) return;
+    try {
+      await desconectar.mutateAsync(desconectando.id);
+      toast.success("Instância desconectada. Reconecte lendo um novo QR code.");
+      setDesconectando(null);
+    } catch (erro) {
+      // Diálogo continua aberto de propósito: o usuário vê o motivo e pode tentar de novo.
+      toast.error(
+        erro instanceof ApiError ? erro.message : "Não foi possível desconectar a instância."
+      );
+    }
+  }
+
+  async function handleExcluir() {
+    if (!excluindo) return;
+    try {
+      await excluir.mutateAsync(excluindo.id);
+      toast.success("Instância excluída.");
+      setExcluindo(null);
+    } catch (erro) {
+      toast.error(
+        erro instanceof ApiError ? erro.message : "Não foi possível excluir a instância."
       );
     }
   }
@@ -136,7 +188,7 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
               <TableHead className="px-4">Instância</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Número conectado</TableHead>
-              {!somenteLeitura ? <TableHead className="w-56 px-4" /> : null}
+              {!somenteLeitura ? <TableHead className="px-4 text-right">Ações</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -158,36 +210,61 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
                       {instancia.nome}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3">
                     <StatusBadgeInstancia status={instancia.status} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="py-3 text-sm text-muted-foreground">
                     {instancia.numeroConectado ? formatarTelefone(instancia.numeroConectado) : "–"}
                   </TableCell>
                   {!somenteLeitura ? (
-                    <TableCell className="flex items-center gap-1 px-4">
-                      {STATUS_RECONECTAVEIS.has(instancia.status) ? (
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {STATUS_RECONECTAVEIS.has(instancia.status) ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            aria-label={`Reconectar ${instancia.nome}`}
+                            disabled={reconectandoId === instancia.id}
+                            onClick={() => handleReconectar(instancia)}
+                          >
+                            <RefreshCw className={reconectandoId === instancia.id ? "animate-spin" : undefined} />
+                            Reconectar
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Verificar status ${instancia.nome}`}
+                          disabled={verificandoId === instancia.id}
+                          onClick={() => handleVerificarStatus(instancia)}
+                        >
+                          {verificandoId === instancia.id ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Wifi />
+                          )}
+                          {verificandoId === instancia.id ? "Verificando..." : "Verificar status"}
+                        </Button>
+                        {podeDesconectar(instancia.status) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-label={`Desconectar ${instancia.nome}`}
+                            onClick={() => setDesconectando(instancia)}
+                          >
+                            <PowerOff />
+                            Desconectar
+                          </Button>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label={`Reconectar ${instancia.nome}`}
-                          disabled={reconectandoId === instancia.id}
-                          onClick={() => handleReconectar(instancia)}
+                          aria-label={`Excluir ${instancia.nome}`}
+                          onClick={() => setExcluindo(instancia)}
                         >
-                          <RefreshCw />
-                          Reconectar
+                          <Trash2 />
                         </Button>
-                      ) : null}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Verificar status ${instancia.nome}`}
-                        disabled={verificandoId === instancia.id}
-                        onClick={() => handleVerificarStatus(instancia)}
-                      >
-                        <Wifi className={verificandoId === instancia.id ? "animate-pulse" : undefined} />
-                        Verificar status
-                      </Button>
+                      </div>
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -212,6 +289,47 @@ export function ListaInstancias({ somenteLeitura }: ListaInstanciasProps) {
       />
 
       <QrcodeDialog state={qrcode} onOpenChange={(aberto) => !aberto && setQrcode(null)} />
+
+      <AlertDialog
+        open={desconectando !== null}
+        onOpenChange={(aberto) => !aberto && setDesconectando(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desconectar “{desconectando?.nome}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A sessão do WhatsApp será encerrada e as campanhas que dependem desta instância
+              param de enviar. A instância continua cadastrada: para voltar a usá-la, basta
+              reconectar lendo um novo QR code.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={desconectar.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={desconectar.isPending} onClick={handleDesconectar}>
+              Desconectar instância
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={excluindo !== null} onOpenChange={(aberto) => !aberto && setExcluindo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir “{excluindo?.nome}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A instância é removida daqui e do servidor do WhatsApp. As campanhas já criadas
+              continuam no histórico, mas sem instância vinculada. Esta ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluir.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={excluir.isPending} onClick={handleExcluir}>
+              Excluir instância
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

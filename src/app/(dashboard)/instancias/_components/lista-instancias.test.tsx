@@ -77,6 +77,22 @@ function mockFetch(instancias: InstanciaWhatsappDTO[] = []): typeof fetch {
         json: async () => ({ instancia: CONECTADA }),
       } as Response);
     }
+    if (url.endsWith("/desconectar") && init?.method === "POST") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          instancia: { ...CONECTADA, status: "disconnected", numeroConectado: null },
+        }),
+      } as Response);
+    }
+    if (init?.method === "DELETE") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true }),
+      } as Response);
+    }
     if (url === "/api/instancias/sincronizar" && init?.method === "POST") {
       return Promise.resolve({
         ok: true,
@@ -392,5 +408,123 @@ describe("ListaInstancias", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Não foi possível sincronizar as instâncias.")
     );
+  });
+
+  // Desconectar encerra a sessão do WhatsApp (exige novo QR): não faz sentido oferecer
+  // pra quem já está desconectado.
+  it("mostra ação Desconectar só para instâncias que não estão desconectadas", async () => {
+    global.fetch = mockFetch([CONECTADA, DESCONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await screen.findByText("Financeiro");
+
+    expect(
+      screen.getByRole("button", { name: "Desconectar Atendimento principal" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Desconectar Financeiro" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("esconde Desconectar e Excluir quando somenteLeitura", async () => {
+    global.fetch = mockFetch([CONECTADA]);
+    renderComQuery(<ListaInstancias somenteLeitura />);
+
+    await screen.findByText("Atendimento principal");
+
+    expect(
+      screen.queryByRole("button", { name: "Desconectar Atendimento principal" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Excluir Atendimento principal" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("só desconecta depois de confirmar no diálogo, chamando a rota certa", async () => {
+    global.fetch = mockFetch([CONECTADA]);
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await usuario.click(
+      await screen.findByRole("button", { name: "Desconectar Atendimento principal" })
+    );
+
+    expect(
+      (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
+        String(url).endsWith("/desconectar")
+      )
+    ).toBeUndefined();
+
+    await usuario.click(screen.getByRole("button", { name: "Desconectar instância" }));
+
+    await waitFor(() => {
+      const chamada = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
+        String(url).endsWith("/desconectar")
+      );
+      expect(chamada).toBeDefined();
+      expect(chamada[0]).toBe("/api/instancias/instancia-1/desconectar");
+      expect(chamada[1].method).toBe("POST");
+    });
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  // Excluir apaga a instância na UAZAPI e aqui: nunca sem confirmação.
+  it("só exclui depois de confirmar no diálogo, chamando DELETE na rota da instância", async () => {
+    global.fetch = mockFetch([CONECTADA]);
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await usuario.click(
+      await screen.findByRole("button", { name: "Excluir Atendimento principal" })
+    );
+
+    expect(
+      (global.fetch as jest.Mock).mock.calls.find(
+        ([, init]: [string, RequestInit?]) => init?.method === "DELETE"
+      )
+    ).toBeUndefined();
+
+    await usuario.click(screen.getByRole("button", { name: "Excluir instância" }));
+
+    await waitFor(() => {
+      const chamada = (global.fetch as jest.Mock).mock.calls.find(
+        ([, init]: [string, RequestInit?]) => init?.method === "DELETE"
+      );
+      expect(chamada).toBeDefined();
+      expect(chamada[0]).toBe("/api/instancias/instancia-1");
+    });
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it("mostra toast de erro quando a exclusão falha, mantendo o diálogo aberto", async () => {
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/instancias" && (!init || init.method === undefined)) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ instancias: [CONECTADA] }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 502,
+        json: async () => ({ error: "Não foi possível se comunicar com o WhatsApp no momento." }),
+      } as Response);
+    }) as unknown as typeof fetch;
+    const usuario = userEvent.setup();
+    renderComQuery(<ListaInstancias somenteLeitura={false} />);
+
+    await usuario.click(
+      await screen.findByRole("button", { name: "Excluir Atendimento principal" })
+    );
+    await usuario.click(screen.getByRole("button", { name: "Excluir instância" }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Não foi possível se comunicar com o WhatsApp no momento."
+      )
+    );
+    expect(screen.getByRole("button", { name: "Excluir instância" })).toBeInTheDocument();
   });
 });

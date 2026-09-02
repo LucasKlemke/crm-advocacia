@@ -616,4 +616,102 @@ describe("uazapiClient", () => {
       ).rejects.toBeInstanceOf(UazapiIndisponivelError);
     });
   });
+
+  describe("desconectarInstancia", () => {
+    it("chama POST /instance/disconnect com o token da instância", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ instance: { status: "disconnected" }, response: "Disconnected" })
+      );
+
+      await uazapiClient.desconectarInstancia("tok-instancia");
+
+      expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/instance/disconnect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          token: "tok-instancia",
+        },
+        body: JSON.stringify({}),
+      });
+    });
+
+    // Nunca o admintoken: a instância desconectada é a dona do token enviado. Um
+    // admintoken aqui desconectaria uma instância indeterminada da conta compartilhada.
+    it("não envia admintoken", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ response: "Disconnected" }));
+
+      await uazapiClient.desconectarInstancia("tok-instancia");
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.headers).not.toHaveProperty("admintoken");
+    });
+
+    it("lança UazapiIndisponivelError se a resposta HTTP não for 2xx", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({}, { status: 401 }));
+
+      await expect(uazapiClient.desconectarInstancia("tok")).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+
+    it("lança UazapiIndisponivelError em caso de falha de rede", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"));
+
+      await expect(uazapiClient.desconectarInstancia("tok")).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+  });
+
+  describe("deletarInstancia", () => {
+    it("chama DELETE /instance com o token da instância e sem body", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ response: "Instance Deleted" })
+      );
+
+      await uazapiClient.deletarInstancia("tok-instancia");
+
+      const chamada = (global.fetch as jest.Mock).mock.calls[0];
+      expect(chamada[0]).toBe(`${SERVER_URL}/instance`);
+      expect(chamada[1]).toEqual({
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          token: "tok-instancia",
+        },
+      });
+      expect(chamada[1]).not.toHaveProperty("body");
+    });
+
+    // A rota não recebe id: quem é excluído é a dona do token do header. Com admintoken
+    // a chamada deixaria de identificar a instância alvo.
+    it("não envia admintoken", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        respostaFake({ response: "Instance Deleted" })
+      );
+
+      await uazapiClient.deletarInstancia("tok-instancia");
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.headers).not.toHaveProperty("admintoken");
+    });
+
+    it("lança UazapiIndisponivelError se a resposta HTTP não for 2xx", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({}, { status: 404 }));
+
+      await expect(uazapiClient.deletarInstancia("tok")).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+
+    it("lança UazapiIndisponivelError em caso de falha de rede", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"));
+
+      await expect(uazapiClient.deletarInstancia("tok")).rejects.toBeInstanceOf(
+        UazapiIndisponivelError
+      );
+    });
+  });
 });
