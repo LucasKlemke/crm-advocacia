@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { FileSpreadsheet, Hash, Loader2, Upload, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -82,7 +81,7 @@ export function SecaoContatos({
         onArquivo(evento.dataTransfer.files?.[0]);
       }}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <Users className="size-4 text-primary" />
           Contatos
@@ -93,10 +92,37 @@ export function SecaoContatos({
           ) : null}
         </h2>
         {planilha && !lendo ? (
-          <Button type="button" variant="outline" size="sm" onClick={onAbrirSeletor}>
-            <Upload />
-            Trocar planilha
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Sem rótulo visível: o ícone de número no gatilho já diz o que a escolha é, e
+                o nome acessível fica no aria-label. O Select do base-ui emite null ao limpar
+                a seleção; a coluna vazia é o estado "ainda não escolhida", que o formulário
+                já trata. */}
+            <Select value={colunaNumero} onValueChange={(valor) => onColunaNumero(valor ?? "")}>
+              {/* `size="sm"` para casar com a altura do botão ao lado. */}
+              <SelectTrigger
+                size="sm"
+                aria-label="Coluna com o número de WhatsApp"
+                className="min-w-48"
+              >
+                <Hash className="size-4 text-muted-foreground" />
+                <SelectValue placeholder="Coluna do número" />
+              </SelectTrigger>
+              <SelectContent>
+                {planilha.colunas.map((coluna) => (
+                  <SelectItem key={coluna} value={coluna}>
+                    <span className="flex items-center gap-2">
+                      <Hash className="size-3.5 text-muted-foreground" />
+                      {coluna}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" size="sm" onClick={onAbrirSeletor}>
+              <Upload />
+              Trocar planilha
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -113,36 +139,12 @@ export function SecaoContatos({
         </div>
       ) : planilha ? (
         <>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="coluna-numero" className="flex items-center gap-1.5">
-              <Hash className="size-4 text-muted-foreground" />
-              Coluna com o número de WhatsApp
-            </Label>
-            {/* O Select do base-ui emite null ao limpar a seleção; a coluna vazia é o
-                estado "ainda não escolhida", que o formulário já trata. */}
-            <Select value={colunaNumero} onValueChange={(valor) => onColunaNumero(valor ?? "")}>
-              <SelectTrigger id="coluna-numero" className="w-full max-w-sm">
-                <Hash className="size-4 text-muted-foreground" />
-                <SelectValue placeholder="Escolha a coluna" />
-              </SelectTrigger>
-              <SelectContent>
-                {planilha.colunas.map((coluna) => (
-                  <SelectItem key={coluna} value={coluna}>
-                    <span className="flex items-center gap-2">
-                      <Hash className="size-3.5 text-muted-foreground" />
-                      {coluna}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {invalidas.length > 0 ? (
-              <p role="alert" className="text-sm text-destructive">
-                {invalidas.length} número(s) inválido(s) — a começar pela linha {invalidas[0]}. Use
-                o formato com DDI e DDD, por exemplo 5511999999999.
-              </p>
-            ) : null}
-          </div>
+          {invalidas.length > 0 ? (
+            <p role="alert" className="text-sm text-destructive">
+              {invalidas.length} número(s) inválido(s) — a começar pela linha {invalidas[0]}. Use o
+              formato com DDI e DDD, por exemplo 5511999999999.
+            </p>
+          ) : null}
 
           {/* No lugar da área tracejada: os dados que subiram. */}
           <div

@@ -66,13 +66,10 @@ export function SecaoMensagem({
       </div>
 
       {escrita ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
+        // A prévia é o que interessa aqui, então fica com o dobro da largura da coluna de
+        // variáveis — que é só um resumo de uma linha por variável.
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">
-              {primeiraLinha
-                ? "Prévia — como o primeiro contato da planilha vai receber"
-                : "Prévia da mensagem"}
-            </p>
             <PreviewWhatsapp
               mensagem={renderizarMensagem(mensagem, primeiraLinha ?? {}, mapeamento)}
               remetenteNome={remetenteNome || "Sua instância"}

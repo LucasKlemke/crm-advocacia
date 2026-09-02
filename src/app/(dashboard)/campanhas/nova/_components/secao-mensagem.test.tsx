@@ -33,6 +33,13 @@ describe("SecaoMensagem", () => {
     expect(screen.queryByLabelText(/texto da mensagem/i)).not.toBeInTheDocument();
   });
 
+  // A bolha do WhatsApp se explica sozinha — não precisa de legenda em cima.
+  it("mostra a bolha sem legenda de prévia", () => {
+    renderizar();
+
+    expect(screen.queryByText(/prévia/i)).not.toBeInTheDocument();
+  });
+
   // A prévia imita a conversa do WhatsApp: no topo aparece de quem o cliente vai receber.
   it("mostra o remetente no cabeçalho da prévia", () => {
     renderizar();

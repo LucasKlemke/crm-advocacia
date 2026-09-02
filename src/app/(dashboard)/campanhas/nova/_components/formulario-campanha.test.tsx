@@ -123,12 +123,13 @@ describe("FormularioCampanha — barra de ações", () => {
   });
 });
 
+// O que falta aparece no `title` do botão desabilitado, e não em texto na página.
 describe("FormularioCampanha — gate do botão criar", () => {
   it("começa desabilitado e explica o que falta", () => {
     renderComQuery(<FormularioCampanha />);
 
     expect(botaoCriar()).toBeDisabled();
-    expect(screen.getByText(/dê um nome à campanha/i)).toBeInTheDocument();
+    expect(botaoCriar()).toHaveAttribute("title", "Dê um nome à campanha.");
   });
 
   it("avança a explicação conforme o formulário é preenchido", async () => {
@@ -136,7 +137,7 @@ describe("FormularioCampanha — gate do botão criar", () => {
 
     await userEvent.type(screen.getByLabelText("Nome da campanha"), "Retomada");
 
-    expect(screen.getByText(/escolha a conexão/i)).toBeInTheDocument();
+    expect(botaoCriar()).toHaveAttribute("title", expect.stringMatching(/escolha a conexão/i));
     expect(botaoCriar()).toBeDisabled();
   });
 
@@ -147,7 +148,10 @@ describe("FormularioCampanha — gate do botão criar", () => {
     await escolherInstancia();
     await escreverMensagem("Olá {{apelido}}");
 
-    expect(screen.getByText(/escolha a coluna de cada variável/i)).toBeInTheDocument();
+    expect(botaoCriar()).toHaveAttribute(
+      "title",
+      expect.stringMatching(/coluna de cada variável/i)
+    );
     expect(botaoCriar()).toBeDisabled();
   });
 });
@@ -166,7 +170,7 @@ describe("FormularioCampanha — criação", () => {
     await preencherTudo();
 
     await waitFor(() => expect(botaoCriar()).toBeEnabled());
-    expect(screen.queryByText(/^Para criar:/)).not.toBeInTheDocument();
+    expect(botaoCriar()).not.toHaveAttribute("title");
   });
 
   it("envia as linhas cruas do CSV e o mapeamento sugerido", async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { SecaoContatos } from "./secao-contatos";
 
 const PLANILHA = {
@@ -127,12 +127,17 @@ describe("SecaoContatos — depois do upload", () => {
 });
 
 describe("SecaoContatos — coluna de número", () => {
-  it("oferece o select da coluna com os números", () => {
+  // Escolha da coluna e troca de planilha convivem na linha do título, sem rótulo visível:
+  // o nome acessível fica no aria-label e o ícone de número faz o papel do rótulo.
+  it("oferece o select da coluna na linha do título, só com nome acessível", () => {
     renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
 
+    const cabecalho = screen.getByRole("heading", { name: /contatos/i }).parentElement!;
     expect(
-      screen.getByRole("combobox", { name: /coluna com o número de whatsapp/i })
+      within(cabecalho).getByRole("combobox", { name: /coluna com o número de whatsapp/i })
     ).toBeInTheDocument();
+    expect(within(cabecalho).getByRole("button", { name: /trocar planilha/i })).toBeInTheDocument();
+    expect(screen.queryByText(/coluna com o número de whatsapp/i)).not.toBeInTheDocument();
   });
 
   it("aponta as linhas com número inválido", () => {

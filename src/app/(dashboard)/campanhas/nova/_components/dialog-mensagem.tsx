@@ -131,11 +131,6 @@ export function DialogMensagem({
           </div>
 
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">
-              {primeiraLinha
-                ? "Prévia — como o primeiro contato da planilha vai receber"
-                : "Prévia da mensagem"}
-            </p>
             {rascunho.trim() ? (
               <>
                 <PreviewWhatsapp

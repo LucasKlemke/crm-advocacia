@@ -146,7 +146,7 @@ export function FormularioCampanha() {
         onChange={(evento) => handleArquivo(evento.target.files?.[0])}
       />
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="ghost"
           size="sm"
@@ -156,11 +156,25 @@ export function FormularioCampanha() {
           <ArrowLeft />
         </Button>
         <h1 className="text-xl font-semibold">Nova campanha de disparos</h1>
+
+        {/* O que falta para criar vive no `title` do botão desabilitado — a mesma ordem de
+            validação que o service repete no servidor. */}
+        <Button
+          type="button"
+          className={`${CLASSE_ITEM_BARRA} ml-auto`}
+          disabled={impedimento !== null || criar.isPending}
+          title={impedimento ?? undefined}
+          onClick={handleCriar}
+        >
+          <Send />
+          {criar.isPending ? "Criando..." : "Criar campanha"}
+        </Button>
       </div>
 
       {/* Barra de ações: tudo que a campanha precisa numa linha só, em vez de etapas. Cada
           pílula é o próprio controle (nome, conexão, intervalo, agendamento) ou abre onde a
-          escolha é feita (mensagem, contatos) — todas com a mesma altura. */}
+          escolha é feita (mensagem, contatos) — todas com a mesma altura. O "Criar campanha"
+          fica na linha do título, longe das pílulas que ainda estão sendo preenchidas. */}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           className={`${CLASSE_ITEM_BARRA} w-56`}
@@ -199,21 +213,6 @@ export function FormularioCampanha() {
 
         <PopoverIntervalo valor={envio} totalDestinatarios={linhas.length} onMudar={handleEnvio} />
         <PopoverAgendamento valor={envio} onMudar={handleEnvio} />
-
-        <Button
-          type="button"
-          className={`${CLASSE_ITEM_BARRA} ml-auto`}
-          disabled={impedimento !== null || criar.isPending}
-          title={impedimento ?? undefined}
-          onClick={handleCriar}
-        >
-          <Send />
-          {criar.isPending ? "Criando..." : "Criar campanha"}
-        </Button>
-
-        {impedimento ? (
-          <p className="w-full text-xs text-muted-foreground">Para criar: {impedimento}</p>
-        ) : null}
       </div>
 
       <SecaoMensagem
