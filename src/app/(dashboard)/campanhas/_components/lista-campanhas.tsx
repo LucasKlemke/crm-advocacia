@@ -25,16 +25,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { podePausar, podeRetomar } from "./controle-campanha";
 import { StatusBadgeCampanha } from "./status-badge-campanha";
 import type { CampanhaDTO } from "@/types/campanha";
 
 export interface ListaCampanhasProps {
   somenteLeitura: boolean;
 }
-
-// Pausar só faz sentido em campanha viva; retomar, só em pausada. Concluída e excluindo
-// não aceitam nenhuma das duas (a UAZAPI recusaria).
-const PAUSAVEIS: ReadonlySet<CampanhaDTO["status"]> = new Set(["agendada", "enviando"]);
 
 function formatarData(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -176,7 +173,7 @@ export function ListaCampanhas({ somenteLeitura }: ListaCampanhasProps) {
                           )}
                           Sincronizar
                         </Button>
-                        {!somenteLeitura && PAUSAVEIS.has(campanha.status) ? (
+                        {!somenteLeitura && podePausar(campanha.status) ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -188,7 +185,7 @@ export function ListaCampanhas({ somenteLeitura }: ListaCampanhasProps) {
                             Pausar
                           </Button>
                         ) : null}
-                        {!somenteLeitura && campanha.status === "pausada" ? (
+                        {!somenteLeitura && podeRetomar(campanha.status) ? (
                           <Button
                             variant="outline"
                             size="sm"

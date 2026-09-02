@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCampanha } from "@/hooks/use-campanhas";
+import { toast } from "sonner";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Pause, Play } from "lucide-react";
+import { ApiError } from "@/lib/api-client";
+import { useCampanha, useControlarCampanha } from "@/hooks/use-campanhas";
 import {
   Table,
   TableBody,
@@ -16,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { formatarTelefone } from "@/lib/utils/telefone";
 import { normalizarMapeamento } from "@/lib/utils/campanha-mensagem";
 import { TRATAMENTOS_DISPONIVEIS } from "@/lib/utils/campanha-tratamentos";
+import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
 
 export interface DetalheCampanhaProps {
   campanhaId: string;
+  somenteLeitura: boolean;
 }
 
 const ROTULO_TRATAMENTO = new Map(TRATAMENTOS_DISPONIVEIS.map((t) => [t.id, t.rotulo]));
@@ -33,9 +37,21 @@ function Metrica({ rotulo, valor }: { rotulo: string; valor: number }) {
   );
 }
 
-export function DetalheCampanha({ campanhaId }: DetalheCampanhaProps) {
+export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaProps) {
   const [pagina, setPagina] = useState(1);
   const { data, isLoading, isError } = useCampanha(campanhaId, pagina);
+  const controlar = useControlarCampanha();
+
+  // Mesmas ações da listagem, aqui na tela onde o andamento é acompanhado. O status vem do
+  // refetch que a mutation dispara — nada de estado local espelhando a campanha.
+  async function handleControlar(acao: "stop" | "continue") {
+    try {
+      await controlar.mutateAsync({ id: campanhaId, acao });
+      toast.success(acao === "stop" ? "Campanha pausada." : "Campanha retomada.");
+    } catch (erro) {
+      toast.error(erro instanceof ApiError ? erro.message : "Não foi possível alterar a campanha.");
+    }
+  }
 
   if (isLoading) {
     return <p className="p-4 text-sm text-muted-foreground">Carregando...</p>;
@@ -65,7 +81,31 @@ export function DetalheCampanha({ campanhaId }: DetalheCampanhaProps) {
               destinatário(s) · intervalo de {campanha.delayMin}s a {campanha.delayMax}s
             </p>
           </div>
-          <StatusBadgeCampanha status={campanha.status} />
+          <div className="flex items-center gap-2">
+            <StatusBadgeCampanha status={campanha.status} />
+            {!somenteLeitura && podePausar(campanha.status) ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={controlar.isPending}
+                onClick={() => handleControlar("stop")}
+              >
+                {controlar.isPending ? <Loader2 className="animate-spin" /> : <Pause />}
+                Pausar
+              </Button>
+            ) : null}
+            {!somenteLeitura && podeRetomar(campanha.status) ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={controlar.isPending}
+                onClick={() => handleControlar("continue")}
+              >
+                {controlar.isPending ? <Loader2 className="animate-spin" /> : <Play />}
+                Retomar
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 

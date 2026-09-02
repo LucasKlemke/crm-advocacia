@@ -8,12 +8,13 @@ export const metadata: Metadata = {
 };
 
 export default async function CampanhaPage({ params }: { params: Promise<{ id: string }> }) {
-  await getTenantContextOuRedirect();
+  const ctx = await getTenantContextOuRedirect();
   const { id } = await params;
 
   return (
     <PageContainer className="max-w-5xl">
-      <DetalheCampanha campanhaId={id} />
+      {/* Pausar/retomar é ação de gestão (o service recusaria de qualquer forma). */}
+      <DetalheCampanha campanhaId={id} somenteLeitura={ctx.role === "padrao"} />
     </PageContainer>
   );
 }
