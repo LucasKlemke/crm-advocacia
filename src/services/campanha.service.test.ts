@@ -15,6 +15,7 @@ import {
 } from "@/services/instancia-whatsapp.service";
 import { uazapiClient, UazapiIndisponivelError } from "@/lib/external/uazapi-client";
 import { logService } from "@/services/log.service";
+import { prisma } from "@/lib/prisma";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { InstanciaWhatsapp } from "@prisma/client";
 import type { CampanhaComInstancia } from "@/repositories/campanha.repository";
@@ -370,6 +371,27 @@ describe("campanhaService.criar", () => {
     expect(repo.create).not.toHaveBeenCalled();
     expect(logs.registrar).not.toHaveBeenCalled();
   });
+
+  // A direção inversa: o envio já foi aceito e está disparando, mas a gravação falhou.
+  // Sem estancar, até 5000 mensagens saem sem nenhum registro local — e sem o folderId
+  // gravado não há como alcançar /sender/edit para pará-las depois.
+  it("cancela o envio na UAZAPI quando a transação falha depois de a campanha ser aceita", async () => {
+    const falhaNoBanco = new Error("Transaction already closed");
+    (prisma.$transaction as jest.Mock).mockRejectedValueOnce(falhaNoBanco);
+
+    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toBe(falhaNoBanco);
+
+    expect(client.controlarCampanha).toHaveBeenCalledWith("token-secreto", "folder-1", "delete");
+  });
+
+  // Quem explica o problema é a falha da gravação; o erro da limpeza só a esconderia.
+  it("propaga a falha da transação mesmo se o cancelamento também falhar", async () => {
+    const falhaNoBanco = new Error("Transaction already closed");
+    (prisma.$transaction as jest.Mock).mockRejectedValueOnce(falhaNoBanco);
+    client.controlarCampanha.mockRejectedValue(new UazapiIndisponivelError());
+
+    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toBe(falhaNoBanco);
+  });
 });
 
 describe("campanhaService.listar", () => {
@@ -648,15 +670,45 @@ describe("campanhaService.controlar", () => {
     );
   });
 
-  it("retoma a campanha pausada", async () => {
-    repo.findById.mockResolvedValue(campanhaFake({ status: "pausada" }));
+  // Sem agendamento futuro, retomar significa voltar a disparar agora: gravar "agendada"
+  // faria a tela dizer "Agendada" para uma campanha que está mandando mensagem.
+  it("retoma a campanha pausada como enviando quando não há agendamento pendente", async () => {
+    repo.findById.mockResolvedValue(campanhaFake({ status: "pausada", agendadaPara: null }));
 
     await campanhaService.controlar(ctx(), "campanha-1", "continue");
 
     expect(client.controlarCampanha).toHaveBeenCalledWith("token-secreto", "folder-1", "continue");
     expect(repo.update).toHaveBeenCalledWith(
       "campanha-1",
+      expect.objectContaining({ status: "enviando" }),
+      expect.anything()
+    );
+  });
+
+  it("retoma como agendada quando o disparo ainda está no futuro", async () => {
+    repo.findById.mockResolvedValue(
+      campanhaFake({ status: "pausada", agendadaPara: new Date(Date.now() + 60 * 60 * 1000) })
+    );
+
+    await campanhaService.controlar(ctx(), "campanha-1", "continue");
+
+    expect(repo.update).toHaveBeenCalledWith(
+      "campanha-1",
       expect.objectContaining({ status: "agendada" }),
+      expect.anything()
+    );
+  });
+
+  it("retoma como enviando quando a data de agendamento já passou", async () => {
+    repo.findById.mockResolvedValue(
+      campanhaFake({ status: "pausada", agendadaPara: new Date(Date.now() - 60 * 1000) })
+    );
+
+    await campanhaService.controlar(ctx(), "campanha-1", "continue");
+
+    expect(repo.update).toHaveBeenCalledWith(
+      "campanha-1",
+      expect.objectContaining({ status: "enviando" }),
       expect.anything()
     );
   });

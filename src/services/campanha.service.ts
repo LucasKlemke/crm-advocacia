@@ -122,6 +122,17 @@ function paraStatusCampanha(valor: string): StatusCampanha {
   return status;
 }
 
+// Estanca um envio que a UAZAPI já aceitou mas que não conseguimos registrar aqui.
+// Best-effort de propósito: se o cancelamento também falhar, quem precisa chegar ao
+// usuário é o erro original da gravação — trocá-lo pelo desta limpeza esconderia a causa.
+async function cancelarEnvio(token: string, folderId: string): Promise<void> {
+  try {
+    await uazapiClient.controlarCampanha(token, folderId, "delete");
+  } catch {
+    // Sem o que fazer daqui: a campanha ficou disparando na UAZAPI sem registro local.
+  }
+}
+
 async function obterDoTenant(ctx: TenantContext, id: string): Promise<CampanhaComInstancia> {
   const campanha = await campanhaRepository.findById(id);
   // Campanha de outro escritório é tratada como inexistente — não confirma a existência.
@@ -323,7 +334,8 @@ export const campanhaService = {
     }));
 
     // Chamada externa fora da transação: uma transação Prisma não pode ficar aberta
-    // esperando o HTTP da UAZAPI. Se ela falhar, nada foi gravado.
+    // esperando o HTTP da UAZAPI. Se ela falhar, nada foi gravado — e se ela funcionar
+    // mas a gravação falhar, o envio é cancelado no catch mais abaixo.
     const envio = await uazapiClient.criarEnvioAvancado(instancia.uazapiToken, {
       delayMin: dados.delayMin,
       delayMax: dados.delayMax,
@@ -388,7 +400,15 @@ export const campanhaService = {
         };
       },
       { timeout: TIMEOUT_TRANSACAO_MS }
-    );
+      // Neste ponto a campanha já foi aceita pela UAZAPI e pode estar disparando. Se a
+      // gravação falhar, o folderId morre junto com o erro: sem ele não há como chegar em
+      // /sender/edit depois, e as mensagens continuariam saindo sem nenhum registro local
+      // — invisíveis na UI e impossíveis de parar. Cancelar o envio é o que fecha essa
+      // janela; o erro que sobe continua sendo o da gravação, que é o que explica a falha.
+    ).catch(async (erro: unknown) => {
+      await cancelarEnvio(instancia.uazapiToken, envio.folderId);
+      throw erro;
+    });
   },
 
   // Leitura de estado, liberada para qualquer papel — igual a verificarStatus de instância.
@@ -460,7 +480,15 @@ export const campanhaService = {
       return null;
     }
 
-    const status: StatusCampanha = acao === "stop" ? "pausada" : "agendada";
+    // Retomar não tem um status único: a campanha volta para a fila de agendamento se a
+    // data ainda está à frente, e volta a disparar se já passou (ou se nunca houve
+    // agendamento). Gravar sempre "agendada" fazia a tela anunciar "Agendada" para uma
+    // campanha que estava mandando mensagem, até alguém clicar em Sincronizar.
+    const retomadoComo: StatusCampanha =
+      campanha.agendadaPara && campanha.agendadaPara.getTime() > Date.now()
+        ? "agendada"
+        : "enviando";
+    const status: StatusCampanha = acao === "stop" ? "pausada" : retomadoComo;
 
     return prisma.$transaction(async (tx) => {
       const atualizada = await campanhaRepository.update(id, { status }, tx);
