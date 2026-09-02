@@ -46,6 +46,7 @@ enum EntidadeLog {
   membro
   documento
   instancia_whatsapp
+  campanha
 }
 
 enum AcaoLog {
@@ -76,6 +77,17 @@ enum StatusInstanciaWhatsapp {
   hibernated
 }
 
+// Espelha 1:1 o ciclo de vida de uma campanha na UAZAPI (scheduled/sending/paused/done/
+// deleting), traduzido para o vocabulário do resto do schema. `excluindo` existe porque o
+// delete do /sender/edit é assíncrono lá — o estado é observável enquanto não conclui.
+enum StatusCampanha {
+  agendada
+  enviando
+  pausada
+  concluida
+  excluindo
+}
+
 model Escritorio {
   id               String   @id @default(uuid())
   nome             String   @db.VarChar(140)
@@ -95,6 +107,8 @@ model Escritorio {
   casos              Caso[]
   documentos         Documento[]
   instanciasWhatsapp InstanciaWhatsapp[]
+  campanhas          Campanha[]
+  campanhaItens      CampanhaItem[]
 
   @@map("escritorio")
 }
@@ -117,6 +131,7 @@ model Usuario {
   convitesEnviados Convite[]    @relation("ConviteCriadoPor")
   comentarios      Comentario[] @relation("ComentarioAutor")
   logs             Log[]        @relation("LogAutor")
+  campanhas        Campanha[]   @relation("CampanhaCriadaPor")
 
   @@map("usuario")
 }
@@ -351,20 +366,91 @@ model Caso {
 // Cada escritório pode ter múltiplas instâncias (ex.: diferentes números/bots). O status acompanha
 // o ciclo de conexão (desconectado → conectando → conectado; hibernado se inativo).
 model InstanciaWhatsapp {
-  id                String                  @id @default(uuid())
-  escritorioId      String                  @map("escritorio_id")
-  nome              String                  @db.VarChar(60)
-  uazapiInstanceId  String                  @map("uazapi_instance_id") @db.VarChar(100)
-  uazapiToken       String                  @map("uazapi_token") @db.VarChar(255)
-  status            StatusInstanciaWhatsapp @default(disconnected)
-  numeroConectado   String?                 @map("numero_conectado") @db.VarChar(20)
-  fotoPerfilUrl     String?                 @map("foto_perfil_url")
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
+  id               String                  @id @default(uuid())
+  escritorioId     String                  @map("escritorio_id")
+  nome             String                  @db.VarChar(60)
+  uazapiInstanceId String                  @map("uazapi_instance_id") @db.VarChar(100)
+  uazapiToken      String                  @map("uazapi_token") @db.VarChar(255)
+  status           StatusInstanciaWhatsapp @default(disconnected)
+  numeroConectado  String?                 @map("numero_conectado") @db.VarChar(20)
+  fotoPerfilUrl    String?                 @map("foto_perfil_url")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  campanhas  Campanha[]
 
   @@unique([escritorioId, nome])
   @@index([escritorioId])
   @@map("instancia_whatsapp")
+}
+
+// Campanha de disparo em massa: um CSV de destinatários + uma mensagem-modelo com
+// {{variaveis}}, materializados em N mensagens (CampanhaItem) e registrados na UAZAPI via
+// POST /sender/advanced — que devolve o `uazapi_folder_id` usado depois para sincronizar
+// estatísticas (/sender/listfolders) e controlar o envio (/sender/edit).
+model Campanha {
+  id                  String         @id @default(uuid())
+  escritorioId        String         @map("escritorio_id")
+  instanciaWhatsappId String?        @map("instancia_whatsapp_id")
+  criadoPorId         String         @map("criado_por_id")
+  nome                String         @db.VarChar(120)
+  mensagemTemplate    String         @map("mensagem_template") @db.Text
+  // {{variavel}} -> nome da coluna do CSV que a preenche. Guardado para a tela de detalhe
+  // explicar de onde veio cada valor, já que o CSV em si não é persistido.
+  mapeamentoVariaveis Json?          @map("mapeamento_variaveis")
+  colunaNumero        String         @map("coluna_numero") @db.VarChar(120)
+  arquivoCsvNome      String?        @map("arquivo_csv_nome") @db.VarChar(255)
+  delayMin            Int            @map("delay_min")
+  delayMax            Int            @map("delay_max")
+  agendadaPara        DateTime?      @map("agendada_para")
+  status              StatusCampanha @default(agendada)
+  uazapiFolderId      String         @map("uazapi_folder_id") @db.VarChar(100)
+  totalDestinatarios  Int            @map("total_destinatarios")
+  // Contadores espelhados do /sender/listfolders na última sincronização — a UAZAPI é a
+  // fonte da verdade do envio; aqui é só cache para a listagem não depender dela.
+  logTotal            Int            @default(0) @map("log_total")
+  logSucesso          Int            @default(0) @map("log_sucesso")
+  logFalha            Int            @default(0) @map("log_falha")
+  logEntregue         Int            @default(0) @map("log_entregue")
+  logLido             Int            @default(0) @map("log_lido")
+  logReproduzido      Int            @default(0) @map("log_reproduzido")
+  sincronizadoEm      DateTime?      @map("sincronizado_em")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  escritorio Escritorio         @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  // SetNull, e não Restrict: instanciaWhatsappService.sincronizarTodas apaga instâncias
+  // que sumiram da UAZAPI ("fantasmas"), e um Restrict aqui faria essa limpeza estourar.
+  // Sem instância a campanha vira histórico somente-leitura (sem token, não dá para
+  // sincronizar nem controlar).
+  instancia  InstanciaWhatsapp? @relation(fields: [instanciaWhatsappId], references: [id], onDelete: SetNull)
+  criadoPor  Usuario            @relation("CampanhaCriadaPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  itens      CampanhaItem[]
+
+  @@index([escritorioId, createdAt])
+  @@index([instanciaWhatsappId])
+  @@map("campanha")
+}
+
+// Uma mensagem já renderizada para um destinatário — o que de fato foi entregue à UAZAPI.
+// Snapshot imutável (sem updated_at, como Log): reprocessar o template depois daria um
+// texto diferente do que o cliente recebeu.
+model CampanhaItem {
+  id           String   @id @default(uuid())
+  escritorioId String   @map("escritorio_id")
+  campanhaId   String   @map("campanha_id")
+  linha        Int
+  numero       String   @db.VarChar(20)
+  mensagem     String   @db.Text
+  variaveis    Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  campanha   Campanha   @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+
+  @@unique([campanhaId, linha])
+  @@index([campanhaId])
+  @@index([escritorioId])
+  @@map("campanha_item")
 }
