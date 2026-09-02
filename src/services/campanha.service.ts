@@ -89,11 +89,6 @@ export interface DadosNovaCampanha {
 }
 
 export const ITENS_POR_PAGINA = 50;
-// Quantas mensagens são pedidas por chamada ao /sender/listmessages, e quantas chamadas no
-// máximo. 10 x 500 = 5.000, que é o teto de destinatários aceito na criação da campanha —
-// o limite de lotes também protege de girar sem fim se o `totalRecords` vier inconsistente.
-const MENSAGENS_POR_LOTE = 500;
-const MAX_LOTES_DE_MENSAGENS = 10;
 // Quantas linhas de CSV são citadas na mensagem de erro antes de virar "e mais N".
 const MAX_LINHAS_NO_ERRO = 5;
 // createMany de milhares de linhas + o log ainda cabem folgado nisso, mas o default de
@@ -300,24 +295,12 @@ export const campanhaService = {
     const campanha = await obterDoTenant(ctx, id);
     const token = await obterTokenDaInstancia(ctx, campanha);
 
-    const mensagens: MensagemDaCampanha[] = [];
-    let total = 0;
+    const resposta = await uazapiClient.listarMensagensCampanha(token, campanha.uazapiFolderId);
 
-    for (let lote = 0; lote < MAX_LOTES_DE_MENSAGENS; lote += 1) {
-      const pagina = await uazapiClient.listarMensagensCampanha(token, {
-        folderId: campanha.uazapiFolderId,
-        limit: MENSAGENS_POR_LOTE,
-        offset: lote * MENSAGENS_POR_LOTE,
-      });
-
-      total = pagina.total;
-      mensagens.push(...pagina.mensagens.map(paraMensagemDaCampanha));
-
-      // Página incompleta significa fim da lista, independentemente do total anunciado.
-      if (pagina.mensagens.length < MENSAGENS_POR_LOTE || mensagens.length >= total) break;
-    }
-
-    return { mensagens, total };
+    return {
+      mensagens: resposta.mensagens.map(paraMensagemDaCampanha),
+      total: resposta.total,
+    };
   },
 
   async criar(ctx: TenantContext, dados: DadosNovaCampanha): Promise<CampanhaComInstancia> {

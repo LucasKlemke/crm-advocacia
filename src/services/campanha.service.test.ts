@@ -434,11 +434,7 @@ describe("campanhaService.listarMensagens", () => {
 
     const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
 
-    expect(client.listarMensagensCampanha).toHaveBeenCalledWith("token-secreto", {
-      folderId: "folder-1",
-      limit: 500,
-      offset: 0,
-    });
+    expect(client.listarMensagensCampanha).toHaveBeenCalledWith("token-secreto", "folder-1");
     expect(resposta).toEqual({
       total: 2,
       mensagens: [
@@ -498,48 +494,17 @@ describe("campanhaService.listarMensagens", () => {
     ).rejects.toBeInstanceOf(CampanhaSemInstanciaError);
   });
 
-  it("pagina até juntar o total anunciado pela UAZAPI", async () => {
+  // Uma chamada só: a campanha inteira vem numa resposta.
+  it("não pagina", async () => {
     repo.findById.mockResolvedValue(campanhaFake());
     instancias.obterComToken.mockResolvedValue(instanciaFake());
-    const lote = Array.from({ length: 500 }, () => mensagemFake());
-    client.listarMensagensCampanha
-      .mockResolvedValueOnce(paginaFake(lote, 700))
-      .mockResolvedValueOnce(paginaFake(lote.slice(0, 200), 700));
+    const lote = Array.from({ length: 700 }, () => mensagemFake());
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake(lote, 700));
 
     const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
 
     expect(resposta.mensagens).toHaveLength(700);
-    expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(2);
-    expect(client.listarMensagensCampanha).toHaveBeenLastCalledWith("token-secreto", {
-      folderId: "folder-1",
-      limit: 500,
-      offset: 500,
-    });
-  });
-
-  // Total inflado pela UAZAPI não pode virar loop: página incompleta encerra a busca.
-  it("para na primeira página incompleta mesmo com total maior", async () => {
-    repo.findById.mockResolvedValue(campanhaFake());
-    instancias.obterComToken.mockResolvedValue(instanciaFake());
-    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 9_000));
-
-    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
-
-    expect(resposta.mensagens).toHaveLength(1);
     expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(1);
-  });
-
-  // Teto de 10 lotes: nem uma UAZAPI que sempre devolve página cheia gira sem fim.
-  it("respeita o teto de lotes", async () => {
-    repo.findById.mockResolvedValue(campanhaFake());
-    instancias.obterComToken.mockResolvedValue(instanciaFake());
-    const lote = Array.from({ length: 500 }, () => mensagemFake());
-    client.listarMensagensCampanha.mockResolvedValue(paginaFake(lote, 999_999));
-
-    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1");
-
-    expect(client.listarMensagensCampanha).toHaveBeenCalledTimes(10);
-    expect(resposta.mensagens).toHaveLength(5_000);
   });
 });
 

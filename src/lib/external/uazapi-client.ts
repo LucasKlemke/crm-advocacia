@@ -112,14 +112,6 @@ export interface MensagemCampanhaUazapi {
   messageTimestamp: number;
 }
 
-export interface ConsultaMensagensCampanha {
-  folderId: string;
-  limit: number;
-  offset: number;
-  // Filtro opcional do endpoint (Scheduled | Sent | Failed).
-  messageStatus?: string;
-}
-
 function inteiro(valor: unknown): number {
   return typeof valor === "number" && Number.isFinite(valor) ? valor : 0;
 }
@@ -371,9 +363,11 @@ export const uazapiClient = {
 
   // Status mensagem a mensagem de uma campanha. Diferente do /sender/listfolders (que dá
   // só os contadores agregados), aqui dá para dizer o que aconteceu com cada destinatário.
+  // O body leva apenas o folder_id: `limit`, `offset` e `messageStatus` são opcionais do
+  // endpoint e ficam de fora — a campanha vem inteira numa resposta só.
   async listarMensagensCampanha(
     uazapiToken: string,
-    consulta: ConsultaMensagensCampanha
+    folderId: string
   ): Promise<{ mensagens: MensagemCampanhaUazapi[]; total: number }> {
     const corpo = await chamarUazapi(
       "/sender/listmessages",
@@ -382,12 +376,7 @@ export const uazapiClient = {
         Accept: "application/json",
         token: uazapiToken,
       },
-      {
-        folder_id: consulta.folderId,
-        limit: consulta.limit,
-        offset: consulta.offset,
-        ...(consulta.messageStatus ? { messageStatus: consulta.messageStatus } : {}),
-      }
+      { folder_id: folderId }
     );
 
     // `messages` ausente ou de outro tipo é quebra de contrato: sem isso não há resposta
@@ -410,8 +399,7 @@ export const uazapiClient = {
           messageTimestamp: inteiro(raw.messageTimestamp),
         };
       }),
-      // Sem totalRecords, o tamanho da página é o melhor palpite — quem pagina precisa de
-      // algum total para saber que acabou.
+      // Sem totalRecords, o que veio é o total: a chamada não pagina.
       total: inteiro(paginacao.totalRecords) || messages.length,
     };
   },

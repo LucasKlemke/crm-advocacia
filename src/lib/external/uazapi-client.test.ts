@@ -574,14 +574,12 @@ describe("uazapiClient", () => {
   });
 
   describe("listarMensagensCampanha", () => {
-    it("chama POST /sender/listmessages com folder_id, limit e offset", async () => {
+    // O body leva só o folder_id: limit, offset e messageStatus são opcionais do endpoint
+    // e ficam de fora.
+    it("chama POST /sender/listmessages só com o folder_id", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
 
-      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
-        folderId: "folder-1",
-        limit: 500,
-        offset: 500,
-      });
+      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1");
 
       expect(global.fetch).toHaveBeenCalledWith(`${SERVER_URL}/sender/listmessages`, {
         method: "POST",
@@ -590,25 +588,7 @@ describe("uazapiClient", () => {
           Accept: "application/json",
           token: TOKEN_INSTANCIA,
         },
-        body: JSON.stringify({ folder_id: "folder-1", limit: 500, offset: 500 }),
-      });
-    });
-
-    it("manda messageStatus só quando o filtro é pedido", async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ messages: [] }));
-
-      await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
-        folderId: "folder-1",
-        limit: 50,
-        offset: 0,
-        messageStatus: "Failed",
-      });
-
-      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toEqual({
-        folder_id: "folder-1",
-        limit: 50,
-        offset: 0,
-        messageStatus: "Failed",
+        body: JSON.stringify({ folder_id: "folder-1" }),
       });
     });
 
@@ -632,11 +612,7 @@ describe("uazapiClient", () => {
         })
       );
 
-      const resposta = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
-        folderId: "folder-1",
-        limit: 50,
-        offset: 0,
-      });
+      const resposta = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1");
 
       expect(resposta).toEqual({
         mensagens: [
@@ -652,16 +628,12 @@ describe("uazapiClient", () => {
       });
     });
 
-    it("usa o tamanho da página como total quando a paginação não vem", async () => {
+    it("usa o tamanho da lista como total quando a paginação não vem", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(
         respostaFake({ messages: [{ id: "m1", chatid: "55119@s.whatsapp.net", status: "Sent" }] })
       );
 
-      const resposta = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
-        folderId: "folder-1",
-        limit: 50,
-        offset: 0,
-      });
+      const resposta = await uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1");
 
       expect(resposta.total).toBe(1);
       expect(resposta.mensagens[0].messageTimestamp).toBe(0);
@@ -671,11 +643,7 @@ describe("uazapiClient", () => {
       (global.fetch as jest.Mock).mockResolvedValue(respostaFake({ pagination: {} }));
 
       await expect(
-        uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
-          folderId: "folder-1",
-          limit: 50,
-          offset: 0,
-        })
+        uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1")
       ).rejects.toBeInstanceOf(UazapiIndisponivelError);
     });
 
@@ -683,11 +651,7 @@ describe("uazapiClient", () => {
       (global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"));
 
       await expect(
-        uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, {
-          folderId: "folder-1",
-          limit: 50,
-          offset: 0,
-        })
+        uazapiClient.listarMensagensCampanha(TOKEN_INSTANCIA, "folder-1")
       ).rejects.toBeInstanceOf(UazapiIndisponivelError);
     });
   });
