@@ -10,7 +10,7 @@ import {
 import { campanhaRepository } from "@/repositories/campanha.repository";
 import { campanhaItemRepository } from "@/repositories/campanha-item.repository";
 import { instanciaWhatsappService } from "@/services/instancia-whatsapp.service";
-import { uazapiClient } from "@/lib/external/uazapi-client";
+import { uazapiClient, UazapiIndisponivelError } from "@/lib/external/uazapi-client";
 import { logService } from "@/services/log.service";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import type { InstanciaWhatsapp } from "@prisma/client";
@@ -237,6 +237,59 @@ describe("campanhaService.criar", () => {
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
   });
 
+  it("grava o nome do arquivo CSV quando informado", async () => {
+    await campanhaService.criar(ctx(), { ...DADOS, arquivoCsvNome: "lista.csv" });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ arquivoCsvNome: "lista.csv" }),
+      expect.anything()
+    );
+  });
+
+  it("omite arquivoCsvNome quando não informado", async () => {
+    await campanhaService.criar(ctx(), DADOS);
+
+    expect(repo.create.mock.calls[0][0]).not.toHaveProperty("arquivoCsvNome");
+  });
+
+  it("pluraliza a mensagem quando mais de uma variável ficou sem coluna", async () => {
+    await expect(
+      campanhaService.criar(ctx(), {
+        ...DADOS,
+        mensagemTemplate: "Olá {{nome}} do {{bairro}}",
+        mapeamentoVariaveis: {},
+      })
+    ).rejects.toThrow(/as variáveis \{\{nome\}\}, \{\{bairro\}\}/);
+  });
+
+  it("trata célula vazia da variável como string vazia na mensagem", async () => {
+    await campanhaService.criar(ctx(), {
+      ...DADOS,
+      linhas: [{ Nome: "", numero: "5511999999999" }],
+    });
+
+    const envio = client.criarEnvioAvancado.mock.calls[0][1];
+    expect(envio.messages[0].text).toBe("Olá , tudo bem?");
+  });
+
+  // Planilha sem nenhuma linha não tem cabeçalho para validar contra: recusa pela coluna
+  // de número, antes de qualquer efeito.
+  it("recusa planilha sem nenhuma linha", async () => {
+    await expect(campanhaService.criar(ctx(), { ...DADOS, linhas: [] })).rejects.toThrow(
+      DestinatariosInvalidosError
+    );
+  });
+
+  // Citar 200 linhas numa toast não ajuda ninguém: a mensagem lista as 5 primeiras e
+  // resume o resto.
+  it("resume as linhas excedentes quando há muitos números inválidos", async () => {
+    const linhas = Array.from({ length: 7 }, () => ({ Nome: "X", numero: "1234" }));
+
+    await expect(campanhaService.criar(ctx(), { ...DADOS, linhas })).rejects.toThrow(
+      /linha 1, 2, 3, 4, 5 e mais 2/
+    );
+  });
+
   // A UAZAPI é chamada antes da transação: se a chamada falha, nada é gravado.
   it("não grava nada quando a UAZAPI falha", async () => {
     client.criarEnvioAvancado.mockRejectedValue(new Error("indisponível"));
@@ -349,6 +402,28 @@ describe("campanhaService.sincronizar", () => {
 
     expect(repo.update).not.toHaveBeenCalled();
     expect(logs.registrar).not.toHaveBeenCalled();
+  });
+
+  // Mesma defesa de paraStatusInstancia: status fora do contrato vira erro de domínio
+  // antes de chegar no Prisma, cuja mensagem de validação ecoaria o data inteiro.
+  it("recusa status de campanha desconhecido vindo da UAZAPI", async () => {
+    client.listarCampanhas.mockResolvedValue([
+      {
+        id: "folder-1",
+        status: "status-que-nao-existe",
+        logTotal: 0,
+        logSucesso: 0,
+        logFalha: 0,
+        logEntregue: 0,
+        logLido: 0,
+        logReproduzido: 0,
+      },
+    ]);
+
+    await expect(campanhaService.sincronizar(ctx(), "campanha-1")).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
+    expect(repo.update).not.toHaveBeenCalled();
   });
 
   it("permite role padrao sincronizar (é leitura de estado)", async () => {
