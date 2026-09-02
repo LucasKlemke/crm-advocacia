@@ -30,6 +30,18 @@ export function paraStatusMensagem(bruto: string): StatusMensagem {
   return STATUS_POR_UAZAPI[bruto.trim().toLowerCase()] ?? "desconhecido";
 }
 
+// O WhatsApp devolve o jid do celular brasileiro SEM o nono dígito
+// ("554797355799@s.whatsapp.net"), enquanto o CRM guarda o número com ele
+// ("5547997355799" — RN13 exige o 9). Sem normalizar os dois lados, nenhuma mensagem
+// casaria com seu destinatário e a coluna de status ficaria toda vazia. Confirmado contra
+// a UAZAPI: item 5547997355799 no banco ↔ chatid 554797355799@s.whatsapp.net na resposta.
+export function chaveTelefone(numero: string): string {
+  const digitos = numero.replace(/\D/g, "");
+  const celularBrComNove =
+    digitos.length === 13 && digitos.startsWith("55") && digitos[4] === "9";
+  return celularBrComNove ? digitos.slice(0, 4) + digitos.slice(5) : digitos;
+}
+
 // O chatid chega como jid do WhatsApp ("5511999998888@s.whatsapp.net"). O que interessa é
 // o número em dígitos, que é a chave para casar com o campanha_item gravado no envio.
 export function numeroDoChatid(chatid: string): string {
@@ -70,18 +82,20 @@ export interface ResumoMensagem {
 }
 
 // Índice número → status, que é como a tabela de destinatários (vinda do banco) recebe o
-// que a UAZAPI sabe de cada mensagem.
+// que a UAZAPI sabe de cada mensagem. As chaves são `chaveTelefone(numero)`, então a
+// consulta também precisa passar por ela.
 export function resumirPorNumero(
   mensagens: readonly MensagemPorNumero[]
 ): Map<string, ResumoMensagem> {
   const resumo = new Map<string, ResumoMensagem>();
 
   for (const mensagem of mensagens) {
-    if (!mensagem.numero) continue;
+    const chave = chaveTelefone(mensagem.numero);
+    if (!chave) continue;
 
-    const atual = resumo.get(mensagem.numero);
+    const atual = resumo.get(chave);
     if (!atual) {
-      resumo.set(mensagem.numero, {
+      resumo.set(chave, {
         status: mensagem.status,
         erro: mensagem.erro,
         quantidade: 1,
@@ -90,7 +104,7 @@ export function resumirPorNumero(
     }
 
     const vence = GRAVIDADE.indexOf(mensagem.status) < GRAVIDADE.indexOf(atual.status);
-    resumo.set(mensagem.numero, {
+    resumo.set(chave, {
       status: vence ? mensagem.status : atual.status,
       erro: vence ? mensagem.erro : atual.erro,
       quantidade: atual.quantidade + 1,

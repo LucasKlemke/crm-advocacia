@@ -1,4 +1,5 @@
 import {
+  chaveTelefone,
   numeroDoChatid,
   paraDataMensagem,
   paraStatusMensagem,
@@ -66,19 +67,52 @@ describe("paraDataMensagem", () => {
   });
 });
 
+// A razão de existir: o jid do WhatsApp vem sem o nono dígito, e o CRM grava com ele.
+describe("chaveTelefone", () => {
+  it("iguala o celular brasileiro com e sem o nono dígito", () => {
+    expect(chaveTelefone("5547997355799")).toBe("554797355799");
+    expect(chaveTelefone("554797355799")).toBe("554797355799");
+    expect(chaveTelefone("5511987654321")).toBe("551187654321");
+  });
+
+  it("ignora máscara e espaços", () => {
+    expect(chaveTelefone("+55 (47) 99735-5799")).toBe("554797355799");
+  });
+
+  it("não mexe em número que não é celular brasileiro de 13 dígitos", () => {
+    // DDI que não é 55.
+    expect(chaveTelefone("3511234567890")).toBe("3511234567890");
+    // 13 dígitos com 55, mas sem o 9 na posição do nono dígito.
+    expect(chaveTelefone("5547896589979")).toBe("5547896589979");
+    // Fixo brasileiro (12 dígitos).
+    expect(chaveTelefone("554733334444")).toBe("554733334444");
+    expect(chaveTelefone("")).toBe("");
+  });
+});
+
 describe("resumirPorNumero", () => {
+  // O caso real que deixava a coluna de status vazia: a mensagem chega no formato de 12
+  // dígitos e o destinatário gravado tem 13.
+  it("casa a mensagem do WhatsApp com o destinatário gravado com o nono dígito", () => {
+    const resumo = resumirPorNumero([
+      { numero: "554797355799", status: "entregue", erro: null },
+    ]);
+
+    expect(resumo.get(chaveTelefone("5547997355799"))?.status).toBe("entregue");
+  });
+
   it("indexa cada mensagem pelo número de destino", () => {
     const resumo = resumirPorNumero([
       { numero: "5511999998888", status: "enviada", erro: null },
       { numero: "5511977776666", status: "falha", erro: "número inexistente" },
     ]);
 
-    expect(resumo.get("5511999998888")).toEqual({
+    expect(resumo.get(chaveTelefone("5511999998888"))).toEqual({
       status: "enviada",
       erro: null,
       quantidade: 1,
     });
-    expect(resumo.get("5511977776666")?.erro).toBe("número inexistente");
+    expect(resumo.get(chaveTelefone("5511977776666"))?.erro).toBe("número inexistente");
   });
 
   // Número repetido na planilha é permitido, e aí o mesmo número tem várias mensagens.
@@ -90,7 +124,7 @@ describe("resumirPorNumero", () => {
       { numero: "5511999998888", status: "enviada", erro: null },
     ]);
 
-    expect(resumo.get("5511999998888")).toEqual({
+    expect(resumo.get(chaveTelefone("5511999998888"))).toEqual({
       status: "falha",
       erro: "bloqueado",
       quantidade: 3,

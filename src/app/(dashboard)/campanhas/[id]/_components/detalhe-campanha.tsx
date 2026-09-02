@@ -18,7 +18,11 @@ import { Button } from "@/components/ui/button";
 import { formatarTelefone } from "@/lib/utils/telefone";
 import { normalizarMapeamento } from "@/lib/utils/campanha-mensagem";
 import { TRATAMENTOS_DISPONIVEIS } from "@/lib/utils/campanha-tratamentos";
-import { resumirPorNumero, type ResumoMensagem } from "@/lib/utils/campanha-status-mensagem";
+import {
+  chaveTelefone,
+  resumirPorNumero,
+  type ResumoMensagem,
+} from "@/lib/utils/campanha-status-mensagem";
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
 import { StatusBadgeMensagem } from "./status-badge-mensagem";
@@ -212,7 +216,9 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
                   <TableCell className="py-2 text-sm">{formatarTelefone(item.numero)}</TableCell>
                   <TableCell className="py-2 text-sm">
                     <CelulaStatus
-                      resumo={statusPorNumero.get(item.numero)}
+                      // chaveTelefone dos dois lados: o jid do WhatsApp vem sem o nono
+                      // dígito que o número gravado tem.
+                      resumo={statusPorNumero.get(chaveTelefone(item.numero))}
                       carregando={mensagens.isLoading}
                     />
                   </TableCell>

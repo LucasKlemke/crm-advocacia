@@ -121,10 +121,9 @@ describe("DetalheCampanha — status de cada mensagem", () => {
     expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", false);
   });
 
+  // O item gravado tem o nono dígito (5511999998888); o jid do WhatsApp vem sem ele.
   it("mostra o status da mensagem na linha do destinatário", () => {
-    mockMensagens([
-      { numero: "5511999998888", status: "enviada", erro: null, enviadaEm: null },
-    ]);
+    mockMensagens([{ numero: "551199998888", status: "enviada", erro: null, enviadaEm: null }]);
     renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
 
     expect(screen.getByText("Enviada")).toBeInTheDocument();
