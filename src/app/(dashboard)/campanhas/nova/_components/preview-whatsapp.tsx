@@ -20,6 +20,23 @@ const CLASSE_ESTILO = {
   mono: "font-mono text-[0.9em]",
 } as const;
 
+// Rabinho da bolha, no canto superior esquerdo. SVG e não triângulo de borda CSS: o truque
+// das bordas rende um bloco visível quando a cor vem de custom property, e o recorte curvo
+// do WhatsApp não sai de borda nenhuma. `currentColor` herda a cor da bolha, então o
+// rabinho acompanha o tema sem repetir o token.
+function RabinhoBolha() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 8 13"
+      className="absolute top-0 -left-2 h-[13px] w-2 text-zap-bolha-recebida"
+      fill="currentColor"
+    >
+      <path d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568Z" />
+    </svg>
+  );
+}
+
 function TextoFormatado({ texto }: { texto: string }) {
   return (
     <>
@@ -57,7 +74,7 @@ export function PreviewWhatsapp({
       </div>
 
       <div
-        className="flex min-h-40 flex-col justify-end gap-2 bg-zap-fundo p-4"
+        className="flex min-h-32 flex-col justify-end gap-2 bg-zap-fundo px-4 py-5 pl-6"
         // O padrão de rabiscos é token porque muda entre claro e escuro (traço preto x branco).
         style={{ backgroundImage: "var(--zap-rabiscos)" }}
       >
@@ -65,11 +82,7 @@ export function PreviewWhatsapp({
             cliente, que é quem precisa entender a mensagem. */}
         <div className="flex">
           <div className="relative max-w-[85%] rounded-lg rounded-tl-none bg-zap-bolha-recebida px-2.5 py-1.5 shadow-sm">
-            {/* Rabinho da bolha, no canto superior esquerdo, como no WhatsApp. */}
-            <span
-              aria-hidden
-              className="absolute top-0 -left-2 size-0 border-t-8 border-r-8 border-t-zap-bolha-recebida border-r-transparent"
-            />
+            <RabinhoBolha />
             <p className="text-sm whitespace-pre-wrap text-zap-texto">
               <TextoFormatado texto={mensagem} />
               {/* Espaço reservado para o horário não cobrir a última linha do texto —

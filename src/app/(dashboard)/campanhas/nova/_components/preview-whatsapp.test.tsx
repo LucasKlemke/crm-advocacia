@@ -24,6 +24,19 @@ describe("PreviewWhatsapp", () => {
     expect(screen.queryByText("Olá *Ana*!")).not.toBeInTheDocument();
   });
 
+  // Regressão: o rabinho já foi triângulo de borda CSS e renderizava como um bloco
+  // branco ao lado da bolha. Agora é SVG, e a cor vem da bolha via currentColor.
+  it("desenha o rabinho da bolha como SVG na cor da bolha", () => {
+    const { container } = render(
+      <PreviewWhatsapp mensagem="Oi" remetenteNome="Atendimento" />
+    );
+
+    const rabinho = container.querySelector("svg[fill='currentColor']");
+    expect(rabinho).not.toBeNull();
+    expect(rabinho).toHaveClass("text-zap-bolha-recebida");
+    expect(rabinho?.querySelector("path")).not.toBeNull();
+  });
+
   it("usa as iniciais do remetente quando não há foto", () => {
     render(<PreviewWhatsapp mensagem="Oi" remetenteNome="Atendimento Comercial" />);
 

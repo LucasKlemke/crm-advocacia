@@ -11,10 +11,27 @@ export function telefoneValido(valor: string): boolean {
   return CELULAR_BR.test(normalizarTelefone(valor));
 }
 
+// Formato antigo, sem o 9º dígito: 55 + DDD + 8 dígitos. Não serve para disparo (RN13),
+// mas é o que a UAZAPI devolve como `owner` de muitas instâncias conectadas — sem
+// reconhecer aqui, o número da instância aparecia cru na tela.
+const FIXO_OU_CELULAR_ANTIGO_BR = /^55([1-9]\d)(\d{4})(\d{4})$/;
+
+// Só apresentação: mascarar não diz nada sobre poder receber disparo, quem decide isso é
+// telefoneValido.
 export function formatarTelefone(valor: string): string {
   const digitos = normalizarTelefone(valor);
-  if (!CELULAR_BR.test(digitos)) return valor;
-  return `+55 (${digitos.slice(2, 4)}) ${digitos.slice(4, 9)}-${digitos.slice(9)}`;
+
+  if (CELULAR_BR.test(digitos)) {
+    return `+55 (${digitos.slice(2, 4)}) ${digitos.slice(4, 9)}-${digitos.slice(9)}`;
+  }
+
+  const antigo = FIXO_OU_CELULAR_ANTIGO_BR.exec(digitos);
+  if (antigo) {
+    const [, ddd, inicio, fim] = antigo;
+    return `+55 (${ddd}) ${inicio}-${fim}`;
+  }
+
+  return valor;
 }
 
 // Máscara progressiva do campo de digitação. Enquanto o número não começa com 55

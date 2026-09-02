@@ -41,6 +41,38 @@ describe("PassoInstancia", () => {
     expect(screen.getAllByText("A").length).toBeGreaterThan(0);
   });
 
+  // Regressão: o conteúdo ficava dentro de um SelectValue, e o `line-clamp-1` que o
+  // SelectTrigger aplica nesse slot virava `display:-webkit-box` e desmontava as duas linhas.
+  it("mostra nome e número dentro do próprio gatilho do select", () => {
+    renderComQuery(<PassoInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
+
+    const gatilho = screen.getByRole("combobox");
+    expect(gatilho).toHaveTextContent("Atendimento");
+    expect(gatilho).toHaveTextContent("+55 (11) 99999-8888");
+    expect(gatilho.querySelector("[data-slot='select-value']")).toBeNull();
+  });
+
+  it("mostra o texto de escolha enquanto nenhuma instância está selecionada", () => {
+    renderComQuery(<PassoInstancia instanciaId="" onSelecionar={jest.fn()} />);
+
+    expect(screen.getByRole("combobox")).toHaveTextContent(/escolha a instância/i);
+  });
+
+  // Regressão: o `owner` da UAZAPI costuma vir sem o 9º dígito, e nesse caso o número
+  // aparecia cru ("554797355799") no select.
+  it("mascara também o número sem o nono dígito", () => {
+    useInstanciasMock.mockReturnValue({
+      data: { instancias: [instanciaFake({ numeroConectado: "554797355799" })] },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderComQuery(<PassoInstancia instanciaId="instancia-1" onSelecionar={jest.fn()} />);
+
+    expect(screen.getAllByText("+55 (47) 9735-5799").length).toBeGreaterThan(0);
+    expect(screen.queryByText("554797355799")).not.toBeInTheDocument();
+  });
+
   it("avisa quando a instância não tem número identificado", () => {
     useInstanciasMock.mockReturnValue({
       data: { instancias: [instanciaFake({ numeroConectado: null })] },

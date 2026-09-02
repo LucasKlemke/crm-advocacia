@@ -8,7 +8,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { formatarTelefone } from "@/lib/utils/telefone";
@@ -54,6 +53,8 @@ export function PassoInstancia({ instanciaId, onSelecionar }: PassoInstanciaProp
     (instancia) => instancia.status === "connected"
   );
 
+  const selecionada = conectadas.find((instancia) => instancia.id === instanciaId);
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -97,16 +98,16 @@ export function PassoInstancia({ instanciaId, onSelecionar }: PassoInstanciaProp
               }
             }}
           >
-            {/* h-auto: o gatilho padrão tem altura fixa de uma linha, e aqui cabem foto +
-                duas linhas de texto. */}
-            <SelectTrigger id="instancia" className="h-auto w-full py-2">
-              <SelectValue placeholder="Escolha a instância">
-                {(valor) => {
-                  const escolhida = conectadas.find((instancia) => instancia.id === valor);
-                  if (!escolhida) return "Escolha a instância";
-                  return <LinhaInstancia instancia={escolhida} />;
-                }}
-              </SelectValue>
+            {/* O conteúdo vai direto no gatilho, e não dentro de um SelectValue: o
+                SelectTrigger aplica `line-clamp-1` no slot do valor, que vira
+                `display:-webkit-box` e desmonta o layout de foto + duas linhas.
+                h-auto porque o gatilho padrão tem altura fixa de uma linha só. */}
+            <SelectTrigger id="instancia" className="h-auto w-full py-2 pl-2">
+              {selecionada ? (
+                <LinhaInstancia instancia={selecionada} />
+              ) : (
+                <span className="pl-0.5 text-muted-foreground">Escolha a instância</span>
+              )}
             </SelectTrigger>
             <SelectContent>
               {conectadas.map((instancia) => (
