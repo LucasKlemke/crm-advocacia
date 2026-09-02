@@ -42,6 +42,15 @@ Base: RFC original em https://github.com/LucasKlemke/PAC-Extensionista-VII---RFC
 - **RN16** — Em caso de falha, até 3 tentativas automáticas antes de registrar erro definitivo. *(`MensagemService` / `UazapiClient`, campo `historico_mensagem.tentativas`)*
 - **RN16a (nova)** — Templates de mensagem (`template_mensagem`) são compartilhados entre todos os usuários de um mesmo escritório; um colaborador pode usar/editar templates criados pelo titular e vice-versa. *(`MensagemService`)*
 
+### Campanhas (disparo em massa)
+
+- **RN23 (nova)** — Uma campanha só pode ser criada a partir de uma instância de WhatsApp **conectada** do próprio escritório; instância desconectada, hibernada ou de outro tenant recusa a criação antes de qualquer efeito. *(`CampanhaService`)*
+- **RN24 (nova)** — Toda `{{variavel}}` da mensagem-modelo precisa estar mapeada para uma coluna existente da planilha. O sistema tenta casar sozinho pelo nome (ignorando caixa, acento e separadores: `{{nome_completo}}` acha a coluna "Nome Completo"); o que não casar é escolhido explicitamente pelo usuário antes de criar. Nenhuma mensagem sai com o placeholder cru. *(`CampanhaService`, `lib/utils/campanha-mensagem`)*
+- **RN25 (nova)** — Toda linha da planilha precisa de um número de WhatsApp válido (DDI + DDD + 9 dígitos, mesma validação de `cliente.telefone` — RN13). Havendo qualquer número inválido, **a campanha inteira é recusada** com a indicação das linhas com problema: enviar só parte da lista sem o usuário perceber é pior do que recusar e deixar corrigir a planilha. *(`CampanhaService`)*
+- **RN26 (nova)** — Criar, pausar, retomar e excluir campanha é restrito a `owner`/`admin`; `padrao` apenas lê e sincroniza (sincronizar é leitura de estado). *(`CampanhaService`)*
+- **RN27 (nova)** — A mensagem de cada destinatário é renderizada **no servidor** a partir das linhas cruas do CSV e gravada em `campanha_item` como snapshot imutável — o cliente nunca envia texto já renderizado, e o registro reflete exatamente o que foi entregue à UAZAPI. *(`CampanhaService`)*
+- **RN28 (nova)** — A UAZAPI é a dona do envio: o estado local só muda depois que ela aceita a operação. Sincronizar não escreve nem gera log quando nenhum contador ou status mudou, e excluir remove a campanha localmente apenas após a confirmação, preservando o rastro em `log` (append-only). *(`CampanhaService`)*
+
 ## Documentos
 
 - **RN17** — Tamanho máximo por arquivo: 10 MB. *(`DocumentoService`, campo `documento.tamanho_kb`)*

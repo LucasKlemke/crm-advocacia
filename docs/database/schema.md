@@ -319,6 +319,49 @@ Fluxo de conexão: criar instância com status `disconnected` → chamar UAZAPI 
 
 Sincronização em lote (`POST /api/instancias/sincronizar`, endpoint `/instance/all` da UAZAPI): além de atualizar status/número/foto das instâncias que ainda existem do lado da UAZAPI, exclui (hard delete, sem soft delete nesta tabela) toda instância local cujo `uazapi_instance_id` não aparece mais na resposta — uma instância "fantasma" que foi removida diretamente na UAZAPI. Cada exclusão gera uma linha em `log` (`acao: excluir`) na mesma transação, uma por instância removida.
 
+## `campanha`
+
+Disparo em massa de WhatsApp a partir de uma planilha CSV. A campanha nasce já registrada na UAZAPI (`POST /sender/advanced`, que devolve o `uazapi_folder_id`) e é gerenciada depois por `POST /sender/edit` (pausar/retomar/excluir) e `GET /sender/listfolders` (estatísticas).
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | uuid | PK |
+| `escritorio_id` | uuid | FK `escritorio`, `onDelete: Cascade` |
+| `instancia_whatsapp_id` | uuid? | FK `instancia_whatsapp`, **`onDelete: SetNull`** |
+| `criado_por_id` | uuid | FK `usuario`, `onDelete: Restrict` |
+| `nome` | varchar(120) | Vai como `info` na UAZAPI |
+| `mensagem_template` | text | Mensagem-modelo com `{{variaveis}}` |
+| `mapeamento_variaveis` | jsonb? | `{{variavel}}` → nome da coluna do CSV |
+| `coluna_numero` | varchar(120) | Coluna do CSV com o telefone de destino |
+| `arquivo_csv_nome` | varchar(255)? | Só o nome; o CSV em si não é persistido |
+| `delay_min` / `delay_max` | int | Intervalo (segundos) sorteado entre mensagens |
+| `agendada_para` | timestamp? | Vira `scheduled_for` (epoch ms) na UAZAPI |
+| `status` | `StatusCampanha` | `agendada`/`enviando`/`pausada`/`concluida`/`excluindo` |
+| `uazapi_folder_id` | varchar(100) | Identificador da campanha na UAZAPI |
+| `total_destinatarios` | int | Quantidade de itens gerados |
+| `log_total`, `log_sucesso`, `log_falha`, `log_entregue`, `log_lido`, `log_reproduzido` | int | Contadores espelhados do `listfolders` |
+| `sincronizado_em` | timestamp? | Última sincronização bem-sucedida |
+
+`instancia_whatsapp_id` é **opcional com `SetNull`**, e não `Restrict`: a sincronização em lote de instâncias apaga instâncias "fantasma", e um `Restrict` aqui faria essa limpeza estourar violação de FK. Sem instância, a campanha permanece como histórico somente-leitura (sem o token não há como sincronizar nem controlar).
+
+Sincronizar só escreve (e só gera `log`) quando algum contador ou o status mudou — o mesmo critério de `verificarStatus` em `instancia_whatsapp`. A ação `delete` remove a linha local depois que a UAZAPI confirma, porque o `listfolders` nunca mais devolveria aquela campanha; o rastro fica no `log` append-only.
+
+## `campanha_item`
+
+Uma mensagem já renderizada por destinatário — o que de fato foi entregue à UAZAPI.
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | uuid | PK |
+| `escritorio_id` | uuid | FK `escritorio`, `onDelete: Cascade` (desnormalizado, RN19) |
+| `campanha_id` | uuid | FK `campanha`, `onDelete: Cascade` |
+| `linha` | int | Número da linha na planilha (1-based, sem cabeçalho); `@@unique([campanha_id, linha])` |
+| `numero` | varchar(20) | Só dígitos, `55 + DDD + 9` (mesmo formato de `cliente.telefone`) |
+| `mensagem` | text | Texto já com as variáveis substituídas |
+| `variaveis` | jsonb? | Só os valores usados pelo template, não a linha inteira do CSV |
+
+Sem `updated_at`: o item é snapshot imutável do que foi enviado (mesmo critério de `log`) — reprocessar o template depois daria um texto diferente do que o cliente recebeu.
+
 ## Relacionamentos
 
 | Origem | Cardinalidade | Destino |
@@ -345,6 +388,11 @@ Sincronização em lote (`POST /api/instancias/sincronizar`, endpoint `/instance
 | `historico_mensagem` | N:1 | `template_mensagem` |
 | `historico_mensagem` | N:1 | `usuario` (autoria, opcional) |
 | `instancia_whatsapp` | N:1 | `escritorio` |
+| `campanha` | N:1 | `escritorio` |
+| `campanha` | N:1 | `instancia_whatsapp` (opcional, SetNull) |
+| `campanha` | N:1 | `usuario` (criada por) |
+| `campanha_item` | N:1 | `escritorio` |
+| `campanha_item` | N:1 | `campanha` |
 
 ## Notas de implementação (Prisma)
 
