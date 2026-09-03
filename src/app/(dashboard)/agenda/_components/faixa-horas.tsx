@@ -100,6 +100,7 @@ export function FaixaHoras({
           return (
             <div
               key={chaveDoDia(dia)}
+              data-testid={`coluna-dia-${chaveDoDia(dia)}`}
               onClick={(clique) => criarNoSlot(dia, clique)}
               className="relative flex-1 border-r border-border last:border-r-0"
               role="presentation"

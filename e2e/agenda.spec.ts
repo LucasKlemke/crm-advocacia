@@ -36,8 +36,23 @@ test.describe("Agenda do escritório", () => {
     // O evento aparece nas três visões — o mesmo período consultado de formas diferentes.
     await page.getByRole("button", { name: "Semana" }).click();
     await expect(page.getByRole("button", { name: /audiência de instrução/i })).toBeVisible();
+
+    // Clicar no evento na visão de semana tem de abrir o detalhe, não o formulário de
+    // criação: o bloco fica dentro da coluna clicável do dia, e sem stopPropagation o
+    // clique borbulhava e "Novo evento" substituía o detalhe.
+    await page.getByRole("button", { name: /audiência de instrução/i }).click();
+    await expect(page.getByRole("dialog")).toContainText("Fórum de Joinville, sala 3");
+    await expect(page.getByRole("dialog")).not.toContainText("Novo evento");
+    await page.keyboard.press("Escape");
+
     await page.getByRole("button", { name: "Dia" }).click();
     await expect(page.getByRole("button", { name: /audiência de instrução/i })).toBeVisible();
+
+    // Editar a partir da visão de dia, o mesmo caminho da visão de semana.
+    await page.getByRole("button", { name: /audiência de instrução/i }).click();
+    await expect(page.getByRole("button", { name: "Editar" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
     await page.getByRole("button", { name: "Mês" }).click();
 
     // Abrir o detalhe: mostra quem criou e o local.

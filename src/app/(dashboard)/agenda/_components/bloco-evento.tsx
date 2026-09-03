@@ -27,7 +27,13 @@ export function BlocoEvento({
   return (
     <button
       type="button"
-      onClick={() => onSelecionar(evento)}
+      onClick={(clique) => {
+        // A coluna do dia também é clicável (criar evento no slot): sem isto o clique
+        // borbulha e o formulário de criação substitui o detalhe do evento — mesmo
+        // cuidado que o ChipEventoMes já tomava na grade de mês.
+        clique.stopPropagation();
+        onSelecionar(evento);
+      }}
       style={estilo}
       // Bordas retas do lado que continua no dia vizinho, para o corte ficar legível.
       className={cn(
