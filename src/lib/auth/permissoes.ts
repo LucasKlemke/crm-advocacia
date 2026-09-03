@@ -52,3 +52,10 @@ export function podeModerarComentario(atorRole: RoleMembro, ehAutor: boolean): b
 export function podeModerarDocumento(atorRole: RoleMembro, ehAutor: boolean): boolean {
   return ehAutor || atorRole === "owner" || atorRole === "admin";
 }
+
+// Evento da agenda segue a mesma moderação de comentário e documento (RN34): quem marcou
+// pode remarcar ou desmarcar, e owner/admin resolvem a agenda de qualquer membro — sem
+// isso, um compromisso marcado por quem saiu do escritório ficaria preso no calendário.
+export function podeModerarEvento(atorRole: RoleMembro, ehAutor: boolean): boolean {
+  return ehAutor || atorRole === "owner" || atorRole === "admin";
+}

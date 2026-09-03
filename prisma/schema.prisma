@@ -47,6 +47,7 @@ enum EntidadeLog {
   documento
   instancia_whatsapp
   campanha
+  evento
 }
 
 enum AcaoLog {
@@ -88,6 +89,14 @@ enum StatusCampanha {
   excluindo
 }
 
+// Modalidade de um evento da agenda (RN32): `presencial` exige `local`, `online` exige
+// `link_reuniao`. Um enum em vez de dois booleanos porque as duas modalidades são
+// mutuamente exclusivas e cada uma tem um campo obrigatório diferente.
+enum ModalidadeEvento {
+  presencial
+  online
+}
+
 model Escritorio {
   id               String   @id @default(uuid())
   nome             String   @db.VarChar(140)
@@ -109,6 +118,7 @@ model Escritorio {
   instanciasWhatsapp InstanciaWhatsapp[]
   campanhas          Campanha[]
   campanhaItens      CampanhaItem[]
+  eventos            Evento[]
 
   @@map("escritorio")
 }
@@ -145,10 +155,12 @@ model Membro {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  usuario    Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  escritorio Escritorio  @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
-  casos      Caso[]
-  documentos Documento[]
+  usuario             Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  escritorio          Escritorio           @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  casos               Caso[]
+  documentos          Documento[]
+  eventosCriados      Evento[]             @relation("EventoCriadoPor")
+  participacoesEvento EventoParticipante[]
 
   @@unique([usuarioId, escritorioId])
   @@index([escritorioId])
@@ -199,6 +211,7 @@ model Cliente {
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
   casos      Caso[]
+  eventos    Evento[]
 
   @@unique([escritorioId, cpf])
   @@index([escritorioId, softDeletedAt])
@@ -354,6 +367,7 @@ model Caso {
   status       Status       @relation(fields: [statusId], references: [id], onDelete: Restrict)
   tipoProcesso TipoProcesso @relation(fields: [tipoProcessoId], references: [id], onDelete: Restrict)
   responsavel  Membro?      @relation(fields: [responsavelMembroId], references: [id], onDelete: SetNull)
+  eventos      Evento[]
 
   @@index([escritorioId, arquivado, statusId, createdAt])
   @@index([escritorioId, clienteId])
@@ -465,4 +479,60 @@ model CampanhaItem {
   @@index([campanhaId])
   @@index([escritorioId])
   @@map("campanha_item")
+}
+
+// Evento da agenda do escritório (RN31): compromisso com início e fim, visível a todo
+// membro do tenant. O vínculo é opcional e exclusivo — caso_id XOR cliente_id — porque um
+// evento pode ser um compromisso interno sem parte envolvida; a exclusividade é garantida
+// pelo Service, não por constraint, para o erro chegar ao usuário como 422 e não como
+// violação de banco. Nunca é apagado fisicamente: "excluir" grava soft_deleted_at (RN34),
+// mantendo o histórico de quem marcou e desmarcou o quê.
+model Evento {
+  id                String           @id @default(uuid())
+  escritorioId      String           @map("escritorio_id")
+  titulo            String           @db.VarChar(140)
+  descricao         String?          @db.Text
+  inicio            DateTime
+  fim               DateTime
+  diaInteiro        Boolean          @default(false) @map("dia_inteiro")
+  modalidade        ModalidadeEvento
+  local             String?          @db.VarChar(255)
+  linkReuniao       String?          @map("link_reuniao") @db.VarChar(500)
+  clienteId         String?          @map("cliente_id")
+  casoId            String?          @map("caso_id")
+  criadoPorMembroId String           @map("criado_por_membro_id")
+  softDeletedAt     DateTime?        @map("soft_deleted_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  escritorio    Escritorio           @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
+  cliente       Cliente?             @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  caso          Caso?                @relation(fields: [casoId], references: [id], onDelete: SetNull)
+  criadoPor     Membro               @relation("EventoCriadoPor", fields: [criadoPorMembroId], references: [id], onDelete: Restrict)
+  participantes EventoParticipante[]
+
+  @@index([escritorioId, inicio])
+  @@index([escritorioId, softDeletedAt, inicio])
+  @@index([escritorioId, casoId])
+  @@index([escritorioId, clienteId])
+  @@index([escritorioId, criadoPorMembroId])
+  @@map("evento")
+}
+
+// Participação de um membro num evento (RN33). Tabela de junção pura e imutável (sem
+// updated_at): a edição de participantes é feita substituindo o conjunto de linhas. Não
+// carrega escritorio_id porque só é alcançável através de `evento`, que já é escopado —
+// o tenant vem de lá em toda query (RN19).
+model EventoParticipante {
+  id        String   @id @default(uuid())
+  eventoId  String   @map("evento_id")
+  membroId  String   @map("membro_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  evento Evento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  membro Membro @relation(fields: [membroId], references: [id], onDelete: Cascade)
+
+  @@unique([eventoId, membroId])
+  @@index([membroId])
+  @@map("evento_participante")
 }

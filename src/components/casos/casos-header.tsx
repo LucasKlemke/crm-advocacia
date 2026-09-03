@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Briefcase, LayoutGrid, Plus, Search, Table2, Tag, User, Users } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { chaveCasosFiltroOpcoes, useCasoFiltroOpcoes } from "@/hooks/use-casos";
-import { FiltroMultiSelect } from "@/components/casos/filtro-multi-select";
+import { FiltroMultiSelect } from "@/components/shared/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
 import { ClienteForm } from "@/components/clientes/cliente-form";
 import { TipoProcessoForm } from "@/components/configuracoes/tipo-processo-form";

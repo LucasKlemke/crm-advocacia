@@ -1,6 +1,6 @@
 # Casos de Uso / User Stories
 
-Documentação mínima exigida pela linha Web Apps ([directions-webapp.md](https://github.com/CatolicaSC-Portfolio/The-Portfolio-Playbook/blob/main/directions/portfolio-directions-webapp.md)): "requisitos funcionais; casos de uso ou user stories". Este documento cobre o "casos de uso ou user stories" — o "requisitos funcionais" já está coberto por [regras-negocio.md](regras-negocio.md) (RN01–RN19). Cada história aponta a(s) regra(s) de negócio que implementa e o(s) fluxo(s) alternativo(s) (`FA-*`) já descritos lá, para não duplicar a especificação de comportamento — aqui o formato é orientado ao usuário, lá é orientado à regra.
+Documentação mínima exigida pela linha Web Apps ([directions-webapp.md](https://github.com/CatolicaSC-Portfolio/The-Portfolio-Playbook/blob/main/directions/portfolio-directions-webapp.md)): "requisitos funcionais; casos de uso ou user stories". Este documento cobre o "casos de uso ou user stories" — o "requisitos funcionais" já está coberto por [regras-negocio.md](regras-negocio.md) (RN01–RN35). Cada história aponta a(s) regra(s) de negócio que implementa e o(s) fluxo(s) alternativo(s) (`FA-*`) já descritos lá, para não duplicar a especificação de comportamento — aqui o formato é orientado ao usuário, lá é orientado à regra.
 
 ## Papéis (personas)
 
@@ -82,6 +82,30 @@ Documentação mínima exigida pela linha Web Apps ([directions-webapp.md](https
 > Como usuário de um escritório, quero ter certeza de que nenhum dado do meu escritório é visível ou alterável por outro escritório, mesmo que alguém tente acessar diretamente pela URL, para confiar que informações sensíveis de clientes ficam restritas à minha equipe.
 
 - Critérios de aceite: toda operação de leitura/escrita é escopada por `escritorio_id` da sessão autenticada (RN19); tentativa de acessar recurso de outro escritório via URL direta retorna 404, sem confirmar existência do recurso (FA-08).
+
+## 9. Agenda do escritório (calendário)
+
+> Como membro do escritório, quero marcar uma audiência ou reunião num calendário compartilhado, para que todo o time veja o compromisso sem eu precisar repassá-lo por WhatsApp.
+
+- Critérios de aceite: qualquer membro (inclusive `padrao`) vê todos os eventos do escritório e pode criar evento novo (RN31); o evento pode ser vinculado a um caso **ou** a um cliente, ou a nenhum dos dois, nunca aos dois ao mesmo tempo (RN31, FA-15); alvo de outro escritório retorna 404 sem confirmar existência (RN19, FA-13); `fim` precisa ser posterior a `inicio` (RN35, FA-14); registrar compromisso já ocorrido é permitido, sem bloqueio (RN35).
+
+> Como membro do escritório, quero dizer se o compromisso é presencial ou online e informar o endereço ou o link, para chegar no lugar certo sem procurar a informação em outro lugar.
+
+- Critérios de aceite: modalidade `presencial` exige `local` e `online` exige `link_reuniao`; o campo da outra modalidade fica vazio, inclusive ao trocar a modalidade numa edição (RN32).
+
+> Como membro do escritório, quero indicar quais colegas participam do evento, para saber quem do time está comprometido naquele horário.
+
+- Critérios de aceite: participantes são membros do próprio escritório, validados contra o tenant (RN33, RN19); quem cria entra automaticamente como participante e não pode ser removido enquanto for o autor (RN33).
+
+> Como membro do escritório, quero alternar entre as visões de mês, semana e dia, para planejar tanto o mês inteiro quanto a rotina de um dia específico.
+
+- Critérios de aceite: as três visões (`/agenda`) leem a mesma janela de eventos ativos do escritório e mostram só `soft_deleted_at IS NULL` (RN34); evento de dia inteiro ocupa exatamente os dias marcados, das 00:00 do primeiro às 23:59:59.999 do último (RN35).
+
+> Como autor de um evento (ou como owner/admin), quero editar ou cancelar um compromisso, para manter a agenda fiel ao que realmente vai acontecer.
+
+- Critérios de aceite: editar/excluir é restrito ao autor, `owner` ou `admin` — mesma moderação dos comentários (RN34, RN21); membro sem essa permissão é bloqueado com 403 e não vê as ações na UI (FA-16); excluir é soft delete, o evento sai da agenda e o rastro fica no `log` (RN34, RN20).
+
+> Nesta versão a agenda **não** tem recorrência nem lembretes/notificações de evento (RN35): compromisso repetido é criado como eventos independentes, e o `NotificacaoScheduler` continua cuidando apenas de prazos (RN12).
 
 ## Cobertura do requisito "três fluxos de negócio completos"
 
