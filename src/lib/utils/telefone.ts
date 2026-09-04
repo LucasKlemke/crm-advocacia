@@ -34,6 +34,27 @@ export function formatarTelefone(valor: string): string {
   return valor;
 }
 
+// Tenta transformar um número inválido em válido cobrindo os dois erros mais comuns de
+// planilha exportada fora do padrão: faltar o DDI (55) e/ou faltar o 9º dígito do celular.
+// Só devolve um número diferente quando o resultado passa em telefoneValido — nunca
+// adivinha um DDD ou trunca dígitos a mais, porque aí a correção erraria o destinatário.
+export function corrigirTelefone(valor: string): string {
+  const digitos = normalizarTelefone(valor);
+  if (telefoneValido(digitos)) return digitos;
+
+  const comDdi = digitos.startsWith("55") ? digitos : `55${digitos}`;
+  if (telefoneValido(comDdi)) return comDdi;
+
+  const semNono = FIXO_OU_CELULAR_ANTIGO_BR.exec(comDdi);
+  if (semNono) {
+    const [, ddd, inicio, fim] = semNono;
+    const comNono = `55${ddd}9${inicio}${fim}`;
+    if (telefoneValido(comNono)) return comNono;
+  }
+
+  return digitos;
+}
+
 // Máscara progressiva do campo de digitação. Enquanto o número não começa com 55
 // não dá para saber onde termina o DDD, então mostramos os dígitos crus e deixamos
 // a mensagem de validação apontar o que falta.

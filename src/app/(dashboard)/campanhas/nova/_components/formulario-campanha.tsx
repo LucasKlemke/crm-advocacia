@@ -22,7 +22,12 @@ import { montarTarefas } from "./tarefas-campanha";
 import { SeletorInstancia, type InstanciaEscolhida } from "./seletor-instancia";
 import { DialogMensagem } from "./dialog-mensagem";
 import { SecaoMensagem } from "./secao-mensagem";
-import { SecaoContatos, contarNumerosInvalidos, type PlanilhaSelecionada } from "./secao-contatos";
+import {
+  SecaoContatos,
+  contarNumerosInvalidos,
+  corrigirNumerosInvalidos,
+  type PlanilhaSelecionada,
+} from "./secao-contatos";
 import { PopoverAgendamento, PopoverIntervalo, type ConfigEnvio } from "./popover-envio";
 
 export function FormularioCampanha() {
@@ -85,6 +90,23 @@ export function FormularioCampanha() {
 
   function handleEnvio<C extends keyof ConfigEnvio>(campo: C, valor: ConfigEnvio[C]) {
     setEnvio((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  function handleCorrigirNumeros() {
+    if (!planilha || !colunaNumero) return;
+    const resultado = corrigirNumerosInvalidos(planilha.linhas, colunaNumero);
+    setPlanilha({ ...planilha, linhas: resultado.linhas });
+
+    if (resultado.corrigidos === 0) {
+      toast.error("Nenhum número pôde ser corrigido automaticamente.");
+      return;
+    }
+    toast.success(
+      `${resultado.corrigidos} número(s) corrigido(s).` +
+        (resultado.restantes > 0
+          ? ` ${resultado.restantes} continuam precisando de ajuste manual.`
+          : "")
+    );
   }
 
   const numerosInvalidos = contarNumerosInvalidos(linhas, colunaNumero);
@@ -232,6 +254,7 @@ export function FormularioCampanha() {
         onAbrirSeletor={() => inputArquivo.current?.click()}
         onArquivo={handleArquivo}
         onColunaNumero={setColunaNumero}
+        onCorrigirNumeros={handleCorrigirNumeros}
       />
 
       {/* A `key` remonta o dialog a cada abertura, e é o que faz o rascunho começar do texto

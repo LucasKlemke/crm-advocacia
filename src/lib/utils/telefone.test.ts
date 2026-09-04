@@ -3,6 +3,7 @@ import {
   formatarTelefone,
   mascararTelefone,
   telefoneValido,
+  corrigirTelefone,
 } from "@/lib/utils/telefone";
 
 describe("normalizarTelefone", () => {
@@ -74,6 +75,35 @@ describe("formatarTelefone", () => {
   it("mascarar não implica que o número é válido para disparo", () => {
     expect(formatarTelefone("554797355799")).toBe("+55 (47) 9735-5799");
     expect(telefoneValido("554797355799")).toBe(false);
+  });
+});
+
+describe("corrigirTelefone", () => {
+  it("devolve o mesmo número quando já é válido", () => {
+    expect(corrigirTelefone("5547999998888")).toBe("5547999998888");
+  });
+
+  // Planilha exportada sem DDI: o formato local (DDD + 9 dígitos) tem 11 dígitos.
+  it("prefixa o 55 quando falta o código do país", () => {
+    expect(corrigirTelefone("47999998888")).toBe("5547999998888");
+    expect(corrigirTelefone("(47) 99999-8888")).toBe("5547999998888");
+  });
+
+  // Formato antigo com DDI: 55 + DDD + 8 dígitos, sem o 9º dígito do celular.
+  it("insere o 9º dígito quando o DDI já está presente", () => {
+    expect(corrigirTelefone("554799998888")).toBe("5547999998888");
+  });
+
+  // Falta tanto o DDI quanto o 9º dígito: só DDD + 8 dígitos.
+  it("prefixa o 55 e insere o 9º dígito quando faltam os dois", () => {
+    expect(corrigirTelefone("4799998888")).toBe("5547999998888");
+  });
+
+  it("não altera números que não dá para corrigir com confiança", () => {
+    expect(corrigirTelefone("Lucas")).toBe("");
+    expect(corrigirTelefone("12948125")).toBe("12948125");
+    expect(corrigirTelefone("5509999998888")).toBe("5509999998888");
+    expect(corrigirTelefone("55479999988889")).toBe("55479999988889");
   });
 });
 

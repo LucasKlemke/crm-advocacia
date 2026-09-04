@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { SecaoContatos } from "./secao-contatos";
+import { SecaoContatos, corrigirNumerosInvalidos } from "./secao-contatos";
 
 const PLANILHA = {
   nomeArquivo: "contatos.csv",
@@ -14,6 +14,7 @@ function renderizar(over: Partial<React.ComponentProps<typeof SecaoContatos>> = 
   const onAbrirSeletor = jest.fn();
   const onArquivo = jest.fn();
   const onColunaNumero = jest.fn();
+  const onCorrigirNumeros = jest.fn();
   render(
     <SecaoContatos
       planilha={null}
@@ -23,10 +24,11 @@ function renderizar(over: Partial<React.ComponentProps<typeof SecaoContatos>> = 
       onAbrirSeletor={onAbrirSeletor}
       onArquivo={onArquivo}
       onColunaNumero={onColunaNumero}
+      onCorrigirNumeros={onCorrigirNumeros}
       {...over}
     />
   );
-  return { onAbrirSeletor, onArquivo, onColunaNumero };
+  return { onAbrirSeletor, onArquivo, onColunaNumero, onCorrigirNumeros };
 }
 
 function arquivoCsv() {
@@ -147,5 +149,49 @@ describe("SecaoContatos — coluna de número", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent(/1 número\(s\) inválido\(s\)/i);
+  });
+
+  it("não oferece o botão de corrigir quando todos os números são válidos", () => {
+    renderizar({ planilha: PLANILHA, colunaNumero: "numero" });
+
+    expect(screen.queryByRole("button", { name: /corrigir números/i })).not.toBeInTheDocument();
+  });
+
+  it("oferece o botão de corrigir quando há número inválido, e aciona o callback ao clicar", () => {
+    const { onCorrigirNumeros } = renderizar({
+      planilha: { ...PLANILHA, linhas: [{ Nome: "Ana", numero: "47999998888" }] },
+      colunaNumero: "numero",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /corrigir números/i }));
+
+    expect(onCorrigirNumeros).toHaveBeenCalled();
+  });
+});
+
+describe("corrigirNumerosInvalidos", () => {
+  it("corrige só as linhas que estão inválidas na coluna escolhida", () => {
+    const resultado = corrigirNumerosInvalidos(
+      [
+        { Nome: "Ana", numero: "5511999998888" },
+        { Nome: "Bruno", numero: "47999998888" },
+        { Nome: "Carla", numero: "não é telefone" },
+      ],
+      "numero"
+    );
+
+    expect(resultado.linhas).toEqual([
+      { Nome: "Ana", numero: "5511999998888" },
+      { Nome: "Bruno", numero: "5547999998888" },
+      { Nome: "Carla", numero: "não é telefone" },
+    ]);
+    expect(resultado.corrigidos).toBe(1);
+    expect(resultado.restantes).toBe(1);
+  });
+
+  it("devolve as linhas intactas quando nenhuma coluna foi escolhida", () => {
+    const linhas = [{ Nome: "Ana", numero: "1234" }];
+
+    expect(corrigirNumerosInvalidos(linhas, "")).toEqual({ linhas, corrigidos: 0, restantes: 0 });
   });
 });

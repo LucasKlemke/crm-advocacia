@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileSpreadsheet, Hash, Loader2, Upload, Users } from "lucide-react";
+import { FileSpreadsheet, Hash, Loader2, Upload, Users, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
+import { corrigirTelefone, normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
 import type { LinhaCsv } from "@/lib/utils/campanha-mensagem";
 
 export interface PlanilhaSelecionada {
@@ -36,6 +36,7 @@ export interface SecaoContatosProps {
   onAbrirSeletor: () => void;
   onArquivo: (arquivo: File | undefined) => void;
   onColunaNumero: (coluna: string) => void;
+  onCorrigirNumeros: () => void;
 }
 
 const LINHAS_NO_PREVIEW = 10;
@@ -50,6 +51,35 @@ export function contarNumerosInvalidos(linhas: LinhaCsv[], coluna: string): numb
   }, []);
 }
 
+export interface ResultadoCorrecaoNumeros {
+  linhas: LinhaCsv[];
+  corrigidos: number;
+  restantes: number;
+}
+
+// Aplica corrigirTelefone só nas linhas hoje inválidas — as demais ficam intocadas, para
+// não reformatar um número que já está do jeito que o usuário digitou.
+export function corrigirNumerosInvalidos(
+  linhas: LinhaCsv[],
+  coluna: string
+): ResultadoCorrecaoNumeros {
+  if (!coluna) return { linhas, corrigidos: 0, restantes: 0 };
+
+  let corrigidos = 0;
+  const novasLinhas = linhas.map((linha) => {
+    const valor = linha[coluna] ?? "";
+    if (telefoneValido(normalizarTelefone(valor))) return linha;
+
+    const corrigido = corrigirTelefone(valor);
+    if (corrigido === normalizarTelefone(valor)) return linha;
+
+    corrigidos++;
+    return { ...linha, [coluna]: corrigido };
+  });
+
+  return { linhas: novasLinhas, corrigidos, restantes: contarNumerosInvalidos(novasLinhas, coluna).length };
+}
+
 export function SecaoContatos({
   planilha,
   colunaNumero,
@@ -58,6 +88,7 @@ export function SecaoContatos({
   onAbrirSeletor,
   onArquivo,
   onColunaNumero,
+  onCorrigirNumeros,
 }: SecaoContatosProps) {
   const [arrastando, setArrastando] = useState(false);
 
@@ -140,10 +171,16 @@ export function SecaoContatos({
       ) : planilha ? (
         <>
           {invalidas.length > 0 ? (
-            <p role="alert" className="text-sm text-destructive">
-              {invalidas.length} número(s) inválido(s) — a começar pela linha {invalidas[0]}. Use o
-              formato com DDI e DDD, por exemplo 5511999999999.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p role="alert" className="text-sm text-destructive">
+                {invalidas.length} número(s) inválido(s) — a começar pela linha {invalidas[0]}. Use
+                o formato com DDI e DDD, por exemplo 5511999999999.
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={onCorrigirNumeros}>
+                <Wand2 />
+                Corrigir números
+              </Button>
+            </div>
           ) : null}
 
           {/* No lugar da área tracejada: os dados que subiram. */}
