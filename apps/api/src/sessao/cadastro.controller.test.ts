@@ -58,3 +58,14 @@ describe("POST /api/cadastro", () => {
       .expect(409, { error: "Este e-mail já está cadastrado." });
   });
 });
+
+describe("POST /api/cadastro — falha inesperada", () => {
+  it("não traduz erros desconhecidos como 409 (responde 500 genérico)", async () => {
+    usuarioService.cadastrarUsuario.mockRejectedValue(new Error("banco fora do ar"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await request(await subir()).post("/api/cadastro").send(payloadValido).expect(500);
+
+    expect(res.body.error).toBe("Não foi possível concluir a operação.");
+  });
+});

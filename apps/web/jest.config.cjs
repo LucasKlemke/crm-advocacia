@@ -30,6 +30,7 @@ module.exports = {
     // componentes que as compõem.
     "!src/components/ui/**",
   ],
+  coverageReporters: ["text-summary", "lcov", "json-summary"],
   coverageThreshold: {
     global: { branches: 25, functions: 25, lines: 25, statements: 25 },
   },

@@ -300,3 +300,26 @@ describe("statusService.criarPadroes", () => {
     await expect(statusService.criarPadroes("esc-1")).rejects.toThrow(TipoStatusInvalidoError);
   });
 });
+
+describe("statusService.atualizar — todos os campos", () => {
+  it("grava tipo, ícone, cor e descrição aparada, e limpa a descrição vazia", async () => {
+    repo.findById.mockResolvedValue(statusFake({ descricao: "antiga" }));
+    tipoRepo.findById.mockResolvedValue(tipoFake({ id: "tipo-2" }));
+    repo.update.mockResolvedValue(statusFake());
+
+    await statusService.atualizar(ctx(), "status-1", {
+      tipoStatusId: "tipo-2",
+      icone: "Flag",
+      cor: "#ef4444",
+      descricao: "  nova  ",
+    });
+    expect(repo.update).toHaveBeenLastCalledWith(
+      "status-1",
+      { tipoStatusId: "tipo-2", icone: "Flag", cor: "#ef4444", descricao: "nova" },
+      expect.anything()
+    );
+
+    await statusService.atualizar(ctx(), "status-1", { descricao: "   " });
+    expect(repo.update).toHaveBeenLastCalledWith("status-1", { descricao: null }, expect.anything());
+  });
+});

@@ -223,3 +223,28 @@ describe("tipoProcessoService.criarPadroes", () => {
     );
   });
 });
+
+describe("tipoProcessoService.atualizar — todos os campos", () => {
+  it("grava ícone, cor e descrição aparada, e limpa a descrição vazia", async () => {
+    repo.findById.mockResolvedValue(tipoFake({ descricao: "antiga" }));
+    repo.update.mockResolvedValue(tipoFake());
+
+    await tipoProcessoService.atualizar(ctx(), "tipo-processo-1", {
+      icone: "Scale",
+      cor: "#ef4444",
+      descricao: "  nova  ",
+    });
+    expect(repo.update).toHaveBeenLastCalledWith(
+      "tipo-processo-1",
+      { icone: "Scale", cor: "#ef4444", descricao: "nova" },
+      expect.anything()
+    );
+
+    await tipoProcessoService.atualizar(ctx(), "tipo-processo-1", { descricao: "  " });
+    expect(repo.update).toHaveBeenLastCalledWith(
+      "tipo-processo-1",
+      { descricao: null },
+      expect.anything()
+    );
+  });
+});

@@ -383,3 +383,60 @@ describe("clienteService.listar", () => {
     expect(resultado.total).toBe(1);
   });
 });
+
+describe("clienteService.atualizar — todos os campos opcionais", () => {
+  it("aparar textos, limpar com vazio/null e converter nascimento", async () => {
+    repo.findById.mockResolvedValue(
+      clienteFake({ nomeMae: "Ana", nomePai: "José", nacionalidade: "Brasileira", profissao: "Dev" })
+    );
+    repo.update.mockResolvedValue(clienteFake());
+    const nascimento = new Date("1990-05-10");
+
+    await clienteService.atualizar(ctx, "cli-1", {
+      nome: "  Maria Souza  ",
+      sexo: "feminino",
+      estadoCivil: "casado",
+      nomeMae: " Ana Maria ",
+      nomePai: "  ",
+      nacionalidade: null,
+      nascimento,
+      profissao: " Advogada ",
+    });
+
+    expect(repo.update).toHaveBeenCalledWith(
+      "cli-1",
+      {
+        nome: "Maria Souza",
+        sexo: "feminino",
+        estadoCivil: "casado",
+        nomeMae: "Ana Maria",
+        nomePai: null,
+        nacionalidade: null,
+        nascimento,
+        profissao: "Advogada",
+      },
+      expect.anything()
+    );
+  });
+
+  it("aceita limpar sexo, estado civil, nascimento e profissão com null", async () => {
+    repo.findById.mockResolvedValue(
+      clienteFake({ sexo: "masculino", estadoCivil: "solteiro", nascimento: new Date("1980-01-01"), profissao: "X" })
+    );
+    repo.update.mockResolvedValue(clienteFake());
+
+    await clienteService.atualizar(ctx, "cli-1", {
+      sexo: null,
+      estadoCivil: null,
+      nascimento: null,
+      profissao: null,
+      nacionalidade: " Italiana ",
+    });
+
+    expect(repo.update).toHaveBeenCalledWith(
+      "cli-1",
+      { sexo: null, estadoCivil: null, nascimento: null, profissao: null, nacionalidade: "Italiana" },
+      expect.anything()
+    );
+  });
+});

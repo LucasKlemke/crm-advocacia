@@ -51,14 +51,17 @@ export function ClientesTable({ atorUsuarioId, atorNome, atorRole }: ClientesTab
   const [sheet, setSheet] = useState<{ modo: ModoSheet; cliente: ClienteDTO | null } | null>(null);
 
   // Debounce: cada tecla digitada não pode virar uma consulta ao banco.
+  // Sem mudança real na busca (ex.: montagem inicial) nada é descartado: antes, o timer da
+  // montagem zerava a seleção feita nos primeiros 300ms.
   useEffect(() => {
+    if (buscaDigitada === busca) return;
     const timer = setTimeout(() => {
       setBusca(buscaDigitada);
       setPagina(1);
       setSelecionados([]);
     }, 300);
     return () => clearTimeout(timer);
-  }, [buscaDigitada]);
+  }, [buscaDigitada, busca]);
 
   const filtros = useMemo(
     () => ({ busca, incluirExcluidos, pagina }),
