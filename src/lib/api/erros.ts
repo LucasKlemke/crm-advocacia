@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
   NaoAutenticadoError,
   SemEscritorioAtivoError,
@@ -10,19 +9,19 @@ import type { ZodError } from "zod";
 // centralizado aqui para que uma rota nova não invente um código diferente por descuido.
 export function tratarErroDeContexto(error: unknown) {
   if (error instanceof NaoAutenticadoError) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+    return Response.json({ error: error.message }, { status: 401 });
   }
   if (error instanceof SemEscritorioAtivoError) {
-    return NextResponse.json({ error: error.message }, { status: 409 });
+    return Response.json({ error: error.message }, { status: 409 });
   }
   if (error instanceof AcessoNegadoError) {
-    return NextResponse.json({ error: error.message }, { status: 403 });
+    return Response.json({ error: error.message }, { status: 403 });
   }
   return null;
 }
 
 export function respostaDadosInvalidos(error?: ZodError) {
-  return NextResponse.json(
+  return Response.json(
     {
       error: "Dados inválidos",
       ...(error ? { detalhes: error.flatten().fieldErrors } : {}),

@@ -5,7 +5,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { paraJson } from "./json";
 
 describe("paraJson", () => {
-  it("converte Date para string ISO, como NextResponse.json faria", () => {
+  it("converte Date para string ISO, como Response.json faria", () => {
     const resultado = paraJson<{ createdAt: string }>({ createdAt: new Date("2026-08-22T12:00:00Z") });
 
     expect(resultado.createdAt).toBe("2026-08-22T12:00:00.000Z");

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
   CasoNaoEncontradoError,
   ClienteInativoError,
@@ -15,10 +14,10 @@ export function tratarErroDeCaso(error: unknown) {
     error instanceof ClienteNaoEncontradoError ||
     error instanceof StatusNaoEncontradoError
   ) {
-    return NextResponse.json({ error: error.message }, { status: 404 });
+    return Response.json({ error: error.message }, { status: 404 });
   }
   if (error instanceof ClienteInativoError || error instanceof ResponsavelInvalidoError) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return Response.json({ error: error.message }, { status: 400 });
   }
   return null;
 }
