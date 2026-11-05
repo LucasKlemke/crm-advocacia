@@ -4,10 +4,10 @@ import "@fontsource-variable/inter";
 import "@fontsource-variable/geist-mono";
 import "./globals.css";
 import "./fontes.css";
-import { PaginaEmMigracao } from "@/paginas/pagina-em-migracao";
+import { App } from "@/app";
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>
-    <PaginaEmMigracao caminhoNext="src/app/layout.tsx" />
+    <App />
   </StrictMode>
 );
