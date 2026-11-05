@@ -4,7 +4,7 @@ import { Test } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import type { Response as ExpressResponse } from "express";
 import request from "supertest";
-import { configurarApp } from "../criar-app";
+import { OPCOES_APP, configurarApp } from "../criar-app";
 import { ErrosHttpFilter } from "./erros-http.filter";
 import { erroAoGerarZip, responderZip } from "./resposta-zip";
 
@@ -25,7 +25,7 @@ describe("responderZip / erroAoGerarZip", () => {
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({ controllers: [ZipTesteController] }).compile();
-    app = configurarApp(modulo.createNestApplication());
+    app = configurarApp(modulo.createNestApplication(OPCOES_APP));
     await app.init();
   });
   afterAll(() => app.close());

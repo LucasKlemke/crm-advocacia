@@ -2,7 +2,7 @@ import { Controller, Get, Post, Req, Res } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
 import request from "supertest";
-import { configurarApp } from "../../criar-app";
+import { OPCOES_APP, configurarApp } from "../../criar-app";
 import { gravarCookieSessao, lerSessaoDaRequisicao, limparCookieSessao } from "./cookie-sessao";
 import { verificarSessao } from "@/lib/auth/sessao-jwt";
 import { cookieDeSessao, setCookieDaSessao, tokenDoSetCookie, usarSegredoDeTeste } from "../../../test/sessao";
@@ -39,7 +39,7 @@ describe("cookie-sessao", () => {
 
   async function subir() {
     const modulo = await Test.createTestingModule({ controllers: [CookieController] }).compile();
-    const app = configurarApp(modulo.createNestApplication());
+    const app = configurarApp(modulo.createNestApplication(OPCOES_APP));
     await app.init();
     return app;
   }

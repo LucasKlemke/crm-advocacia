@@ -1,14 +1,14 @@
 import { Body, Controller, HttpCode, Post, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-import { configurarApp } from "./criar-app";
+import { OPCOES_APP, configurarApp } from "./criar-app";
 
 @Controller("eco-corpo")
 class EcoCorpoController {
   @Post()
   @HttpCode(200)
-  eco(@Body() corpo: { linhas?: unknown[] }) {
-    return { linhas: corpo.linhas?.length ?? 0 };
+  eco(@Body() corpo: { linhas?: unknown[] } | undefined) {
+    return { linhas: corpo?.linhas?.length ?? 0, corpo: corpo ?? null };
   }
 }
 
@@ -17,7 +17,7 @@ describe("configurarApp — limite do corpo JSON", () => {
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({ controllers: [EcoCorpoController] }).compile();
-    app = configurarApp(modulo.createNestApplication());
+    app = configurarApp(modulo.createNestApplication(OPCOES_APP));
     await app.init();
   });
   afterAll(() => app.close());
@@ -33,7 +33,16 @@ describe("configurarApp — limite do corpo JSON", () => {
     }));
     expect(JSON.stringify({ linhas }).length).toBeGreaterThan(100 * 1024);
 
-    await request(app.getHttpServer()).post("/api/eco-corpo").send({ linhas }).expect(200, { linhas: 5000 });
+    const res = await request(app.getHttpServer()).post("/api/eco-corpo").send({ linhas }).expect(200);
+    expect(res.body.linhas).toBe(5000);
+  });
+
+  // Defesa de CSRF: um <form> cross-site só envia urlencoded/multipart/text simples. Sem
+  // parser para esses tipos, o corpo nunca vira objeto e as rotas não os aceitam.
+  it("não interpreta corpo urlencoded como objeto em nenhuma rota", async () => {
+    const res = await request(app.getHttpServer()).post("/api/eco-corpo").type("form").send("linhas=1&x=2");
+
+    expect(res.body.corpo === null || Object.keys(res.body.corpo).length === 0).toBe(true);
   });
 
   it("responde 413 com mensagem amigável acima de 10 MB", async () => {

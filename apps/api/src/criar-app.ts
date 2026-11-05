@@ -16,6 +16,12 @@ export const LIMITE_CORPO_JSON = "10mb";
 export const CAMINHO_WEBHOOK_UAZAPI = "/api/webhooks/uazapi";
 export const LIMITE_CORPO_WEBHOOK = "10mb";
 
+// Opções de criação da app, compartilhadas por main.ts e testes. O body parser padrão do
+// Nest registra também o urlencoded, o único tipo (além de multipart/text) que um <form>
+// cross-site consegue enviar: com ele, POST /api/auth/login viraria CSRF de login (a
+// vítima ficaria logada na conta do atacante). Só registramos o que a API usa (ver abaixo).
+export const OPCOES_APP = { bodyParser: false } as const;
+
 // Configuração única usada pelo main.ts e pelos testes — o teste exercita exatamente
 // o mesmo prefixo/filtros/parsers que a API real.
 export function configurarApp(app: INestApplication): INestApplication {

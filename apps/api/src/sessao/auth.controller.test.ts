@@ -87,6 +87,18 @@ describe("POST /api/auth/login", () => {
     expect(setCookieDaSessao(res)).toBeUndefined();
   });
 
+  it("recusa corpo urlencoded (CSRF por form cross-site) sem chamar a autenticação", async () => {
+    const res = await request(await subir())
+      .post("/api/auth/login")
+      .type("form")
+      .send("email=a@b.com&senha=x");
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+    expect(autorizar).not.toHaveBeenCalled();
+    expect(setCookieDaSessao(res)).toBeUndefined();
+  });
+
   it("responde 400 sem chamar a autenticação quando falta senha", async () => {
     const res = await request(await subir()).post("/api/auth/login").send({ email: "fulana@teste.com" }).expect(400);
 
@@ -99,7 +111,11 @@ describe("POST /api/auth/logout", () => {
   it("limpa o cookie e responde { ok: true }, mesmo sem sessão", async () => {
     const res = await request(await subir()).post("/api/auth/logout").expect(200, { ok: true });
 
-    expect(setCookieDaSessao(res)).toMatch(/^crm_sessao=;.*Expires=Thu, 01 Jan 1970/);
+    const setCookie = setCookieDaSessao(res);
+    expect(setCookie).toMatch(/^crm_sessao=;.*Expires=Thu, 01 Jan 1970/);
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
   });
 });
 
@@ -155,6 +171,17 @@ describe("GET /api/auth/sessao", () => {
       .get("/api/auth/sessao")
       .set("Cookie", "authjs.session-token=qualquer")
       .expect(401);
+  });
+
+  it("responde 401 com crm_sessao adulterado (assinatura inválida)", async () => {
+    const valido = await cookieDeSessao({ sub: "user-1", escritorioId: "esc-1" });
+    const adulterado = `${valido.slice(0, -4)}AAAA`;
+
+    await request(await subir())
+      .get("/api/auth/sessao")
+      .set("Cookie", adulterado)
+      .expect(401, { error: "Sessão inválida ou expirada." });
+    expect(usuarioService.obterPerfil).not.toHaveBeenCalled();
   });
 
   it("responde 401 quando o usuário foi desativado depois do login", async () => {

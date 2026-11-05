@@ -2,7 +2,7 @@ import { BadRequestException, Controller, Get, NotFoundException, Post, Body, Us
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { z } from "zod";
-import { configurarApp } from "../criar-app";
+import { OPCOES_APP, configurarApp } from "../criar-app";
 import { ErrosHttpFilter } from "./erros-http.filter";
 import { ValidacaoZodPipe } from "./validacao.pipe";
 import { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError } from "@/lib/auth/resolver-tenant";
@@ -33,7 +33,7 @@ describe("ErrosHttpFilter", () => {
   let app: Awaited<ReturnType<typeof criar>>;
   async function criar() {
     const modulo = await Test.createTestingModule({ controllers: [TesteController] }).compile();
-    const nest = configurarApp(modulo.createNestApplication());
+    const nest = configurarApp(modulo.createNestApplication(OPCOES_APP));
     await nest.init();
     return nest;
   }

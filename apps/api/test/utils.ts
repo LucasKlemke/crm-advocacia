@@ -1,6 +1,6 @@
 import type { INestApplication, Type } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { configurarApp } from "../src/criar-app";
+import { OPCOES_APP, configurarApp } from "../src/criar-app";
 import { TenantModule } from "../src/comum/tenant/tenant.module";
 import { RESOLVEDOR_TENANT, RESOLVEDOR_USUARIO } from "../src/comum/tenant/ler-sessao";
 import type { TenantContext } from "@/lib/auth/resolver-tenant";
@@ -44,7 +44,7 @@ export async function criarAppDeTeste(opcoes: OpcoesAppDeTeste): Promise<INestAp
   }
 
   const modulo = await builder.compile();
-  const app = configurarApp(modulo.createNestApplication());
+  const app = configurarApp(modulo.createNestApplication(OPCOES_APP));
   await app.init();
   return app;
 }
