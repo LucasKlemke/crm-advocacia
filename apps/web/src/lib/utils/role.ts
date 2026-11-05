@@ -1,4 +1,4 @@
-import type { RoleMembro } from "@prisma/client";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 const LABEL_ROLE: Record<RoleMembro, string> = {
   owner: "Dono",

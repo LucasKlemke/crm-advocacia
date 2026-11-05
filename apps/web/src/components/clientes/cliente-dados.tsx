@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ClienteDTO } from "@dominio/types/cliente";
+import type { ClienteDTO } from "@crm/compartilhado/tipos/cliente";
 
 export interface ClienteDadosProps {
   cliente: ClienteDTO;

@@ -8,7 +8,7 @@ import { UsuarioGuard } from "../comum/tenant/usuario.guard";
 import { UsuarioId } from "../comum/tenant/usuario.decorator";
 import { MEMBRO_SERVICE } from "./tokens";
 import { trocarEscritorioSchema, type DadosTrocaEscritorio } from "./schemas";
-import { PermissaoNegadaError, type membroService } from "@/services/membro.service";
+import { PermissaoNegadaError, type membroService } from "@dominio/services/membro.service";
 
 const tratarErroDeTroca: TradutorDeErro = (error) =>
   error instanceof PermissaoNegadaError ? Response.json({ error: error.message }, { status: 403 }) : null;

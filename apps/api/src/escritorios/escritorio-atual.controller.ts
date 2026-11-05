@@ -5,9 +5,9 @@ import { ErrosHttpFilter } from "../comum/erros-http.filter";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { ESCRITORIO_SERVICE } from "./tokens";
 import { tratarErroDeEscritorio } from "./erros";
-import { atualizarEscritorioSchema } from "@/lib/api/schemas-escritorio";
-import type { escritorioService, AtualizarEscritorioInput } from "@/services/escritorio.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { atualizarEscritorioSchema } from "@dominio/lib/api/schemas-escritorio";
+import type { escritorioService, AtualizarEscritorioInput } from "@dominio/services/escritorio.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Escritório ativo da sessão. A criação (POST /api/escritorios) continua no Next até a
 // Fase 3, porque troca o escritório ativo dentro do cookie de sessão.

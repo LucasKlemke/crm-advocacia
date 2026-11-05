@@ -3,7 +3,7 @@ import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../test/utils";
 import { EscritoriosModule } from "./escritorios.module";
 import { MEMBRO_SERVICE_DO_USUARIO } from "./tokens";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const membros = { listarEscritoriosDoUsuario: jest.fn() };
 let app: INestApplication;

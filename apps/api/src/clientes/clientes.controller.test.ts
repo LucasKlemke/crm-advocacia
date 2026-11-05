@@ -9,8 +9,8 @@ import {
   ClienteNaoEncontradoError,
   CpfDuplicadoError,
   CpfInvalidoError,
-} from "@/services/cliente.service";
-import { NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/cliente.service";
+import { NaoAutenticadoError, SemEscritorioAtivoError } from "@dominio/lib/auth/resolver-tenant";
 
 const CPF = "529.982.247-25";
 const ID_A = "11111111-1111-4111-8111-111111111111";

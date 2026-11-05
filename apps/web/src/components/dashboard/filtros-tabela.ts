@@ -1,6 +1,6 @@
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import type { FiltrosCasos } from "@dominio/types/caso";
-import type { FiltrosDashboard } from "@dominio/types/dashboard";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import type { FiltrosCasos } from "@crm/compartilhado/tipos/caso";
+import type { FiltrosDashboard } from "@crm/compartilhado/tipos/dashboard";
 
 // Traduz o estado do header do dashboard (+ os cards de status selecionados) para os
 // filtros da tabela de preview. Função pura e compartilhada porque as duas pontas

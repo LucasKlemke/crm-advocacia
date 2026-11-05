@@ -37,7 +37,7 @@ import {
   Ban,
   type LucideIcon,
 } from "lucide-react";
-import { ICONES_STATUS_PERMITIDOS } from "@dominio/lib/utils/icones-status";
+import { ICONES_STATUS_PERMITIDOS } from "@crm/compartilhado/utils/icones-status";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";

@@ -9,8 +9,8 @@ import {
   StatusComCasosError,
   TipoStatusInvalidoError,
   PermissaoNegadaError,
-} from "@/services/status.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/status.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const TIPO_ID = "123e4567-e89b-12d3-a456-426614174000";
 const corpoValido = { nome: "Lead", tipoStatusId: TIPO_ID, icone: "UserPlus", cor: "#64748b" };

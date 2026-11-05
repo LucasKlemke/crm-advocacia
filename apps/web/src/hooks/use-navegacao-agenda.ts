@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "@/compat/next-navigation";
 import { navegar, rangeDaVisao, rotuloDoPeriodo, chaveDoDia } from "@/lib/utils/agenda-grade";
-import type { VisaoAgenda } from "@dominio/types/evento";
+import type { VisaoAgenda } from "@crm/compartilhado/tipos/evento";
 
 const VISOES: VisaoAgenda[] = ["mes", "semana", "dia"];
 

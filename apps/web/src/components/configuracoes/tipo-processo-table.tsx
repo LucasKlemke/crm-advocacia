@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TipoProcessoForm } from "@/components/configuracoes/tipo-processo-form";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
-import type { TipoProcessoDTO } from "@dominio/types/tipo-processo";
+import type { TipoProcessoDTO } from "@crm/compartilhado/tipos/tipo-processo";
 
 export interface TipoProcessoTableProps {
   somenteLeitura: boolean;

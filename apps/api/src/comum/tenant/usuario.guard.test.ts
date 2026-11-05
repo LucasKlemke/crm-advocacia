@@ -3,7 +3,7 @@ import request from "supertest";
 import { criarAppDeTeste } from "../../../test/utils";
 import { UsuarioGuard } from "./usuario.guard";
 import { UsuarioId } from "./usuario.decorator";
-import { NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError, SemEscritorioAtivoError } from "@dominio/lib/auth/resolver-tenant";
 
 @Controller("eco-usuario")
 @UseGuards(UsuarioGuard)

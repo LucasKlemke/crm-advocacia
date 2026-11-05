@@ -10,9 +10,9 @@ import {
   PermissaoDocumentoError,
   TamanhoInvalidoError,
   TipoInvalidoError,
-} from "@/services/documento.service";
-import { ClienteNaoEncontradoError } from "@/services/cliente.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/documento.service";
+import { ClienteNaoEncontradoError } from "@dominio/services/cliente.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const service = {
   listarPorEscopo: jest.fn(),

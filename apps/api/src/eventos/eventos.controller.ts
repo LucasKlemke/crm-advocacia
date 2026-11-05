@@ -23,15 +23,15 @@ import {
   novoEventoSchema,
   edicaoEventoSchema,
   parseFiltrosEventosDaQuery,
-} from "@/lib/api/schemas-evento";
-import { tratarErroDeEvento } from "@/lib/api/erros-evento";
+} from "@crm/compartilhado/schemas/evento";
+import { tratarErroDeEvento } from "@dominio/lib/api/erros-evento";
 import type {
   eventoService,
   DadosNovoEvento,
   DadosEdicaoEvento,
-} from "@/services/evento.service";
-import type { EventoComRelacoes } from "@/repositories/evento.repository";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/evento.service";
+import type { EventoComRelacoes } from "@dominio/repositories/evento.repository";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Agenda compartilhada do escritório (RN31). `podeEditar` de cada evento é resolvido
 // com o membro da sessão (RN34) e viaja no DTO.

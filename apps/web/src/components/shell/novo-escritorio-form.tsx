@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { mascararOab } from "@/lib/utils/oab";
-import { mascararTelefone } from "@dominio/lib/utils/telefone";
+import { mascararTelefone } from "@crm/compartilhado/utils/telefone";
 
 const inputClassName =
   "h-12 rounded-xl border-transparent bg-muted px-4 text-base shadow-none focus-visible:border-ring focus-visible:bg-background";

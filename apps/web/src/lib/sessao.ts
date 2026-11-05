@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { RoleMembro } from "@prisma/client";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { chaveSessao } from "@/lib/query/chaves";
 import { queryClientRaiz } from "@/lib/query/query-client-raiz";

@@ -32,11 +32,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
-import { formatarTelefone } from "@dominio/lib/utils/telefone";
+import { formatarTelefone } from "@crm/compartilhado/utils/telefone";
 import { StatusBadgeInstancia } from "./status-badge-instancia";
 import { NovaInstanciaDialog } from "./nova-instancia-dialog";
 import { QrcodeDialog, type QrcodeDialogState } from "./qrcode-dialog";
-import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 
 export interface ListaInstanciasProps {
   somenteLeitura: boolean;

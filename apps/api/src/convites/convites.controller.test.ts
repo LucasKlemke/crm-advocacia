@@ -8,12 +8,12 @@ import {
   ConviteNaoEncontradoError,
   JaEhMembroError,
   PermissaoNegadaError,
-} from "@/services/convite.service";
+} from "@dominio/services/convite.service";
 import {
   AcessoNegadoError,
   NaoAutenticadoError,
   SemEscritorioAtivoError,
-} from "@/lib/auth/resolver-tenant";
+} from "@dominio/lib/auth/resolver-tenant";
 
 const service = { listarPendentes: jest.fn(), convidar: jest.fn(), cancelar: jest.fn() };
 const corpoValido = { email: "novo@teste.com", role: "padrao" };

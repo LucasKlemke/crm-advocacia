@@ -2,11 +2,11 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { FileText, MessageSquare, UserRound } from "lucide-react";
-import { formatarCpf } from "@dominio/lib/utils/cpf";
+import { formatarCpf } from "@crm/compartilhado/utils/cpf";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { BadgeValor } from "@/components/shared/badge-valor";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
-import type { CasoDTO } from "@dominio/types/caso";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
 
 export interface CasoCardProps {
   caso: CasoDTO;

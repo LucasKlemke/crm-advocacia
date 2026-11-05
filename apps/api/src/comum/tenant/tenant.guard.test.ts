@@ -3,8 +3,8 @@ import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../../test/utils";
 import { TenantGuard } from "./tenant.guard";
 import { Tenant } from "./tenant.decorator";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 @Controller("eco")
 @UseGuards(TenantGuard)

@@ -6,7 +6,7 @@ import {
   opcoesCookieSessao,
   verificarSessao,
   type SessaoJwt,
-} from "@/lib/auth/sessao-jwt";
+} from "@dominio/lib/auth/sessao-jwt";
 
 // Ponte entre o módulo compartilhado (src/lib/auth/sessao-jwt.ts) e o Express. Só os
 // controllers do SessaoModule gravam/limpam o cookie; os guards apenas leem.

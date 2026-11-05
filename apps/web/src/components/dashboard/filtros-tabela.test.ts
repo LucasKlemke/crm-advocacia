@@ -1,6 +1,6 @@
 import { filtrosTabelaDashboard } from "./filtros-tabela";
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import { filtrosDashboardPadrao } from "@dominio/types/dashboard";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import { filtrosDashboardPadrao } from "@crm/compartilhado/tipos/dashboard";
 
 describe("filtrosTabelaDashboard", () => {
   it("sem filtro nem seleção, equivale aos filtros padrão de casos", () => {

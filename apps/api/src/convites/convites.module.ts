@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConvitesController } from "./convites.controller";
 import { CONVITE_SERVICE } from "./tokens";
-import { conviteService } from "@/services/convite.service";
+import { conviteService } from "@dominio/services/convite.service";
 
 @Module({
   controllers: [ConvitesController],

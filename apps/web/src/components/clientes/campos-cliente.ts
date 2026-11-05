@@ -11,10 +11,10 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
-import { cpfValido, formatarCpf, mascararCpf } from "@dominio/lib/utils/cpf";
-import { emailValido } from "@dominio/lib/utils/email";
-import { formatarTelefone, mascararTelefone, telefoneValido } from "@dominio/lib/utils/telefone";
-import type { ClienteDTO } from "@dominio/types/cliente";
+import { cpfValido, formatarCpf, mascararCpf } from "@crm/compartilhado/utils/cpf";
+import { emailValido } from "@crm/compartilhado/utils/email";
+import { formatarTelefone, mascararTelefone, telefoneValido } from "@crm/compartilhado/utils/telefone";
+import type { ClienteDTO } from "@crm/compartilhado/tipos/cliente";
 
 export type NomeCampo =
   | "nome"

@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { renderComQuery } from "@/lib/test-utils";
 import { SeletorInstancia } from "./seletor-instancia";
-import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 
 const useInstanciasMock = jest.fn();
 jest.mock("@/hooks/use-instancias-whatsapp", () => ({

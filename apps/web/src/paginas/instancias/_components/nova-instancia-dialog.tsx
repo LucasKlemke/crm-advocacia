@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { RespostaConexaoInstanciaWhatsapp } from "@dominio/types/instancia-whatsapp";
+import type { RespostaConexaoInstanciaWhatsapp } from "@crm/compartilhado/tipos/instancia-whatsapp";
 
 const NOME_MAX = 60;
 

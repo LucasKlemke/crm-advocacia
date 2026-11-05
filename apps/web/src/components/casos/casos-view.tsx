@@ -5,9 +5,9 @@ import { CasosHeader, type VisaoCasos } from "@/components/casos/casos-header";
 import { CasosKanban } from "@/components/casos/casos-kanban";
 import { CasosTable } from "@/components/casos/casos-table";
 import { CasoSheet, type ModoSheet } from "@/components/casos/caso-sheet";
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import type { CasoDTO, FiltrosCasos } from "@dominio/types/caso";
-import type { RoleMembro } from "@prisma/client";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import type { CasoDTO, FiltrosCasos } from "@crm/compartilhado/tipos/caso";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 export interface CasosViewProps {
   atorUsuarioId: string;

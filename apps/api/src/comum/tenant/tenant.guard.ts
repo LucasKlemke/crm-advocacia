@@ -1,7 +1,7 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import type { Request } from "express";
 import { RESOLVEDOR_TENANT, type ResolvedorTenant } from "./ler-sessao";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 export type RequestComTenant = Request & { tenant?: TenantContext };
 

@@ -6,7 +6,7 @@ import type {
   ListaInstanciasWhatsapp,
   RespostaConexaoInstanciaWhatsapp,
   RespostaStatusInstanciaWhatsapp,
-} from "@dominio/types/instancia-whatsapp";
+} from "@crm/compartilhado/tipos/instancia-whatsapp";
 
 export interface DadosNovaInstanciaWhatsapp {
   nome: string;

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "@/lib/test-utils";
 import { DocumentoViewer } from "./documento-viewer";
-import type { DocumentoDTO } from "@dominio/types/documento";
+import type { DocumentoDTO } from "@crm/compartilhado/tipos/documento";
 
 function documentoFake(over: Partial<DocumentoDTO> = {}): DocumentoDTO {
   return {

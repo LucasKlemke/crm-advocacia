@@ -11,7 +11,7 @@ import {
   useTiposStatus,
   type DadosStatusForm,
 } from "@/hooks/use-status";
-import { CORES_STATUS_PERMITIDAS } from "@dominio/lib/utils/cores-status";
+import { CORES_STATUS_PERMITIDAS } from "@crm/compartilhado/utils/cores-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusIconePicker } from "@/components/configuracoes/status-icone-picker";
-import type { StatusDTO } from "@dominio/types/status";
+import type { StatusDTO } from "@crm/compartilhado/tipos/status";
 
 export interface StatusFormProps {
   status?: StatusDTO;

@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TiposProcessoController } from "./tipos-processo.controller";
 import { TIPO_PROCESSO_SERVICE } from "./tokens";
-import { tipoProcessoService } from "@/services/tipo-processo.service";
+import { tipoProcessoService } from "@dominio/services/tipo-processo.service";
 
 @Module({
   controllers: [TiposProcessoController],

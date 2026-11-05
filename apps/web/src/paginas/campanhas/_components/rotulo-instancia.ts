@@ -1,4 +1,4 @@
-import type { CampanhaDTO } from "@dominio/types/campanha";
+import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
 
 // Como a campanha identifica a conexão que a disparou. Mora num módulo próprio porque a
 // listagem e a tela de detalhe mostram a mesma informação e não podem divergir.

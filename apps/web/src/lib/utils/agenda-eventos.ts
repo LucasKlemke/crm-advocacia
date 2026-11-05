@@ -4,7 +4,7 @@
 // Módulo puro, sem I/O.
 
 import { isSameDay } from "date-fns/isSameDay";
-import type { EventoDTO } from "@dominio/types/evento";
+import type { EventoDTO } from "@crm/compartilhado/tipos/evento";
 import { chaveDoDia } from "./agenda-grade";
 import { minutosDoDia } from "./agenda-layout";
 

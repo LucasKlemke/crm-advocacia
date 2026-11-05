@@ -1,4 +1,4 @@
-import type { serializarEvento, serializarEventos } from "@/lib/api/serializa-evento";
+import type { serializarEvento, serializarEventos } from "@dominio/lib/api/serializa-evento";
 
 export const EVENTO_SERVICE = Symbol("EVENTO_SERVICE");
 

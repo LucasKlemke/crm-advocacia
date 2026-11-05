@@ -9,8 +9,8 @@ import {
   useCasosKanban,
   useCriarCaso,
 } from "./use-casos";
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import type { CasoDTO } from "@dominio/types/caso";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
 
 function criarWrapper() {
   const queryClient = new QueryClient({

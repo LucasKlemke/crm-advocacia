@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor, within } from "@/lib/test-utils";
 import { ClientesTable } from "./clientes-table";
-import type { ClienteDTO } from "@dominio/types/cliente";
+import type { ClienteDTO } from "@crm/compartilhado/tipos/cliente";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 

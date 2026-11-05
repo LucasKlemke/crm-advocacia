@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "@/compat/next-navigation";
 import { toast } from "sonner";
-import type { RoleMembro } from "@prisma/client";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

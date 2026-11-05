@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { RAIZ_EVENTOS, chaveEventos } from "@/lib/query/chaves";
-import type { EventoDTO, FiltrosEventos, ListaEventos, ModalidadeEvento } from "@dominio/types/evento";
+import type { EventoDTO, FiltrosEventos, ListaEventos, ModalidadeEvento } from "@crm/compartilhado/tipos/evento";
 
 // Espelha o corpo aceito por POST /api/eventos (novoEventoSchema). Datas em ISO/UTC —
 // a conversão do <input datetime-local> é feita pelo formulário, não aqui.

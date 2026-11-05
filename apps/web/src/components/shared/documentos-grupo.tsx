@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { DocumentoDTO, EscopoDocumentoDTO, TipoArquivoDTO } from "@dominio/types/documento";
+import type { DocumentoDTO, EscopoDocumentoDTO, TipoArquivoDTO } from "@crm/compartilhado/tipos/documento";
 
 const TAMANHO_MAXIMO_KB = 10 * 1024;
 

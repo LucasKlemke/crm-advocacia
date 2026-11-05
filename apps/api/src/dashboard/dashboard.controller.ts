@@ -4,9 +4,9 @@ import { TenantGuard } from "../comum/tenant/tenant.guard";
 import { Tenant } from "../comum/tenant/tenant.decorator";
 import { searchParamsDaRequisicao } from "../comum/query";
 import { DASHBOARD_SERVICE } from "./tokens";
-import { parseFiltrosCasoDaQuery } from "@/lib/api/schemas-caso";
-import type { dashboardService } from "@/services/dashboard.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { parseFiltrosCasoDaQuery } from "@crm/compartilhado/schemas/caso";
+import type { dashboardService } from "@dominio/services/dashboard.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Sem tradutores de domínio: o resumo só falha por tenant (filtro global) ou erro
 // inesperado (500 genérico).

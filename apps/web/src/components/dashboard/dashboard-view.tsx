@@ -20,11 +20,11 @@ import { filtrosTabelaDashboard } from "@/components/dashboard/filtros-tabela";
 import { CasoSheet } from "@/components/casos/caso-sheet";
 import { FiltroMultiSelect } from "@/components/shared/filtro-multi-select";
 import { FiltroPeriodo, type PeriodoFiltro } from "@/components/casos/filtro-periodo";
-import { formatarCpf } from "@dominio/lib/utils/cpf";
-import { SEM_RESPONSAVEL } from "@dominio/types/caso";
-import { filtrosDashboardPadrao } from "@dominio/types/dashboard";
-import type { ContagemPorTipoStatusDTO, FiltrosDashboard } from "@dominio/types/dashboard";
-import type { RoleMembro } from "@prisma/client";
+import { formatarCpf } from "@crm/compartilhado/utils/cpf";
+import { SEM_RESPONSAVEL } from "@crm/compartilhado/tipos/caso";
+import { filtrosDashboardPadrao } from "@crm/compartilhado/tipos/dashboard";
+import type { ContagemPorTipoStatusDTO, FiltrosDashboard } from "@crm/compartilhado/tipos/dashboard";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 export interface DashboardViewProps {
   atorUsuarioId: string;

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { labelRole } from "@/lib/utils/role";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
-import type { RoleMembro } from "@prisma/client";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 export interface ConviteLinha {
   id: string;

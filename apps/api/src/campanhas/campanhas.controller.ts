@@ -20,10 +20,10 @@ import {
   novaCampanhaSchema,
   acaoCampanhaSchema,
   paginaCampanhaSchema,
-} from "@/lib/api/schemas-campanha";
-import { tratarErroDeCampanha } from "@/lib/api/erros-campanha";
-import type { campanhaService } from "@/services/campanha.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@crm/compartilhado/schemas/campanha";
+import { tratarErroDeCampanha } from "@dominio/lib/api/erros-campanha";
+import type { campanhaService } from "@dominio/services/campanha.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 type CorpoNovaCampanha = z.output<typeof novaCampanhaSchema>;
 type CorpoAcaoCampanha = z.output<typeof acaoCampanhaSchema>;

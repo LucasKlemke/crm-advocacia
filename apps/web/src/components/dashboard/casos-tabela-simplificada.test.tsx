@@ -1,8 +1,8 @@
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import userEvent from "@testing-library/user-event";
 import { CasosTabelaSimplificada } from "./casos-tabela-simplificada";
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import type { ListaCasos } from "@dominio/types/caso";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import type { ListaCasos } from "@crm/compartilhado/tipos/caso";
 
 const ATOR = { atorUsuarioId: "usr-1", atorNome: "Ana", atorRole: "owner" as const };
 

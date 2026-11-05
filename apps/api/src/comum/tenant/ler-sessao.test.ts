@@ -1,10 +1,10 @@
 import type { Request } from "express";
 import { headersDaRequisicao, resolverTenantDaRequisicao, resolverUsuarioDaRequisicao } from "./ler-sessao";
-import { resolverTenantContext, NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+import { resolverTenantContext, NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 import { cookieDeSessao, usarSegredoDeTeste } from "../../../test/sessao";
 
-jest.mock("@/lib/auth/resolver-tenant", () => ({
-  ...jest.requireActual("@/lib/auth/resolver-tenant"),
+jest.mock("@dominio/lib/auth/resolver-tenant", () => ({
+  ...jest.requireActual("@dominio/lib/auth/resolver-tenant"),
   resolverTenantContext: jest.fn(),
 }));
 

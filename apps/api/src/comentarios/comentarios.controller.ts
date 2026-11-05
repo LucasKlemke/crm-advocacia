@@ -25,13 +25,13 @@ import {
   edicaoComentarioSchema,
   type NovoComentario,
   type EdicaoComentario,
-} from "@/lib/api/schemas-comentario";
-import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
-import { tratarErroDeCaso } from "@/lib/api/erros-caso";
-import { tratarErroDeComentario } from "@/lib/api/erros-comentario";
-import type { comentarioService } from "@/services/comentario.service";
-import type { usuarioService } from "@/services/usuario.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@dominio/lib/api/schemas-comentario";
+import { tratarErroDeCliente } from "@dominio/lib/api/erros-cliente";
+import { tratarErroDeCaso } from "@dominio/lib/api/erros-caso";
+import { tratarErroDeComentario } from "@dominio/lib/api/erros-comentario";
+import type { comentarioService } from "@dominio/services/comentario.service";
+import type { usuarioService } from "@dominio/services/usuario.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Comentários de cliente e caso (RN21). O service valida o alvo contra o tenant e lança
 // ClienteNaoEncontradoError/CasoNaoEncontradoError (404) quando o alvo é de outro

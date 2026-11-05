@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { RoleMembro } from "@prisma/client";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 import { apiFetch } from "@/lib/api-client";
 
 export interface EscritorioDoUsuarioDTO {

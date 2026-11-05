@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { DocumentoDTO, TipoArquivoDTO } from "@dominio/types/documento";
+import type { DocumentoDTO, TipoArquivoDTO } from "@crm/compartilhado/tipos/documento";
 
 // docx não tem visualizador nativo no navegador (diferente de pdf/imagem) — mostrar um
 // <iframe>/<img> pra ele só resultaria em download ou tela em branco, então nem tenta.

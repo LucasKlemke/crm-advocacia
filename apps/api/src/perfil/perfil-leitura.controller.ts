@@ -2,8 +2,8 @@ import { Controller, Get, Inject, UseGuards } from "@nestjs/common";
 import { UsuarioGuard } from "../comum/tenant/usuario.guard";
 import { UsuarioId } from "../comum/tenant/usuario.decorator";
 import { USUARIO_SERVICE_PERFIL } from "./tokens";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
-import type { usuarioService } from "@/services/usuario.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
+import type { usuarioService } from "@dominio/services/usuario.service";
 
 // Leitura do perfil do usuário (não do tenant). Lê sempre do banco: a sessão guarda o
 // nome do momento do login e o PATCH não a renova. A chave do avatar no S3 não sai

@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { podePausar, podeRetomar } from "./controle-campanha";
 import { rotuloInstancia } from "./rotulo-instancia";
 import { StatusBadgeCampanha } from "./status-badge-campanha";
-import type { CampanhaDTO } from "@dominio/types/campanha";
+import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
 
 export interface ListaCampanhasProps {
   somenteLeitura: boolean;

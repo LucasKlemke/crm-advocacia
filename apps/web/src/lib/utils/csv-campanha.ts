@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import { normalizarChave, type LinhaCsv } from "@dominio/lib/utils/campanha-mensagem";
+import { normalizarChave, type LinhaCsv } from "@crm/compartilhado/utils/campanha-mensagem";
 
 export interface PlanilhaCampanha {
   colunas: string[];

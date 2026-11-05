@@ -3,7 +3,7 @@ import { ErrosHttpFilter, type TradutorDeErro } from "../comum/erros-http.filter
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { USUARIO_SERVICE } from "./tokens";
 import { cadastroSchema, type DadosCadastro } from "./schemas";
-import { EmailJaCadastradoError, type usuarioService } from "@/services/usuario.service";
+import { EmailJaCadastradoError, type usuarioService } from "@dominio/services/usuario.service";
 
 const tratarErroDeCadastro: TradutorDeErro = (error) =>
   error instanceof EmailJaCadastradoError ? Response.json({ error: error.message }, { status: 409 }) : null;

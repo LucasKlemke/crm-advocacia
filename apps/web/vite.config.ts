@@ -16,8 +16,6 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
-      // Domínio puro (tipos, utils, permissões) até a Fase 5 mover src/ para apps/api.
-      { find: /^@dominio\//, replacement: caminho("../../src/") },
       { find: /^@\//, replacement: caminho("./src/") },
     ],
   },

@@ -4,7 +4,7 @@ import {
   ConviteNaoEncontradoError,
   JaEhMembroError,
   PermissaoNegadaError,
-} from "@/services/convite.service";
+} from "@dominio/services/convite.service";
 
 export const tratarErroDeConvite: TradutorDeErro = (error) => {
   if (error instanceof ConviteNaoEncontradoError) {

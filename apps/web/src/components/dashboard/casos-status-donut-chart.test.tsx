@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { CasosStatusDonutChart } from "./casos-status-donut-chart";
-import type { ContagemPorTipoStatusDTO } from "@dominio/types/dashboard";
+import type { ContagemPorTipoStatusDTO } from "@crm/compartilhado/tipos/dashboard";
 
 const POR_TIPO_STATUS: ContagemPorTipoStatusDTO[] = [
   {

@@ -16,8 +16,8 @@ import { startOfWeek } from "date-fns/startOfWeek";
 // Reexportado do tipo canônico (a rota usa a mesma nomenclatura em `?visao=`) em vez de
 // declarar uma cópia — um valor novo em src/types/evento.ts quebra este módulo em
 // tempo de compilação, que é o comportamento desejado.
-export type { VisaoAgenda } from "@dominio/types/evento";
-import type { VisaoAgenda } from "@dominio/types/evento";
+export type { VisaoAgenda } from "@crm/compartilhado/tipos/evento";
+import type { VisaoAgenda } from "@crm/compartilhado/tipos/evento";
 
 // A grade do mês é sempre 6×7. Altura fixa evita o calendário "pular" de tamanho ao
 // navegar entre um mês de 5 linhas e outro de 6.

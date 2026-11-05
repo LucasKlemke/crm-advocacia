@@ -1,5 +1,5 @@
 import { podePausar, podeRetomar } from "./controle-campanha";
-import type { CampanhaDTO } from "@dominio/types/campanha";
+import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
 
 const TODOS: CampanhaDTO["status"][] = [
   "agendada",

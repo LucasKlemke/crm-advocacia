@@ -4,9 +4,9 @@ import { criarAppDeTeste } from "../../test/utils";
 import { setCookieDaSessao, tokenDoSetCookie, usarSegredoDeTeste } from "../../test/sessao";
 import { SessaoModule } from "./sessao.module";
 import { MEMBRO_SERVICE } from "./tokens";
-import { PermissaoNegadaError } from "@/services/membro.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
-import { verificarSessao } from "@/lib/auth/sessao-jwt";
+import { PermissaoNegadaError } from "@dominio/services/membro.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
+import { verificarSessao } from "@dominio/lib/auth/sessao-jwt";
 
 const membroService = { trocarEscritorioAtivo: jest.fn() };
 let app: INestApplication;

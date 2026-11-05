@@ -7,12 +7,12 @@ import {
   MembroNaoEncontradoError,
   PermissaoNegadaError,
   UltimoOwnerError,
-} from "@/services/membro.service";
+} from "@dominio/services/membro.service";
 import {
   AcessoNegadoError,
   NaoAutenticadoError,
   SemEscritorioAtivoError,
-} from "@/lib/auth/resolver-tenant";
+} from "@dominio/lib/auth/resolver-tenant";
 
 const service = {
   listarMembros: jest.fn(),

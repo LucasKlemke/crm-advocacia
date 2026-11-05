@@ -9,8 +9,8 @@ import {
   ParticipanteInvalidoError,
   PermissaoNegadaError,
   VinculoEventoExclusivoError,
-} from "@/services/evento.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/evento.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const service = {
   membroAtual: jest.fn(),

@@ -1,5 +1,5 @@
 import { BadgeStatus } from "@/components/shared/badge-status";
-import type { StatusInstanciaWhatsapp } from "@prisma/client";
+import type { StatusInstanciaWhatsapp } from "@crm/compartilhado/enums";
 
 // Cor fixa por status da conexão UAZAPI — diferente do status do kanban, não é dado do
 // tenant, então mora aqui como mapa fixo. Mesma técnica de

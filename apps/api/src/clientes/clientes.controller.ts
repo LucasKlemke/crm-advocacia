@@ -26,16 +26,16 @@ import {
   edicaoClienteSchema,
   acaoEmLoteClientesSchema,
   type AcaoEmLoteClientes,
-} from "@/lib/api/schemas-cliente";
-import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
+} from "@crm/compartilhado/schemas/cliente";
+import { tratarErroDeCliente } from "@dominio/lib/api/erros-cliente";
 import type {
   clienteService,
   DadosNovoCliente,
   DadosEdicaoCliente,
-} from "@/services/cliente.service";
-import type { documentoService } from "@/services/documento.service";
-import type { montarZipDocumentos } from "@/lib/documentos/zip";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/cliente.service";
+import type { documentoService } from "@dominio/services/documento.service";
+import type { montarZipDocumentos } from "@dominio/lib/documentos/zip";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Cadastro de clientes (RN04/RN05). Cliente nunca é apagado: "desativar" é soft delete,
 // reversível pela ação em lote "restaurar".

@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderComQuery } from "@/lib/test-utils";
 import { DetalheCampanha } from "./detalhe-campanha";
-import type { CampanhaDTO, CampanhaItemDTO, MensagemCampanhaDTO } from "@dominio/types/campanha";
+import type { CampanhaDTO, CampanhaItemDTO, MensagemCampanhaDTO } from "@crm/compartilhado/tipos/campanha";
 
 const mutateControlar = jest.fn();
 const mutateSincronizar = jest.fn();

@@ -5,8 +5,8 @@ import { gravarCookieSessao } from "../comum/sessao/cookie-sessao";
 import { UsuarioGuard } from "../comum/tenant/usuario.guard";
 import { UsuarioId } from "../comum/tenant/usuario.decorator";
 import { ESCRITORIO_SERVICE } from "./tokens";
-import { criarEscritorioSchema } from "@/lib/api/schemas-escritorio";
-import type { CriarEscritorioInput, escritorioService } from "@/services/escritorio.service";
+import { criarEscritorioSchema } from "@dominio/lib/api/schemas-escritorio";
+import type { CriarEscritorioInput, escritorioService } from "@dominio/services/escritorio.service";
 
 // POST /api/escritorios (raiz): onboarding do primeiro escritório ou criação de outro pelo
 // switcher. Exige só usuário autenticado — não passa por TenantGuard, porque o usuário

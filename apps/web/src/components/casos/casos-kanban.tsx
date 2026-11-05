@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
-import type { CasoDTO, ColunaKanban, FiltrosCasos, KanbanCasos, ListaCasos } from "@dominio/types/caso";
+import type { CasoDTO, ColunaKanban, FiltrosCasos, KanbanCasos, ListaCasos } from "@crm/compartilhado/tipos/caso";
 
 export interface CasosKanbanProps {
   filtros: FiltrosCasos;

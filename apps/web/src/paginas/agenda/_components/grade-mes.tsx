@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { agruparPorDia, ordenarEventos, ocupaDiaInteiroNaGrade } from "@/lib/utils/agenda-eventos";
 import { chaveDoDia, ehForaDoMes, ehHoje, semanasDoMes } from "@/lib/utils/agenda-grade";
 import { ChipEventoMes } from "./chip-evento-mes";
-import type { EventoDTO } from "@dominio/types/evento";
+import type { EventoDTO } from "@crm/compartilhado/tipos/evento";
 
 // Acima disso a célula do dia vira uma lista rolável e ilegível; o resto vai para o
 // "+N" que leva à visão de dia.

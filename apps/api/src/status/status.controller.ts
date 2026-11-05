@@ -16,11 +16,11 @@ import { Tenant } from "../comum/tenant/tenant.decorator";
 import { ErrosHttpFilter } from "../comum/erros-http.filter";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { STATUS_SERVICE } from "./tokens";
-import { novoStatusSchema, edicaoStatusSchema } from "@/lib/api/schemas-status";
-import { tratarErroDeStatus } from "@/lib/api/erros-status";
-import type { statusService } from "@/services/status.service";
-import type { DadosNovoStatus, DadosEdicaoStatus } from "@/services/status.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { novoStatusSchema, edicaoStatusSchema } from "@crm/compartilhado/schemas/status";
+import { tratarErroDeStatus } from "@dominio/lib/api/erros-status";
+import type { statusService } from "@dominio/services/status.service";
+import type { DadosNovoStatus, DadosEdicaoStatus } from "@dominio/services/status.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Colunas do kanban configuráveis pelo escritório (RN08/RN09).
 @Controller("status")

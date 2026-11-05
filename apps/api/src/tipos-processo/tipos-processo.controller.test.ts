@@ -8,8 +8,8 @@ import {
   NomeTipoProcessoDuplicadoError,
   TipoProcessoComCasosError,
   PermissaoNegadaError,
-} from "@/services/tipo-processo.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/tipo-processo.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const VALIDO = { nome: "Juros abusivos", icone: "Briefcase", cor: "#6366f1" };
 

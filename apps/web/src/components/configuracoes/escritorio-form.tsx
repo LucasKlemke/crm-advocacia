@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { mascararOab } from "@/lib/utils/oab";
-import { mascararTelefone } from "@dominio/lib/utils/telefone";
+import { mascararTelefone } from "@crm/compartilhado/utils/telefone";
 
 export interface EscritorioFormProps {
   escritorio: { nome: string; oabResponsavel: string | null; telefoneWhatsapp: string | null };

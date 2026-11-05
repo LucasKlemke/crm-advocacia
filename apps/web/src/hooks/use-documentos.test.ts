@@ -8,7 +8,7 @@ import {
   useExcluirDocumento,
   useRenomearDocumento,
 } from "./use-documentos";
-import type { DocumentoDTO } from "@dominio/types/documento";
+import type { DocumentoDTO } from "@crm/compartilhado/tipos/documento";
 
 function criarWrapper() {
   const queryClient = new QueryClient({

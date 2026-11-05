@@ -3,7 +3,7 @@ import { Test } from "@nestjs/testing";
 import { OPCOES_APP, configurarApp } from "../src/criar-app";
 import { TenantModule } from "../src/comum/tenant/tenant.module";
 import { RESOLVEDOR_TENANT, RESOLVEDOR_USUARIO } from "../src/comum/tenant/ler-sessao";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 export const CTX_OWNER: TenantContext = { usuarioId: "user-1", escritorioId: "esc-1", role: "owner" };
 

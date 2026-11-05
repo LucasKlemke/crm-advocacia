@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { DashboardController } from "./dashboard.controller";
 import { DASHBOARD_SERVICE } from "./tokens";
-import { dashboardService } from "@/services/dashboard.service";
+import { dashboardService } from "@dominio/services/dashboard.service";
 
 @Module({
   controllers: [DashboardController],

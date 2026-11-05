@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StatusStatCards } from "./status-stat-cards";
-import type { ContagemPorTipoStatusDTO } from "@dominio/types/dashboard";
+import type { ContagemPorTipoStatusDTO } from "@crm/compartilhado/tipos/dashboard";
 
 const POR_TIPO_STATUS: ContagemPorTipoStatusDTO[] = [
   {

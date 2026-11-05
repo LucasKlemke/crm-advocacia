@@ -16,7 +16,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { SEM_RESPONSAVEL } from "@dominio/types/caso";
+import { SEM_RESPONSAVEL } from "@crm/compartilhado/tipos/caso";
 
 export interface OpcaoMultiSelect {
   id: string;

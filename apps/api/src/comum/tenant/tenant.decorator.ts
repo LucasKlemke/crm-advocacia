@@ -1,6 +1,6 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
 import type { RequestComTenant } from "./tenant.guard";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Só é válido em handlers protegidos por TenantGuard — sem ele, falha alto em vez de
 // devolver um contexto vazio que deixaria uma query sem escritorioId.

@@ -8,8 +8,8 @@ import {
   SenhaAtualIncorretaError,
   StorageKeyInvalidoError,
   TamanhoAvatarInvalidoError,
-} from "@/services/usuario.service";
-import { NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/usuario.service";
+import { NaoAutenticadoError, SemEscritorioAtivoError } from "@dominio/lib/auth/resolver-tenant";
 
 const service = {
   atualizarPerfil: jest.fn(),

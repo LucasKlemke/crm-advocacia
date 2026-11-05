@@ -10,13 +10,13 @@ import {
   useCriarTipoProcesso,
   type DadosTipoProcessoForm,
 } from "@/hooks/use-tipos-processo";
-import { CORES_STATUS_PERMITIDAS } from "@dominio/lib/utils/cores-status";
+import { CORES_STATUS_PERMITIDAS } from "@crm/compartilhado/utils/cores-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusIconePicker } from "@/components/configuracoes/status-icone-picker";
-import type { TipoProcessoDTO } from "@dominio/types/tipo-processo";
+import type { TipoProcessoDTO } from "@crm/compartilhado/tipos/tipo-processo";
 
 export interface TipoProcessoFormProps {
   tipo?: TipoProcessoDTO;

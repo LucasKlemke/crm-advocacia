@@ -1,7 +1,7 @@
-import { filtrosDashboardPadrao } from "@dominio/types/dashboard";
-import type { FiltrosCasos } from "@dominio/types/caso";
-import type { FiltrosDashboard } from "@dominio/types/dashboard";
-import type { FiltrosEventos } from "@dominio/types/evento";
+import { filtrosDashboardPadrao } from "@crm/compartilhado/tipos/dashboard";
+import type { FiltrosCasos } from "@crm/compartilhado/tipos/caso";
+import type { FiltrosDashboard } from "@crm/compartilhado/tipos/dashboard";
+import type { FiltrosEventos } from "@crm/compartilhado/tipos/evento";
 
 // Fábricas de query key compartilhadas entre hooks; uma escrita invalida pela raiz.
 

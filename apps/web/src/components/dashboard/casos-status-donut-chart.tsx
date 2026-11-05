@@ -3,7 +3,7 @@
 import { Cell, Pie, PieChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import type { ContagemPorTipoStatusDTO } from "@dominio/types/dashboard";
+import type { ContagemPorTipoStatusDTO } from "@crm/compartilhado/tipos/dashboard";
 
 export interface CasosStatusDonutChartProps {
   porTipoStatus: ContagemPorTipoStatusDTO[];

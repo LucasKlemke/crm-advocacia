@@ -8,7 +8,7 @@ import {
   useAtualizarStatus,
   useExcluirStatus,
 } from "./use-status";
-import type { StatusDTO, TipoStatusDTO } from "@dominio/types/status";
+import type { StatusDTO, TipoStatusDTO } from "@crm/compartilhado/tipos/status";
 
 function criarWrapper() {
   const queryClient = new QueryClient({

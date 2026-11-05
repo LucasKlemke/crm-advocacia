@@ -7,7 +7,7 @@ import {
   AcessoNegadoError,
   NaoAutenticadoError,
   SemEscritorioAtivoError,
-} from "@/lib/auth/resolver-tenant";
+} from "@dominio/lib/auth/resolver-tenant";
 
 const service = { resumo: jest.fn() };
 

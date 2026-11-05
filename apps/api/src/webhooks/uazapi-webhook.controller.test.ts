@@ -2,7 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { criarAppDeTeste } from "../../test/utils";
 import { WebhooksModule } from "./webhooks.module";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 describe("POST /api/webhooks/uazapi", () => {
   let app: INestApplication;

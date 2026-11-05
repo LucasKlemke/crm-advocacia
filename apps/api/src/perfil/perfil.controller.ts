@@ -21,12 +21,12 @@ import {
   alterarSenhaSchema,
   uploadUrlAvatarSchema,
   confirmarAvatarSchema,
-} from "@/lib/api/schemas-perfil";
+} from "@dominio/lib/api/schemas-perfil";
 import type {
   usuarioService,
   AtualizarPerfilInput,
   UploadUrlAvatarInput,
-} from "@/services/usuario.service";
+} from "@dominio/services/usuario.service";
 
 // Perfil é do usuário, não do tenant: UsuarioGuard (sessão), nunca TenantGuard — o
 // usuário pode estar no meio do onboarding, sem nenhum escritório ainda.

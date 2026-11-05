@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { inferirTipoArquivo } from "@/lib/utils/tipo-arquivo";
-import type { DocumentoDTO, EscopoDocumentoDTO, TipoArquivoDTO } from "@dominio/types/documento";
+import type { DocumentoDTO, EscopoDocumentoDTO, TipoArquivoDTO } from "@crm/compartilhado/tipos/documento";
 
 const MIME_POR_TIPO_ARQUIVO: Record<TipoArquivoDTO, string> = {
   pdf: "application/pdf",

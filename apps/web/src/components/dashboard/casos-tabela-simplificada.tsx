@@ -17,8 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { FiltrosCasos, CasoDTO } from "@dominio/types/caso";
-import type { RoleMembro } from "@prisma/client";
+import type { FiltrosCasos, CasoDTO } from "@crm/compartilhado/tipos/caso";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 export interface CasosTabelaSimplificadaProps {
   filtros: FiltrosCasos;

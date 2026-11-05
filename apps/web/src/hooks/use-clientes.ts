@@ -8,7 +8,7 @@ import type {
   FiltrosClientes,
   ListaClientes,
   SexoClienteDTO,
-} from "@dominio/types/cliente";
+} from "@crm/compartilhado/tipos/cliente";
 
 export interface DadosClienteForm {
   nome: string;

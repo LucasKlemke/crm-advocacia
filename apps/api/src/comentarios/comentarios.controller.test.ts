@@ -6,10 +6,10 @@ import { COMENTARIO_SERVICE, USUARIO_SERVICE } from "./tokens";
 import {
   ComentarioNaoEncontradoError,
   PermissaoComentarioError,
-} from "@/services/comentario.service";
-import { ClienteNaoEncontradoError } from "@/services/cliente.service";
-import { CasoNaoEncontradoError } from "@/services/caso.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/comentario.service";
+import { ClienteNaoEncontradoError } from "@dominio/services/cliente.service";
+import { CasoNaoEncontradoError } from "@dominio/services/caso.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const CLIENTE_ID = "11111111-1111-4111-8111-111111111111";
 const QUERY = `escopo=cliente&escopoId=${CLIENTE_ID}`;

@@ -1,7 +1,7 @@
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import userEvent from "@testing-library/user-event";
 import { DashboardView } from "./dashboard-view";
-import type { ResumoDashboardDTO } from "@dominio/types/dashboard";
+import type { ResumoDashboardDTO } from "@crm/compartilhado/tipos/dashboard";
 
 const RESUMO: ResumoDashboardDTO = {
   porTipoStatus: [

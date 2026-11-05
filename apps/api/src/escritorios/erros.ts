@@ -1,5 +1,5 @@
 import type { TradutorDeErro } from "../comum/erros-http.filter";
-import { EscritorioNaoEncontradoError, PermissaoNegadaError } from "@/services/escritorio.service";
+import { EscritorioNaoEncontradoError, PermissaoNegadaError } from "@dominio/services/escritorio.service";
 
 export const tratarErroDeEscritorio: TradutorDeErro = (error) => {
   if (error instanceof EscritorioNaoEncontradoError) {

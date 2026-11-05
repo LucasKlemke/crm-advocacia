@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { MembrosController } from "./membros.controller";
 import { MEMBRO_SERVICE, USUARIO_SERVICE_AVATAR } from "./tokens";
-import { membroService } from "@/services/membro.service";
-import { usuarioService } from "@/services/usuario.service";
+import { membroService } from "@dominio/services/membro.service";
+import { usuarioService } from "@dominio/services/usuario.service";
 
 @Module({
   controllers: [MembrosController],

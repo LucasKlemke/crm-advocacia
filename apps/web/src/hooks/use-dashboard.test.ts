@@ -2,8 +2,8 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import { useDashboardResumo } from "./use-dashboard";
-import { filtrosDashboardPadrao } from "@dominio/types/dashboard";
-import type { ResumoDashboardDTO } from "@dominio/types/dashboard";
+import { filtrosDashboardPadrao } from "@crm/compartilhado/tipos/dashboard";
+import type { ResumoDashboardDTO } from "@crm/compartilhado/tipos/dashboard";
 
 function criarWrapper() {
   const queryClient = new QueryClient({

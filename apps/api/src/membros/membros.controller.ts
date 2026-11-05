@@ -17,10 +17,10 @@ import { ErrosHttpFilter } from "../comum/erros-http.filter";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { MEMBRO_SERVICE, USUARIO_SERVICE_AVATAR } from "./tokens";
 import { tratarErroDeMembro } from "./erros";
-import { alterarRoleSchema } from "@/lib/api/schemas-membro";
-import type { membroService } from "@/services/membro.service";
-import type { usuarioService } from "@/services/usuario.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { alterarRoleSchema } from "@dominio/lib/api/schemas-membro";
+import type { membroService } from "@dominio/services/membro.service";
+import type { usuarioService } from "@dominio/services/usuario.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Gestão de usuários do escritório (RN02a): as regras de quem pode promover/remover
 // ficam no membroService.

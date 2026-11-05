@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { ComentarioDTO, EscopoComentarioDTO } from "@dominio/types/cliente";
+import type { ComentarioDTO, EscopoComentarioDTO } from "@crm/compartilhado/tipos/cliente";
 
 export const chaveComentarios = (escopo: EscopoComentarioDTO, escopoId: string) =>
   ["comentarios", escopo, escopoId] as const;

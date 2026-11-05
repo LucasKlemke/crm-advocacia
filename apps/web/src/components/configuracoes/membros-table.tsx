@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "@/compat/next-navigation";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { podeGerenciarMembro, ehAutoAlvo } from "@dominio/lib/auth/permissoes";
-import type { RoleMembro } from "@prisma/client";
+import { podeGerenciarMembro, ehAutoAlvo } from "@crm/compartilhado/auth/permissoes";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 import { ROLES_MEMBRO, corRole, labelRole } from "@/lib/utils/role";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import {

@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import request from "supertest";
 import { OPCOES_APP, configurarApp } from "../../criar-app";
 import { gravarCookieSessao, lerSessaoDaRequisicao, limparCookieSessao } from "./cookie-sessao";
-import { verificarSessao } from "@/lib/auth/sessao-jwt";
+import { verificarSessao } from "@dominio/lib/auth/sessao-jwt";
 import { cookieDeSessao, setCookieDaSessao, tokenDoSetCookie, usarSegredoDeTeste } from "../../../test/sessao";
 
 @Controller("cookie")

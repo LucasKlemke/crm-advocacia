@@ -1,4 +1,4 @@
-import type { EventoDTO } from "@dominio/types/evento";
+import type { EventoDTO } from "@crm/compartilhado/tipos/evento";
 import {
   agruparPorDia,
   ocupaDiaInteiroNaGrade,

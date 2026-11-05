@@ -20,14 +20,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { formatarTelefone } from "@dominio/lib/utils/telefone";
-import { normalizarMapeamento } from "@dominio/lib/utils/campanha-mensagem";
-import { TRATAMENTOS_DISPONIVEIS } from "@dominio/lib/utils/campanha-tratamentos";
+import { formatarTelefone } from "@crm/compartilhado/utils/telefone";
+import { normalizarMapeamento } from "@crm/compartilhado/utils/campanha-mensagem";
+import { TRATAMENTOS_DISPONIVEIS } from "@crm/compartilhado/utils/campanha-tratamentos";
 import {
   chaveTelefone,
   resumirPorNumero,
   type ResumoMensagem,
-} from "@dominio/lib/utils/campanha-status-mensagem";
+} from "@crm/compartilhado/utils/campanha-status-mensagem";
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { rotuloInstancia } from "../../_components/rotulo-instancia";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";

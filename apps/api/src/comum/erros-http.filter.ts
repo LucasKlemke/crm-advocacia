@@ -1,6 +1,6 @@
 import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
 import type { Request, Response as ExpressResponse } from "express";
-import { tratarErroDeContexto, respostaDadosInvalidos } from "@/lib/api/erros";
+import { tratarErroDeContexto, respostaDadosInvalidos } from "@dominio/lib/api/erros";
 import { DadosInvalidosError } from "./validacao.pipe";
 
 // Os mapeadores de erro de domínio em src/lib/api/erros-*.ts devolvem um Response

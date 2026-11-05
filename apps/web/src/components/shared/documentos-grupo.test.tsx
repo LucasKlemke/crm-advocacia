@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { DocumentosGrupo } from "./documentos-grupo";
-import type { DocumentoDTO } from "@dominio/types/documento";
+import type { DocumentoDTO } from "@crm/compartilhado/tipos/documento";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 

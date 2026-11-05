@@ -1,5 +1,5 @@
 import { BadgeStatus } from "@/components/shared/badge-status";
-import type { StatusCampanha } from "@prisma/client";
+import type { StatusCampanha } from "@crm/compartilhado/enums";
 
 // Cor fixa por status do envio na UAZAPI — não é dado do tenant (diferente do status do
 // kanban), então mora aqui como mapa fixo, mesma técnica de status-badge-instancia.

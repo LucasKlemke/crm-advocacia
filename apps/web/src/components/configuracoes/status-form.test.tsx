@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { StatusForm } from "./status-form";
-import type { StatusDTO, TipoStatusDTO } from "@dominio/types/status";
+import type { StatusDTO, TipoStatusDTO } from "@crm/compartilhado/tipos/status";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 

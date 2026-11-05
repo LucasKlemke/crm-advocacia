@@ -14,7 +14,7 @@ import {
   sugerirMapeamento,
   type ConfigVariavel,
   type MapeamentoVariaveis,
-} from "@dominio/lib/utils/campanha-mensagem";
+} from "@crm/compartilhado/utils/campanha-mensagem";
 import { CsvInvalidoError, lerPlanilha, sugerirColunaNumero } from "@/lib/utils/csv-campanha";
 import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 import { BotaoCriarCampanha } from "./botao-criar-campanha";

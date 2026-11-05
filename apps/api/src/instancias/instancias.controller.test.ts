@@ -7,9 +7,9 @@ import {
   InstanciaWhatsappNaoEncontradaError,
   NomeInstanciaDuplicadoError,
   PermissaoNegadaError,
-} from "@/services/instancia-whatsapp.service";
-import { UazapiIndisponivelError } from "@/lib/external/uazapi-client";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/instancia-whatsapp.service";
+import { UazapiIndisponivelError } from "@dominio/lib/external/uazapi-client";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const ERRO_500 = { error: "Não foi possível concluir a operação." };
 

@@ -22,9 +22,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { RoleMembro } from "@prisma/client";
-import type { CasoDTO } from "@dominio/types/caso";
-import type { DocumentoDTO } from "@dominio/types/documento";
+import type { RoleMembro } from "@crm/compartilhado/enums";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
+import type { DocumentoDTO } from "@crm/compartilhado/tipos/documento";
 
 export type ModoSheet = "criar" | "ver";
 

@@ -1,4 +1,4 @@
-import type { RoleMembro } from "@prisma/client";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 import { useSessao } from "@/lib/sessao";
 
 export interface SessaoDoEscritorio {

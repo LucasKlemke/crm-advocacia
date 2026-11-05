@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { useTituloPagina } from "@/hooks/use-titulo-pagina";
 import { mockApi, renderPagina, SESSAO_OWNER, SESSAO_PADRAO } from "@/lib/test-paginas";
-import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 import { PaginaInstancias } from "./instancias";
 
 jest.mock("@/hooks/use-titulo-pagina", () => ({ useTituloPagina: jest.fn() }));

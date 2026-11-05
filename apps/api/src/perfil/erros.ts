@@ -4,7 +4,7 @@ import {
   SenhaAtualIncorretaError,
   StorageKeyInvalidoError,
   TamanhoAvatarInvalidoError,
-} from "@/services/usuario.service";
+} from "@dominio/services/usuario.service";
 
 // Mesmos códigos das rotas Next de /api/perfil/**.
 export const tratarErroDePerfil: TradutorDeErro = (error) => {

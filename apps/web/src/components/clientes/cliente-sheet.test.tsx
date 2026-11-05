@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { ClienteSheet } from "./cliente-sheet";
-import type { ClienteDTO } from "@dominio/types/cliente";
+import type { ClienteDTO } from "@crm/compartilhado/tipos/cliente";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 

@@ -15,7 +15,7 @@ import type {
   FiltrosCasos,
   KanbanCasos,
   ListaCasos,
-} from "@dominio/types/caso";
+} from "@crm/compartilhado/tipos/caso";
 
 export interface DadosCasoForm {
   clienteId: string;

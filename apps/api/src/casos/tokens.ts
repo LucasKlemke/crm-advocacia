@@ -1,5 +1,5 @@
-import type { montarListaCasos } from "@/lib/api/payloads/casos-lista";
-import type { montarOpcoesFiltroCaso } from "@/lib/api/payloads/casos-filtros";
+import type { montarListaCasos } from "@dominio/lib/api/payloads/casos-lista";
+import type { montarOpcoesFiltroCaso } from "@dominio/lib/api/payloads/casos-filtros";
 
 export const CASO_SERVICE = Symbol("CASO_SERVICE");
 

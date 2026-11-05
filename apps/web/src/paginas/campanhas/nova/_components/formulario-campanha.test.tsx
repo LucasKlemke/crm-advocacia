@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderComQuery } from "@/lib/test-utils";
 import { FormularioCampanha } from "./formulario-campanha";
-import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 import { CsvInvalidoError } from "@/lib/utils/csv-campanha";
 
 const mutateCriar = jest.fn();

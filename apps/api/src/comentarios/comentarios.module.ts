@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ComentariosController } from "./comentarios.controller";
 import { COMENTARIO_SERVICE, USUARIO_SERVICE } from "./tokens";
-import { comentarioService } from "@/services/comentario.service";
-import { usuarioService } from "@/services/usuario.service";
+import { comentarioService } from "@dominio/services/comentario.service";
+import { usuarioService } from "@dominio/services/usuario.service";
 
 @Module({
   controllers: [ComentariosController],

@@ -10,11 +10,11 @@ import {
   MEMBRO_SERVICE,
   USUARIO_SERVICE,
 } from "./tokens";
-import { authorizeCredentials } from "@/lib/auth/authorize";
-import { usuarioService } from "@/services/usuario.service";
-import { membroRepository } from "@/repositories/membro.repository";
-import { membroService } from "@/services/membro.service";
-import { escritorioService } from "@/services/escritorio.service";
+import { authorizeCredentials } from "@dominio/lib/auth/authorize";
+import { usuarioService } from "@dominio/services/usuario.service";
+import { membroRepository } from "@dominio/repositories/membro.repository";
+import { membroService } from "@dominio/services/membro.service";
+import { escritorioService } from "@dominio/services/escritorio.service";
 
 // Tudo que GRAVA o cookie crm_sessao mora aqui: login/logout, troca de escritório,
 // cadastro e criação de escritório. Os demais módulos só leem a sessão via guards.

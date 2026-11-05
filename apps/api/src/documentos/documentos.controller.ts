@@ -26,13 +26,13 @@ import {
   confirmarUploadDocumentoSchema,
   renomearDocumentoSchema,
   modoDownloadSchema,
-} from "@/lib/api/schemas-documento";
-import { tratarErroDeCliente } from "@/lib/api/erros-cliente";
-import { tratarErroDeCaso } from "@/lib/api/erros-caso";
-import { tratarErroDeDocumento } from "@/lib/api/erros-documento";
-import { documentoParaPublico } from "@/lib/documentos/publico";
-import type { documentoService, UploadUrlInput } from "@/services/documento.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@dominio/lib/api/schemas-documento";
+import { tratarErroDeCliente } from "@dominio/lib/api/erros-cliente";
+import { tratarErroDeCaso } from "@dominio/lib/api/erros-caso";
+import { tratarErroDeDocumento } from "@dominio/lib/api/erros-documento";
+import { documentoParaPublico } from "@dominio/lib/documentos/publico";
+import type { documentoService, UploadUrlInput } from "@dominio/services/documento.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Rotas que validam o escopo (cliente/caso) também mapeiam os erros desses services —
 // mesma composição das rotas Next.

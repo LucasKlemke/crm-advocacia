@@ -5,7 +5,7 @@ import { z } from "zod";
 import { OPCOES_APP, configurarApp } from "../criar-app";
 import { ErrosHttpFilter } from "./erros-http.filter";
 import { ValidacaoZodPipe } from "./validacao.pipe";
-import { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError } from "@dominio/lib/auth/resolver-tenant";
 
 class ErroDoModulo extends Error {}
 

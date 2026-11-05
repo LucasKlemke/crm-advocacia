@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { TipoProcessoForm } from "./tipo-processo-form";
-import type { TipoProcessoDTO } from "@dominio/types/tipo-processo";
+import type { TipoProcessoDTO } from "@crm/compartilhado/tipos/tipo-processo";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 

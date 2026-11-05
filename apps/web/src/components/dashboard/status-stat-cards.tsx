@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
 import { formatarValorBrl } from "@/lib/utils/valor";
-import type { ContagemPorTipoStatusDTO } from "@dominio/types/dashboard";
+import type { ContagemPorTipoStatusDTO } from "@crm/compartilhado/tipos/dashboard";
 
 export interface StatusStatCardsProps {
   porTipoStatus: ContagemPorTipoStatusDTO[];

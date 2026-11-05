@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { History, IdCard, Mail, Phone, Plus, Search, Trash2, User } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { formatarCpf } from "@dominio/lib/utils/cpf";
-import { formatarTelefone } from "@dominio/lib/utils/telefone";
+import { formatarCpf } from "@crm/compartilhado/utils/cpf";
+import { formatarTelefone } from "@crm/compartilhado/utils/telefone";
 import { formatarDataHoraCurta } from "@/lib/utils/data";
 import { useAcaoEmLoteClientes, useClientes } from "@/hooks/use-clientes";
 import { ClienteSheet, type ModoSheet } from "@/components/clientes/cliente-sheet";
@@ -32,8 +32,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { RoleMembro } from "@prisma/client";
-import type { ClienteDTO } from "@dominio/types/cliente";
+import type { RoleMembro } from "@crm/compartilhado/enums";
+import type { ClienteDTO } from "@crm/compartilhado/tipos/cliente";
 
 export interface ClientesTableProps {
   atorUsuarioId: string;

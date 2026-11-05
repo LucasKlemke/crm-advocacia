@@ -4,8 +4,8 @@ import { criarAppDeTeste } from "../../test/utils";
 import { setCookieDaSessao, tokenDoSetCookie, usarSegredoDeTeste } from "../../test/sessao";
 import { SessaoModule } from "./sessao.module";
 import { ESCRITORIO_SERVICE } from "./tokens";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
-import { verificarSessao } from "@/lib/auth/sessao-jwt";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
+import { verificarSessao } from "@dominio/lib/auth/sessao-jwt";
 
 const escritorioService = { criarEscritorio: jest.fn() };
 let app: INestApplication;

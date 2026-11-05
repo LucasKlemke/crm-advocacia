@@ -3,7 +3,7 @@ import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../test/utils";
 import { PerfilModule } from "./perfil.module";
 import { USUARIO_SERVICE_PERFIL } from "./tokens";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 const usuarios = { obterPerfil: jest.fn() };
 let app: INestApplication;

@@ -3,12 +3,12 @@ import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../test/utils";
 import { EscritoriosModule } from "./escritorios.module";
 import { ESCRITORIO_SERVICE } from "./tokens";
-import { EscritorioNaoEncontradoError, PermissaoNegadaError } from "@/services/escritorio.service";
+import { EscritorioNaoEncontradoError, PermissaoNegadaError } from "@dominio/services/escritorio.service";
 import {
   AcessoNegadoError,
   NaoAutenticadoError,
   SemEscritorioAtivoError,
-} from "@/lib/auth/resolver-tenant";
+} from "@dominio/lib/auth/resolver-tenant";
 
 const service = { obterEscritorioAtivo: jest.fn(), atualizarEscritorio: jest.fn() };
 

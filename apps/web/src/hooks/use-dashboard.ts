@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { chaveDashboardResumo } from "@/lib/query/chaves";
-import { filtrosDashboardPadrao } from "@dominio/types/dashboard";
-import type { FiltrosDashboard, ResumoDashboardDTO } from "@dominio/types/dashboard";
+import { filtrosDashboardPadrao } from "@crm/compartilhado/tipos/dashboard";
+import type { FiltrosDashboard, ResumoDashboardDTO } from "@crm/compartilhado/tipos/dashboard";
 
 export { chaveDashboardResumo };
 

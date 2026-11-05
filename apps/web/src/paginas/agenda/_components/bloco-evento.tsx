@@ -3,7 +3,7 @@
 import { MapPin, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatarHora } from "@/lib/utils/data";
-import type { EventoDTO } from "@dominio/types/evento";
+import type { EventoDTO } from "@crm/compartilhado/tipos/evento";
 
 export interface BlocoEventoProps {
   evento: EventoDTO;

@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/select";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { cn } from "@/lib/utils";
-import { formatarTelefone } from "@dominio/lib/utils/telefone";
-import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
+import { formatarTelefone } from "@crm/compartilhado/utils/telefone";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 
 export interface InstanciaEscolhida {

@@ -4,7 +4,7 @@ import { criarAppDeTeste } from "../../test/utils";
 import { cookieDeSessao, setCookieDaSessao, tokenDoSetCookie, usarSegredoDeTeste } from "../../test/sessao";
 import { SessaoModule } from "./sessao.module";
 import { AUTORIZAR_CREDENCIAIS, MEMBRO_REPOSITORY, USUARIO_SERVICE } from "./tokens";
-import { verificarSessao } from "@/lib/auth/sessao-jwt";
+import { verificarSessao } from "@dominio/lib/auth/sessao-jwt";
 
 const autorizar = jest.fn();
 const usuarioService = { obterPerfil: jest.fn() };

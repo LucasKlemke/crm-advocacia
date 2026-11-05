@@ -15,13 +15,13 @@ import { Tenant } from "../comum/tenant/tenant.decorator";
 import { ErrosHttpFilter } from "../comum/erros-http.filter";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { INSTANCIAS_SERVICE } from "./tokens";
-import { novaInstanciaWhatsappSchema } from "@/lib/api/schemas-instancia-whatsapp";
-import { tratarErroDeInstanciaWhatsapp } from "@/lib/api/erros-instancia-whatsapp";
+import { novaInstanciaWhatsappSchema } from "@crm/compartilhado/schemas/instancia-whatsapp";
+import { tratarErroDeInstanciaWhatsapp } from "@dominio/lib/api/erros-instancia-whatsapp";
 import type {
   instanciaWhatsappService,
   DadosNovaInstanciaWhatsapp,
-} from "@/services/instancia-whatsapp.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/instancia-whatsapp.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Instâncias UAZAPI do escritório (RN30: excluir é soft delete, feito no service).
 // Os POST de ação respondem 200 como as rotas Next — o padrão do Nest seria 201.

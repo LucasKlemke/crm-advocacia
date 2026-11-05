@@ -22,13 +22,13 @@ import { paginaDaQuery, searchParamsDaRequisicao } from "../comum/query";
 import { erroAoGerarZip, responderZip } from "../comum/resposta-zip";
 import { DOCUMENTO_SERVICE, ZIP_DOCUMENTOS } from "../comum/tokens-documentos";
 import { CASO_SERVICE, PAYLOADS_CASO, type PayloadsCaso } from "./tokens";
-import { novoCasoSchema, edicaoCasoSchema, parseFiltrosCasoDaQuery } from "@/lib/api/schemas-caso";
-import { tratarErroDeCaso } from "@/lib/api/erros-caso";
-import { serializarCaso, serializarCasos } from "@/lib/api/serializa-caso";
-import type { casoService, DadosNovoCaso, DadosEdicaoCaso } from "@/services/caso.service";
-import type { documentoService } from "@/services/documento.service";
-import type { montarZipDocumentos } from "@/lib/documentos/zip";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { novoCasoSchema, edicaoCasoSchema, parseFiltrosCasoDaQuery } from "@crm/compartilhado/schemas/caso";
+import { tratarErroDeCaso } from "@dominio/lib/api/erros-caso";
+import { serializarCaso, serializarCasos } from "@dominio/lib/api/serializa-caso";
+import type { casoService, DadosNovoCaso, DadosEdicaoCaso } from "@dominio/services/caso.service";
+import type { documentoService } from "@dominio/services/documento.service";
+import type { montarZipDocumentos } from "@dominio/lib/documentos/zip";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Processos do escritório (RN06–RN09). Toda resposta com caso passa por serializarCaso
 // (tira o senhaHash do responsável e assina o avatar), exceto o POST, que devolve o

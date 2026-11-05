@@ -14,10 +14,10 @@ import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { gravarCookieSessao, lerSessaoDaRequisicao, limparCookieSessao } from "../comum/sessao/cookie-sessao";
 import { AUTORIZAR_CREDENCIAIS, MEMBRO_REPOSITORY, USUARIO_SERVICE } from "./tokens";
 import { loginSchema, type DadosLogin } from "./schemas";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
-import type { authorizeCredentials } from "@/lib/auth/authorize";
-import type { usuarioService } from "@/services/usuario.service";
-import type { membroRepository } from "@/repositories/membro.repository";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
+import type { authorizeCredentials } from "@dominio/lib/auth/authorize";
+import type { usuarioService } from "@dominio/services/usuario.service";
+import type { membroRepository } from "@dominio/repositories/membro.repository";
 
 // Substitui o NextAuth (Fase 3). Rotas públicas: não usam TenantGuard/UsuarioGuard —
 // login cria a sessão, logout funciona sem ela e /sessao responde 401 por conta própria.

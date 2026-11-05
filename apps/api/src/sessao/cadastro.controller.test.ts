@@ -4,7 +4,7 @@ import { criarAppDeTeste } from "../../test/utils";
 import { setCookieDaSessao } from "../../test/sessao";
 import { SessaoModule } from "./sessao.module";
 import { USUARIO_SERVICE } from "./tokens";
-import { EmailJaCadastradoError } from "@/services/usuario.service";
+import { EmailJaCadastradoError } from "@dominio/services/usuario.service";
 
 const usuarioService = { cadastrarUsuario: jest.fn() };
 const payloadValido = { nome: "Fulano de Tal", email: "fulano@teste.com", senha: "senha-forte-123" };

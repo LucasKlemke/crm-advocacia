@@ -1,7 +1,7 @@
 import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { CasoCard } from "./caso-card";
-import type { CasoDTO } from "@dominio/types/caso";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
 
 jest.mock("@/components/shared/avatar-iniciais", () => ({
   AvatarIniciais: ({ nome, avatarUrl }: { nome: string; avatarUrl?: string | null }) => (

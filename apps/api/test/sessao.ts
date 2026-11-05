@@ -1,4 +1,4 @@
-import { NOME_COOKIE_SESSAO_CRM, assinarSessao, type SessaoJwt } from "@/lib/auth/sessao-jwt";
+import { NOME_COOKIE_SESSAO_CRM, assinarSessao, type SessaoJwt } from "@dominio/lib/auth/sessao-jwt";
 
 // Os testes de sessão usam JWT de verdade (assinado com este segredo) em vez de mockar
 // o jose: assim o teste cobre o caminho real do cookie até o controller.

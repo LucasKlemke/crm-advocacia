@@ -15,8 +15,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import type { DadosEventoForm } from "@dominio/types/evento";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import type { DadosEventoForm } from "@crm/compartilhado/tipos/evento";
 
 export type VinculoEvento = DadosEventoForm["vinculo"];
 

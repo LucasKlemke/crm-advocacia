@@ -18,8 +18,8 @@ module.exports = {
     ],
   },
   moduleNameMapper: {
-    "^@dominio/(.*)$": "<rootDir>/../../src/$1",
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^@crm/compartilhado/(.*)$": "<rootDir>/../../packages/compartilhado/src/$1",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

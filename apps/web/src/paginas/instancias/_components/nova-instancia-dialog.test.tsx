@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { NovaInstanciaDialog } from "./nova-instancia-dialog";
-import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 
 const INSTANCIA: InstanciaWhatsappDTO = {
   id: "instancia-1",

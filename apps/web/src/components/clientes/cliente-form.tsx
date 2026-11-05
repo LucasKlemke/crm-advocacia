@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ClienteDTO, EstadoCivilClienteDTO, SexoClienteDTO } from "@dominio/types/cliente";
+import type { ClienteDTO, EstadoCivilClienteDTO, SexoClienteDTO } from "@crm/compartilhado/tipos/cliente";
 
 export interface ClienteFormProps {
   cliente?: ClienteDTO;

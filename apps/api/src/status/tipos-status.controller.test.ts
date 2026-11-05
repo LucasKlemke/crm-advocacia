@@ -2,7 +2,7 @@ import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../test/utils";
 import { StatusModule } from "./status.module";
 import { STATUS_SERVICE, TIPO_STATUS_SERVICE } from "./tokens";
-import { NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError, SemEscritorioAtivoError } from "@dominio/lib/auth/resolver-tenant";
 
 const tipoStatusService = { listar: jest.fn() };
 

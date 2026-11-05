@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { StatusBadgeMensagem } from "./status-badge-mensagem";
-import type { StatusMensagem } from "@dominio/lib/utils/campanha-status-mensagem";
+import type { StatusMensagem } from "@crm/compartilhado/utils/campanha-status-mensagem";
 
 describe("StatusBadgeMensagem", () => {
   it.each<[StatusMensagem, string]>([

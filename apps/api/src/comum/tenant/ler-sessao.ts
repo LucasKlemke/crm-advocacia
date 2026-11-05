@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { resolverTenantContext, NaoAutenticadoError, type TenantContext } from "@/lib/auth/resolver-tenant";
+import { resolverTenantContext, NaoAutenticadoError, type TenantContext } from "@dominio/lib/auth/resolver-tenant";
 import { lerSessaoDaRequisicao } from "../sessao/cookie-sessao";
 
 export const RESOLVEDOR_TENANT = Symbol("RESOLVEDOR_TENANT");

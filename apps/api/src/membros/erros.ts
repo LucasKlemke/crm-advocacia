@@ -3,7 +3,7 @@ import {
   MembroNaoEncontradoError,
   PermissaoNegadaError,
   UltimoOwnerError,
-} from "@/services/membro.service";
+} from "@dominio/services/membro.service";
 
 export const tratarErroDeMembro: TradutorDeErro = (error) => {
   if (error instanceof MembroNaoEncontradoError) {

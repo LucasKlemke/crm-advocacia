@@ -17,10 +17,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { formatarCpf } from "@dominio/lib/utils/cpf";
-import { SEM_RESPONSAVEL } from "@dominio/types/caso";
-import type { FiltrosCasos } from "@dominio/types/caso";
-import type { RoleMembro } from "@prisma/client";
+import { formatarCpf } from "@crm/compartilhado/utils/cpf";
+import { SEM_RESPONSAVEL } from "@crm/compartilhado/tipos/caso";
+import type { FiltrosCasos } from "@crm/compartilhado/tipos/caso";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 export type VisaoCasos = "kanban" | "tabela";
 

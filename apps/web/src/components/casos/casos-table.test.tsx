@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { CasosTable } from "./casos-table";
-import { filtrosCasosPadrao } from "@dominio/types/caso";
-import type { CasoDTO } from "@dominio/types/caso";
+import { filtrosCasosPadrao } from "@crm/compartilhado/tipos/caso";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("@/components/shared/avatar-iniciais", () => ({

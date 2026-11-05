@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ArrowUp, MoreHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { formatarDataHora } from "@/lib/utils/data";
-import { podeEditarComentario, podeModerarComentario } from "@dominio/lib/auth/permissoes";
+import { podeEditarComentario, podeModerarComentario } from "@crm/compartilhado/auth/permissoes";
 import {
   useAtualizarComentario,
   useComentarios,
@@ -22,8 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { RoleMembro } from "@prisma/client";
-import type { ComentarioDTO, EscopoComentarioDTO } from "@dominio/types/comentario";
+import type { RoleMembro } from "@crm/compartilhado/enums";
+import type { ComentarioDTO, EscopoComentarioDTO } from "@crm/compartilhado/tipos/comentario";
 
 export interface ComentariosPanelProps {
   escopo: EscopoComentarioDTO;

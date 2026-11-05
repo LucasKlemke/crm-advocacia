@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SEM_RESPONSAVEL_VALOR } from "@/components/casos/campos-caso";
-import type { CasoDTO, FiltrosCasos } from "@dominio/types/caso";
+import type { CasoDTO, FiltrosCasos } from "@crm/compartilhado/tipos/caso";
 
 export interface CasosTableProps {
   filtros: FiltrosCasos;

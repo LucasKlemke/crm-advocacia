@@ -16,9 +16,9 @@ import { ErrosHttpFilter } from "../comum/erros-http.filter";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { CONVITE_SERVICE } from "./tokens";
 import { tratarErroDeConvite } from "./erros";
-import { convidarSchema } from "@/lib/api/schemas-convite";
-import type { conviteService, ConvidarInput } from "@/services/convite.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+import { convidarSchema } from "@dominio/lib/api/schemas-convite";
+import type { conviteService, ConvidarInput } from "@dominio/services/convite.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 @Controller("convites")
 @UseGuards(TenantGuard)

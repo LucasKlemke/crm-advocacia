@@ -44,8 +44,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { CasoDTO } from "@dominio/types/caso";
-import type { RoleMembro } from "@prisma/client";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
+import type { RoleMembro } from "@crm/compartilhado/enums";
 
 export interface CasoFormProps {
   onSucesso: (caso: CasoDTO) => void;

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { ComentariosPanel } from "./comentarios-panel";
-import type { ComentarioDTO } from "@dominio/types/comentario";
+import type { ComentarioDTO } from "@crm/compartilhado/tipos/comentario";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("@/components/shared/avatar-iniciais", () => ({

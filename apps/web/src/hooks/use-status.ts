@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { ListaStatus, ListaTiposStatus, StatusDTO } from "@dominio/types/status";
+import type { ListaStatus, ListaTiposStatus, StatusDTO } from "@crm/compartilhado/tipos/status";
 
 export interface DadosStatusForm {
   nome: string;

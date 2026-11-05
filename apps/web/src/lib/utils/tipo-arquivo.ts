@@ -1,4 +1,4 @@
-import type { TipoArquivo } from "@prisma/client";
+import type { TipoArquivo } from "@crm/compartilhado/enums";
 
 const TIPOS_ACEITOS: TipoArquivo[] = ["pdf", "docx", "jpg", "jpeg", "png"];
 

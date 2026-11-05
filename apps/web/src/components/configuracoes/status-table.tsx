@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusForm } from "@/components/configuracoes/status-form";
 import { MAPA_ICONES_STATUS } from "@/components/configuracoes/status-icone-picker";
-import type { StatusDTO } from "@dominio/types/status";
+import type { StatusDTO } from "@crm/compartilhado/tipos/status";
 
 export interface StatusTableProps {
   somenteLeitura: boolean;

@@ -9,16 +9,16 @@ import {
   CasoNaoEncontradoError,
   ClienteInativoError,
   ResponsavelInvalidoError,
-} from "@/services/caso.service";
-import { ClienteNaoEncontradoError } from "@/services/cliente.service";
-import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/caso.service";
+import { ClienteNaoEncontradoError } from "@dominio/services/cliente.service";
+import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 
 // serializarCaso (chamado de verdade pelo controller) assina o avatar via usuarioService:
 // o mock deixa verificar que o senhaHash não vaza e o avatar sai assinado.
-jest.mock("@/services/usuario.service", () => ({
+jest.mock("@dominio/services/usuario.service", () => ({
   usuarioService: { assinarUrlAvatar: jest.fn() },
 }));
-const { usuarioService } = jest.requireMock("@/services/usuario.service");
+const { usuarioService } = jest.requireMock("@dominio/services/usuario.service");
 
 const CLIENTE_ID = "11111111-1111-4111-8111-111111111111";
 const STATUS_ID = "22222222-2222-4222-8222-222222222222";

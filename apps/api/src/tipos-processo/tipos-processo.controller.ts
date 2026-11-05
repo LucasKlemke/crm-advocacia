@@ -16,14 +16,14 @@ import { Tenant } from "../comum/tenant/tenant.decorator";
 import { ErrosHttpFilter } from "../comum/erros-http.filter";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { TIPO_PROCESSO_SERVICE } from "./tokens";
-import { novoTipoProcessoSchema, edicaoTipoProcessoSchema } from "@/lib/api/schemas-tipo-processo";
-import { tratarErroDeTipoProcesso } from "@/lib/api/erros-tipo-processo";
+import { novoTipoProcessoSchema, edicaoTipoProcessoSchema } from "@crm/compartilhado/schemas/tipo-processo";
+import { tratarErroDeTipoProcesso } from "@dominio/lib/api/erros-tipo-processo";
 import type {
   tipoProcessoService,
   DadosNovoTipoProcesso,
   DadosEdicaoTipoProcesso,
-} from "@/services/tipo-processo.service";
-import type { TenantContext } from "@/lib/auth/resolver-tenant";
+} from "@dominio/services/tipo-processo.service";
+import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Natureza do processo, cadastrada pelo escritório (RN22). Escrita restrita a
 // owner/admin: a regra está no service, que lança PermissaoNegadaError (403).
