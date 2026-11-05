@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Scale } from "lucide-react";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth/config";
+import { lerSessaoDoServidor } from "@/lib/auth/sessao-servidor";
+import { usuarioService } from "@/services/usuario.service";
 import { membroService } from "@/services/membro.service";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -13,18 +14,25 @@ import { EscritorioSwitcher } from "@/components/shell/escritorio-switcher";
 import { HeaderData } from "@/components/shell/header-data";
 import { formatarDataExtensa } from "@/lib/utils/data";
 
-// Sem SessionProvider — sessão é lida só no server via auth(); mutações do client
-// (ex. EscritorioSwitcher) chamam a API e disparam router.refresh().
+// Sem SessionProvider: a sessão (cookie crm_sessao) é lida só no servidor, e as mutações
+// do client (ex. EscritorioSwitcher) chamam a API e disparam router.refresh().
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const sessao = await lerSessaoDoServidor();
+  if (!sessao) {
     redirect("/login");
   }
-  if (!session.user.escritorioId) {
+  if (!sessao.escritorioId) {
     redirect("/onboarding");
   }
 
-  const escritorios = await membroService.listarEscritoriosDoUsuario(session.user.id);
+  // Nome/e-mail do banco: o JWT só carrega ids.
+  const [usuario, escritorios] = await Promise.all([
+    usuarioService.obterPerfil(sessao.sub),
+    membroService.listarEscritoriosDoUsuario(sessao.sub),
+  ]);
+  if (!usuario || !usuario.ativo) {
+    redirect("/login");
+  }
 
   return (
     <div className="flex h-svh flex-col">
@@ -40,17 +48,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             id: escritorio.id,
             nome: escritorio.nome,
           }))}
-          ativoId={session.user.escritorioId}
+          ativoId={sessao.escritorioId}
         />
         <HeaderData data={formatarDataExtensa(new Date())} />
       </header>
       <SidebarProvider className="min-h-0 flex-1">
         <AppSidebar
-          usuario={{ nome: session.user.name ?? "", email: session.user.email ?? "" }}
+          usuario={{ nome: usuario.nome, email: usuario.email }}
         />
         <SidebarInset className="min-h-0 overflow-y-auto">
           <main className="flex flex-1 flex-col gap-4 p-4">
-            <QueryProvider escritorioId={session.user.escritorioId}>{children}</QueryProvider>
+            <QueryProvider escritorioId={sessao.escritorioId}>{children}</QueryProvider>
           </main>
         </SidebarInset>
         <Toaster />

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Scale } from "lucide-react";
-import { auth } from "@/lib/auth/config";
+import { lerSessaoDoServidor } from "@/lib/auth/sessao-servidor";
 import { NovoEscritorioForm } from "@/components/shell/novo-escritorio-form";
 
 export const metadata: Metadata = {
@@ -12,8 +12,7 @@ export const metadata: Metadata = {
 // Criar um escritório adicional a partir do shell autenticado usa o dialog do
 // switcher (ver EscritorioSwitcher), não esta página.
 export default async function OnboardingPage() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  if (!(await lerSessaoDoServidor())) {
     redirect("/login");
   }
 

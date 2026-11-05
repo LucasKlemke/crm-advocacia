@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
-import { auth } from "@/lib/auth/config";
+import { obterUsuarioDaSessao } from "@/lib/auth/sessao-servidor";
 import { getTenantContextOuRedirect } from "./_lib/tenant-context-pagina";
 import { getQueryClientServidor } from "@/lib/query/query-client-servidor";
 import { paraJson } from "@/lib/api/json";
@@ -76,8 +76,8 @@ async function DashboardComDados({
 // Se um prefetch falhar, `prefetchQuery` engole o erro e o cache fica vazio — o cliente
 // refaz a busca pelo caminho HTTP normal e cai no tratamento de erro que a view já tem.
 export default async function DashboardPage() {
-  const [ctx, session] = await Promise.all([getTenantContextOuRedirect(), auth()]);
-  const atorNome = session?.user?.name ?? "";
+  const [ctx, usuario] = await Promise.all([getTenantContextOuRedirect(), obterUsuarioDaSessao()]);
+  const atorNome = usuario?.nome ?? "";
   // Mesma data formatada no servidor que o header do shell já usa (layout.tsx).
   const dataHoje = formatarDataExtensa(new Date());
 

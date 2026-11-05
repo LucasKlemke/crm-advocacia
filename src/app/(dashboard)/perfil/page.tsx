@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth/config";
+import { lerSessaoDoServidor } from "@/lib/auth/sessao-servidor";
 import { usuarioService } from "@/services/usuario.service";
 import { PerfilForm } from "@/components/perfil/perfil-form";
 import { SenhaForm } from "@/components/perfil/senha-form";
@@ -13,16 +13,14 @@ export const metadata: Metadata = {
 };
 
 export default async function PerfilPage() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const sessao = await lerSessaoDoServidor();
+  if (!sessao) {
     redirect("/login");
   }
 
-  // O JWT guarda nome/e-mail do momento do login e o PATCH /api/perfil não o renova
-  // (não há SessionProvider no client — ver comentário no layout do dashboard), então o
-  // dado salvo só apareceria depois de um novo login. A página lê do banco; o
-  // router.refresh() do PerfilForm re-renderiza o Server Component com o valor novo.
-  const perfil = await usuarioService.obterPerfil(session.user.id);
+  // Nome/e-mail sempre do banco (o JWT só carrega ids); o router.refresh() do
+  // PerfilForm re-renderiza este Server Component com o valor novo.
+  const perfil = await usuarioService.obterPerfil(sessao.sub);
   if (!perfil) {
     redirect("/login");
   }

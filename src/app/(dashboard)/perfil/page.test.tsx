@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { auth } from "@/lib/auth/config";
+import { lerSessaoDoServidor } from "@/lib/auth/sessao-servidor";
 import { usuarioService } from "@/services/usuario.service";
 import PerfilPage from "./page";
 
-jest.mock("@/lib/auth/config", () => ({ auth: jest.fn() }));
+jest.mock("@/lib/auth/sessao-servidor", () => ({ lerSessaoDoServidor: jest.fn() }));
 jest.mock("@/services/usuario.service", () => ({
   usuarioService: { obterPerfil: jest.fn() },
 }));
@@ -27,7 +27,7 @@ jest.mock("@/components/perfil/avatar-upload", () => ({
   ),
 }));
 
-const mockedAuth = auth as unknown as jest.Mock;
+const mockedAuth = lerSessaoDoServidor as jest.Mock;
 const mockedObterPerfil = usuarioService.obterPerfil as jest.Mock;
 
 describe("PerfilPage", () => {
@@ -38,9 +38,7 @@ describe("PerfilPage", () => {
   // Bug: nome/e-mail vinham do JWT, que o PATCH /api/perfil não renova — o dado salvo só
   // aparecia depois de um novo login.
   it("mostra os dados do banco, não os do JWT", async () => {
-    mockedAuth.mockResolvedValue({
-      user: { id: "u1", name: "Nome Antigo", email: "antigo@teste.com" },
-    });
+    mockedAuth.mockResolvedValue({ sub: "u1", escritorioId: "esc-1" });
     mockedObterPerfil.mockResolvedValue({
       id: "u1",
       nome: "Nome Novo",
@@ -58,7 +56,7 @@ describe("PerfilPage", () => {
   });
 
   it("informa que o usuário não tem avatar quando avatarUrl é null", async () => {
-    mockedAuth.mockResolvedValue({ user: { id: "u1" } });
+    mockedAuth.mockResolvedValue({ sub: "u1", escritorioId: "esc-1" });
     mockedObterPerfil.mockResolvedValue({
       id: "u1",
       nome: "Nome Novo",
@@ -79,7 +77,7 @@ describe("PerfilPage", () => {
   });
 
   it("manda para o login quando o usuário não existe mais no banco", async () => {
-    mockedAuth.mockResolvedValue({ user: { id: "u1" } });
+    mockedAuth.mockResolvedValue({ sub: "u1", escritorioId: "esc-1" });
     mockedObterPerfil.mockResolvedValue(null);
 
     await expect(PerfilPage()).rejects.toThrow("REDIRECT:/login");

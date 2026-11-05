@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { auth } from "@/lib/auth/config";
+import { obterUsuarioDaSessao } from "@/lib/auth/sessao-servidor";
 import { getTenantContextOuRedirect } from "../_lib/tenant-context-pagina";
 import { CasosView } from "@/components/casos/casos-view";
 
@@ -10,8 +10,9 @@ export const metadata: Metadata = {
 export default async function CasosPage() {
   const ctx = await getTenantContextOuRedirect();
 
-  // Nome do autor do comentário em rascunho sai da sessão, como em /clientes.
-  const session = await auth();
+  // O nome do autor do comentário em rascunho sai do banco: o TenantContext e o JWT
+  // carregam só ids e papel.
+  const usuario = await obterUsuarioDaSessao();
 
   return (
     <div className="flex flex-col gap-6">
@@ -24,7 +25,7 @@ export default async function CasosPage() {
 
       <CasosView
         atorUsuarioId={ctx.usuarioId}
-        atorNome={session?.user?.name ?? ""}
+        atorNome={usuario?.nome ?? ""}
         atorRole={ctx.role}
       />
     </div>
