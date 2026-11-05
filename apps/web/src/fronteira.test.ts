@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { extrairEspecificadores } from "../scripts/transformar-imports";
 
 // Regra de fronteira (docs/app/estrutura-codigo.md) aplicada ao front Vite: o web não
@@ -57,7 +57,8 @@ function violacoesDoCodigo(codigo: string): string[] {
 
 function prismaComoValor(codigo: string): boolean {
   return (
-    /^\s*import\s+(?!type\b)[^;]*?from\s+["']@prisma\/client["']/m.test(codigo) ||
+    /^\s*import\s+(?!type\b)[^;'"]*?from\s+["']@prisma\/client["']/m.test(codigo) ||
+    /^\s*import\s+["']@prisma\/client["']/m.test(codigo) ||
     /\brequire\s*\(\s*["']@prisma\/client["']/.test(codigo)
   );
 }
@@ -65,7 +66,7 @@ function prismaComoValor(codigo: string): boolean {
 describe("fronteira do apps/web", () => {
   // Este arquivo traz os módulos proibidos como fixtures de texto; não se auto-audita.
   const arquivos = arquivosDoWeb(join(RAIZ_WEB, "src")).filter(
-    (arquivo) => !arquivo.endsWith("fronteira.test.ts")
+    (arquivo) => resolve(arquivo) !== __filename
   );
 
   it("nenhum arquivo importa o Next ou alcança o domínio fora do permitido", () => {
@@ -99,6 +100,14 @@ describe("fronteira do apps/web", () => {
     it("barra import de valor de @prisma/client e aceita import type", () => {
       expect(prismaComoValor('import { Role } from "@prisma/client";')).toBe(true);
       expect(prismaComoValor('import type { RoleMembro } from "@prisma/client";')).toBe(false);
+    });
+
+    it("barra import de efeito colateral de @prisma/client", () => {
+      expect(prismaComoValor('import "@prisma/client";')).toBe(true);
+    });
+
+    it("não casa de um import type até outro import do prisma", () => {
+      expect(prismaComoValor('import type { A } from "x";\nimport type { B } from "@prisma/client";')).toBe(false);
     });
 
     it("não acusa strings comuns nem requires permitidos", () => {
