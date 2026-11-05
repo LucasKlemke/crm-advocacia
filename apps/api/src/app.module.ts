@@ -10,6 +10,7 @@ import { PerfilModule } from "./perfil/perfil.module";
 import { EscritoriosModule } from "./escritorios/escritorios.module";
 import { MembrosModule } from "./membros/membros.module";
 import { ConvitesModule } from "./convites/convites.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ConvitesModule } from "./convites/convites.module";
     EscritoriosModule,
     MembrosModule,
     ConvitesModule,
+    DashboardModule,
   ],
   controllers: [SaudeController],
 })
