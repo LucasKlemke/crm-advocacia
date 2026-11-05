@@ -46,7 +46,7 @@ O browser fala com uma única origem: `/api/*` vai para a API Nest, o resto para
 
 Serviço assíncrono separado: `NotificacaoScheduler` (Lambda) roda em background verificando prazos de **todos os escritórios** e acionando WhatsApp/e-mail — não depende de nenhum usuário estar com a interface aberta, e processa cada tenant de forma isolada.
 
-## Model## Monorepo e comandos
+## Monorepo e comandos
 
 | Pasta | Pacote | O que é |
 |---|---|---|
@@ -67,7 +67,7 @@ Imports: na API, `@dominio/*` → `apps/api/src/dominio/*`; no web, `@/*` → `a
 | `npm run prisma:migrate` | `prisma migrate dev` em `apps/api` |
 | `npm run dev:tunnel` / `npm run ngrok:start` | Túnel ngrok para a API em :3001 (webhook da UAZAPI) |
 
-o de dados (22 tabelas)
+## Modelo de dados (22 tabelas)
 
 `escritorio` (tenant) · `usuario` (perfil global) · `membro` (N:N usuário↔escritório com papel) · `convite` (pendências por e-mail) · `cliente` (FK escritório; soft delete via `soft_deleted_at`) · `comentario` (ancorado por `escopo`+`escopo_id`, sem FK; hoje `cliente` e `caso`) · `log` (auditoria append-only: quem/quando/o quê + diff) · `tipo_status` (referência global, seed fixo de 6 tipos, só o administrador do sistema edita) · `status` (FK escritório + tipo_status; colunas do kanban, configuráveis pelo próprio escritório) · `tipo_processo` (FK escritório; natureza do processo com nome/cor/ícone, cadastrada pelo escritório — substituiu o antigo título livre do caso) · `caso` (FK escritório + cliente + status + tipo_processo + responsável opcional; campo `valor`) · `prazo` (FK caso) · `notificacoes_prazo` (FK prazo; controla envio 3d/1d/0d antes) · `template_mensagem` (FK escritório) · `historico_mensagem` (FK cliente + template) · `anotacao` (FK caso — a ser absorvida por `comentario` com escopo `caso`) · `documento` (FK caso, máx 10MB, tipos PDF/DOCX/JPG/PNG/JPEG) · `instancia_whatsapp` (FK escritório; vínculo com uma instância UAZAPI, guarda o token de envio; soft delete via `soft_deleted_at`) · `campanha` (FK escritório + instância opcional + criador; disparo em massa a partir de CSV, guarda o `uazapi_folder_id`) · `campanha_item` (FK campanha; uma mensagem já renderizada por destinatário, snapshot imutável) · `evento` (FK escritório + criador; compromisso da agenda com início/fim, modalidade presencial/online e vínculo opcional e exclusivo a caso ou cliente; soft delete via `soft_deleted_at`) · `evento_participante` (FK evento + membro; quem participa do evento, único por par). Ver detalhamento completo em [docs/database/schema.md](docs/database/schema.md).
 
