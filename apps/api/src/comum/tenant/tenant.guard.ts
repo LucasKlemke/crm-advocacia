@@ -5,7 +5,7 @@ import type { TenantContext } from "@/lib/auth/resolver-tenant";
 
 export type RequestComTenant = Request & { tenant?: TenantContext };
 
-// Equivalente Nest do getTenantContext() (RN19): sem contexto resolvido, o handler não
+// Guard de tenant (RN19): sem contexto resolvido, o handler não
 // roda. Os erros de tenant sobem para o ErrosHttpFilter (401/409/403).
 @Injectable()
 export class TenantGuard implements CanActivate {

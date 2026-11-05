@@ -94,6 +94,15 @@ describe("fronteira do apps/web", () => {
       expect(violacoesDoCodigo("const s = require('@/services/cliente-service');")).toHaveLength(1);
     });
 
+    it("barra o import do próprio Next (especificador montado em runtime)", () => {
+      const especificador = "next" + "/link";
+      expect(violacoesDoCodigo(`import Link from "${especificador}";`)).toHaveLength(1);
+    });
+
+    it("barra import() dinâmico de módulo proibido", () => {
+      expect(violacoesDoCodigo('await import("@/services/x")')).toHaveLength(1);
+    });
+
     it("barra require(\"@prisma/client\") de valor", () => {
       expect(prismaComoValor('const { PrismaClient } = require("@prisma/client");')).toBe(true);
     });

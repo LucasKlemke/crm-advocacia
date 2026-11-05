@@ -41,7 +41,7 @@ export class ParticipanteInvalidoError extends Error {
   }
 }
 
-// A sessão passou pelo getTenantContext, mas o membro pode ter sido removido entre a
+// A sessão passou pelo TenantGuard, mas o membro pode ter sido removido entre a
 // emissão do contexto e esta escrita — e todo evento precisa de um criador (FK).
 export class MembroDaSessaoInvalidoError extends Error {
   constructor() {

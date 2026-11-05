@@ -189,7 +189,7 @@ export const documentoService = {
     const nomeAlvo = await garantirEscopo(ctx, input.escopo, input.escopoId);
 
     // O autor é o Membro (não o Usuario) para manter o autor do upload escopado ao
-    // tenant — getTenantContext() já validou essa membership, então o lookup aqui
+    // tenant — o TenantGuard já validou essa membership, então o lookup aqui
     // nunca deveria falhar, mas é tratado defensivamente mesmo assim.
     const membro = await membroRepository.findByUsuarioEEscritorio(ctx.usuarioId, ctx.escritorioId);
     if (!membro) {

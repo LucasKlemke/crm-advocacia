@@ -1,8 +1,7 @@
 import { membroRepository } from "@/repositories/membro.repository";
 import type { RoleMembro } from "@prisma/client";
 
-// Regra de resolução do tenant (RN19) sem nenhuma dependência do NextAuth — usada pelo
-// getTenantContext() do Next e pelo TenantGuard da API Nest. Recebe só o que veio da
+// Regra de resolução do tenant (RN19) usada pelo TenantGuard da API Nest. Recebe só o que veio da
 // sessão (id do usuário e escritório ativo) e consulta a membership no banco.
 //
 // Crítico: o `role` sai sempre do banco, nunca do JWT — o JWT pode estar com um valor

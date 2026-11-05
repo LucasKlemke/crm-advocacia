@@ -33,8 +33,8 @@ function redirecionarParaLogin() {
   if (window.location.pathname === "/login") return;
   redirecionandoParaLogin = true;
   // Navegação dura de propósito: sessão expirada precisa derrubar todo o estado de
-  // cliente (cache do React Query, sessão do NextAuth em memória), o que um
-  // router.push() do App Router não faz. Além disso, apiFetch não é um componente —
+  // cliente (cache do React Query e sessão em memória), o que um
+  // navigate() do React Router não faz. Além disso, apiFetch não é um componente —
   // não há hook de router disponível aqui.
   window.location.assign(`/login?callbackUrl=${encodeURIComponent(atual)}`);
 }
