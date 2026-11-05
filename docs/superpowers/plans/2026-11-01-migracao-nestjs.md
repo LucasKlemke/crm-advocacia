@@ -39,6 +39,7 @@ As fases foram escritas em paralelo e reconciliadas depois. Pontos que um execut
 9. **Mensagem de erro 500:** genérica em toda a API (`"Não foi possível concluir a operação."`). Testes portados das rotas Next já estão ajustados; 502 (S3/zip) e 413 (corpo grande) mantêm mensagens próprias.
 10. **Sessões antigas:** a Fase 3 invalida as sessões do NextAuth — todos os usuários precisam logar de novo após o deploy.
 11. **Decisões pendentes do usuário (Fase 5):** Vercel Services (Beta) vs. Projects separados (plano B na Task 5.9); banco de preview; SonarCloud (`SONAR_TOKEN`, org/projectKey); `AUTH_SECRET` e `NEW_RELIC_*` por Project; proteção de branch.
+12. **Pré-voo:** os conflitos C1–C13 apontados na varredura de pré-voo entre tasks já foram corrigidos nas próprias tasks; não há ajuste pendente a aplicar por fora do texto de cada task.
 
 ## Decisões de arquitetura (todas as fases)
 
@@ -5830,35 +5831,7 @@ Lógica além do service a reproduzir: a query é lida por `parseFiltrosCasoDaQu
 
 - [ ] **Step 1: Escrever os testes que falham**
 
-**Não criar** `apps/api/src/comum/search-params.test.ts`: `searchParamsDaRequisicao` já existe em `apps/api/src/comum/query.ts` com testes (Task 2.1). Pular o bloco de código logo abaixo.
-
-```ts
-import type { Request } from "express";
-import { searchParamsDaRequisicao } from "./search-params";
-
-function req(originalUrl: string) {
-  return { originalUrl } as unknown as Request;
-}
-
-describe("searchParamsDaRequisicao", () => {
-  it("lê a query da URL original com a semântica de URLSearchParams", () => {
-    const sp = searchParamsDaRequisicao(req("/api/dashboard/resumo?clienteId=a,b&dataInicio=2026-01-01"));
-
-    expect(sp.get("clienteId")).toBe("a,b");
-    expect(sp.get("dataInicio")).toBe("2026-01-01");
-    expect(sp.get("ausente")).toBeNull();
-  });
-
-  it("devolve vazio quando não há query", () => {
-    expect([...searchParamsDaRequisicao(req("/api/eventos")).keys()]).toEqual([]);
-  });
-
-  it("decodifica valores codificados", () => {
-    const sp = searchParamsDaRequisicao(req("/api/eventos?inicio=2026-09-01T00%3A00%3A00.000Z"));
-    expect(sp.get("inicio")).toBe("2026-09-01T00:00:00.000Z");
-  });
-});
-```
+**Não criar** `apps/api/src/comum/search-params.test.ts`: `searchParamsDaRequisicao` já existe em `apps/api/src/comum/query.ts` com testes (Task 2.1). Não há bloco de teste para `search-params`; siga direto para o teste do controller.
 
 `apps/api/src/dashboard/dashboard.controller.test.ts`:
 
@@ -5948,19 +5921,7 @@ Expected: FAIL — `Cannot find module './dashboard.module'`.
 
 - [ ] **Step 3: Implementar**
 
-**Não criar** `apps/api/src/comum/search-params.ts` (ver acima). Pular o bloco de código logo abaixo.
-
-```ts
-import type { Request } from "express";
-
-// Os parsers de query do domínio (parseFiltrosCasoDaQuery, parseFiltrosEventosDaQuery…)
-// recebem URLSearchParams, como nas rotas Next. Reconstruir a partir da URL original
-// mantém exatamente a mesma semântica (get → primeiro valor ou null), em vez do
-// req.query do Express (arrays em chave repetida, undefined).
-export function searchParamsDaRequisicao(req: Request): URLSearchParams {
-  return new URL(req.originalUrl, "http://localhost").searchParams;
-}
-```
+**Não criar** `apps/api/src/comum/search-params.ts` (ver acima). Use o `searchParamsDaRequisicao` de `query.ts`.
 
 `apps/api/src/dashboard/tokens.ts`:
 
@@ -10266,7 +10227,7 @@ Início da janela de virada (ver o topo da fase). A partir daqui, uma sessão do
 
 **Files:**
 - Modify: `apps/api/src/comum/tenant/ler-sessao.ts`, `apps/api/src/comum/tenant/ler-sessao.test.ts`, `next.config.ts`
-- Delete: `src/app/api/cadastro/`, `src/app/api/sessao/`, `src/app/api/escritorios/` (o que restar)
+- Delete: `src/app/api/cadastro/`, `src/app/api/sessao/`, `src/app/api/escritorios/` (o que restar), `apps/api/src/comum/tenant/ler-sessao-usuario.test.ts` (Task 2.20; mockava `@/lib/auth/token`, que deixa de ser usado, e o `ler-sessao.test.ts` novo já cobre `resolverUsuarioDaRequisicao`)
 
 **Interfaces:**
 - Consumes: `lerSessaoDaRequisicao` (Task 3.2); `resolverTenantContext`, `NaoAutenticadoError` (Fase 1).
@@ -10429,6 +10390,7 @@ Em `next.config.ts`, acrescentar ao fim de `ROTAS_NA_API_NEST` os quatro grupos,
 ```bash
 ls src/app/api/escritorios
 git rm -r src/app/api/cadastro src/app/api/sessao src/app/api/escritorios
+git rm apps/api/src/comum/tenant/ler-sessao-usuario.test.ts
 ```
 
 O `ls` deve mostrar só `route.ts`, `route.test.ts` e, se a Fase 2 ainda não removeu, a pasta `atual/`. Se `atual/route.ts` ainda existir, a Fase 2 não migrou `escritorios/atual`. Pare e porte essa rota antes, porque o rewrite de `escritorios` a desligaria. `src/app/api/auth/[...nextauth]` fica para a Task 3.8.
@@ -10441,7 +10403,7 @@ Expected: tudo PASS. Confirme com `grep -rn "app/api/cadastro\|app/api/sessao\|a
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/api/src/comum/tenant next.config.ts src/app/api
+git add -A apps/api/src/comum/tenant next.config.ts src/app/api
 git commit -m "feat(auth): guards da API leem crm_sessao e Next encaminha rotas de sessão ao Nest"
 ```
 
@@ -11145,9 +11107,9 @@ Em `apps/api/jest.config.cjs`, troque a linha de `transformIgnorePatterns` e o c
 ```js
 // CJS de propósito: o pacote é "type": "module", e o Jest 29 roda em CommonJS.
 // O @swc/jest transpila o próprio código, o domínio em ../../src e os pacotes ESM
-// (Nest 12, jose) para CJS.
+// (Nest 12, jose e o archiver com suas deps ESM, acrescentados na Task 2.3) para CJS.
 // ...
-  transformIgnorePatterns: ["/node_modules/(?!(@nestjs|jose)/)"],
+  transformIgnorePatterns: ["/node_modules/(?!(@nestjs|jose|archiver|zip-stream|compress-commons|crc32-stream|is-stream)/)"],
 ```
 
 Em `apps/api/src/main.ts`, troque o comentário do `config(...)` por `// Mesmo .env do Next: DATABASE_URL e AUTH_SECRET precisam ser idênticos, senão a API e o proxy.ts do Next não conseguem verificar o cookie crm_sessao um do outro.`
@@ -11458,7 +11420,7 @@ Durante toda a parte A, **o Next continua funcionando**. Uma ponte de aliases na
 - **`<html lang>`:** passa de `en` para `pt-BR` (acessibilidade e leitores de tela). O Next continua com `en` até sair.
 - **E2E:** `playwright.config.ts` passa a ter dois alvos.
   - `E2E_ALVO=web` sobe a API e o Vite (build + preview em :5173).
-  - O alvo padrão continua sendo o Next, porque as specs de fluxo só passam no web depois da parte B. A parte B inverte o padrão.
+  - O alvo padrão continua sendo o Next, porque as specs de fluxo só passam no web depois da parte B. A Task 4.24 inverte o padrão.
 
 ### Estrutura de arquivos
 
@@ -11534,6 +11496,8 @@ Na `rotas.tsx` desta parte, cada linha marcada "4b" aponta para `<PaginaEmMigrac
 | — (404 padrão do Next) | `*` | `paginas/pagina-nao-encontrada.tsx` | `Página não encontrada` | 4a |
 | `(dashboard)/_lib/tenant-context-pagina.ts` | — | some: o tenant vem da sessão (`useSessao`) | — | 4b |
 | `**/_components/**` | — | sugestão: `paginas/<mesmo caminho>/_components/**` (`git mv` + codemod da Task 4.2) | — | 4b |
+
+Os caminhos e nomes da coluna "Elemento / arquivo" são só uma sugestão. Valem os das Tasks 4.24–4.33: `paginas/login.tsx`, `paginas/cadastro.tsx`, `paginas/onboarding.tsx`, `paginas/inicio.tsx` (`PaginaInicio`), `paginas/clientes.tsx`, `paginas/casos.tsx`, `paginas/agenda.tsx`, `paginas/campanhas/{lista,nova,detalhe}.tsx` (`PaginaCampanhas`, `PaginaNovaCampanha`, `PaginaCampanha`), `paginas/instancias.tsx`, `paginas/perfil.tsx`, `paginas/configuracoes/*.tsx`, `paginas/layouts/*.tsx` e `paginas/nao-encontrada.tsx`. Os layouts e o 404 provisórios da Task 4.7 são apagados pelas Tasks 4.24, 4.25 e 4.33.
 
 ---
 
@@ -13653,7 +13617,7 @@ git commit -m "feat(web): rota protegida e layouts das áreas do app"
   export function Provedores(props: { children: ReactNode }): JSX.Element; // ThemeProvider(light) > QueryClientProvider(queryClientRaiz) > children + <Toaster />
   export function App(): JSX.Element;                                     // Provedores + RouterProvider(createBrowserRouter(rotas))
   ```
-- Contrato para a parte B: para portar uma página, crie o arquivo da coluna "Elemento / arquivo" do mapa e troque, em `rotas.tsx`, o `emMigracao("…")` daquela rota pelo componente. Depois remova a linha correspondente de `ROTAS_EM_MIGRACAO` em `rotas.test.tsx` e, se quiser manter a cobertura da rota, troque-a por uma asserção da página real. Rotas pesadas (ex.: agenda e campanhas, com `recharts`/`papaparse`) podem virar `lazy: () => import(...)` no mesmo objeto de rota.
+- Contrato para a parte B: para portar uma página, crie o arquivo indicado na task correspondente (Tasks 4.24–4.32; a coluna "Elemento / arquivo" do mapa é só uma sugestão e os nomes reais são os das tasks) e troque, em `rotas.tsx`, o `emMigracao("…")` daquela rota pelo componente. Depois remova a linha correspondente de `ROTAS_EM_MIGRACAO` em `rotas.test.tsx` e, se quiser manter a cobertura da rota, troque-a por uma asserção da página real. Rotas pesadas (ex.: agenda e campanhas, com `recharts`/`papaparse`) podem virar `lazy: () => import(...)` no mesmo objeto de rota.
 
 - [ ] **Step 1: Escrever os testes que falham**
 
@@ -14088,7 +14052,7 @@ git commit -m "test(web): guarda de fronteira entre front e domínio"
 
 **Interfaces:**
 - Produces:
-  - `E2E_ALVO=web|next` no Playwright, com padrão `next` até a parte B inverter;
+  - `E2E_ALVO=web|next` no Playwright, com padrão `next` até a Task 4.24 inverter (daí em diante o padrão é `web`);
   - `npm run e2e:web`;
   - `npm run dev:tudo`, que sobe API e web juntos, com `predev:tudo` subindo o Postgres via Docker.
 
@@ -14136,7 +14100,7 @@ import { defineConfig, devices } from "@playwright/test";
 // Next em :3000; "web" (E2E_ALVO=web) sobe a API Nest e o front React/Vite em :5173
 // (build + preview), que encaminha /api para a API pelo proxy do Vite. A parte 4b
 // inverte o padrão e apaga o ramo "next" junto com o Next.
-const alvo = process.env.E2E_ALVO === "web" ? "web" : "next";
+const alvo = process.env.E2E_ALVO === "web" ? "web" : "next"; // a Task 4.24 inverte: E2E_ALVO === "next" ? "next" : "web"
 const reaproveitar = !process.env.CI;
 
 const api = {
@@ -14200,7 +14164,7 @@ Run: `npx playwright test e2e/web-infra.spec.ts`
 Expected: 1 passed, 1 skipped (alvo `next`).
 
 Run: `npm run e2e`
-Expected: a suíte completa continua verde contra o Next. As specs de fluxo (`agenda`, `casos`, `clientes`, `sessao`…) **não** rodam no alvo web nesta parte. Elas dependem das páginas portadas pela parte B, que passa a rodá-las com `npm run e2e:web`.
+Expected: a suíte completa continua verde contra o Next. As specs de fluxo (`agenda`, `casos`, `clientes`, `sessao`…) **não** rodam no alvo web nesta parte. Elas dependem das páginas portadas pela parte B. A Task 4.24, que começa a apagar as páginas do Next, inverte o padrão do Playwright para `web`.
 
 Run: `npm run dev:tudo`
 Expected: o Postgres sobe pelo Docker, e os logs prefixados `[api]` e `[web]` mostram a API em :3001 e o Vite em `http://localhost:5173/`. Com `Ctrl+C` os dois encerram juntos.
@@ -14588,19 +14552,29 @@ A página de membros assinava cada `avatarUrl` com `usuarioService.assinarUrlAva
 
 - [ ] **Step 1: Teste que falha**
 
-Acrescentar a `apps/api/src/membros/membros.controller.test.ts`. Quem migra para cá é o teste de `src/app/(dashboard)/configuracoes/membros/page.test.tsx`.
+Editar `apps/api/src/membros/membros.controller.test.ts` (criado na Task 2.23). Quem migra para cá é o teste de `src/app/(dashboard)/configuracoes/membros/page.test.tsx`. Primeiro, ajustar o que a Task 2.23 deixou, porque o handler novo lê `membro.usuario.avatarUrl` e passa a depender de `USUARIO_SERVICE_AVATAR`:
+
+1. Trocar a linha `import { MEMBRO_SERVICE } from "./tokens";` por `import { MEMBRO_SERVICE, USUARIO_SERVICE_AVATAR } from "./tokens";`.
+2. Logo abaixo de `const service = { listarMembros: jest.fn(), alterarRole: jest.fn(), remover: jest.fn() };`, acrescentar `const avatares = { assinarUrlAvatar: jest.fn(async (chave: string | null) => (chave ? "https://bucket.s3.amazonaws.com/signed-get" : null)) };`.
+3. Em `subir()`, trocar `overrides: [[MEMBRO_SERVICE, service]]` por `overrides: [[MEMBRO_SERVICE, service], [USUARIO_SERVICE_AVATAR, avatares]]`.
+4. No `afterEach`, trocar `jest.clearAllMocks()` por `jest.clearAllMocks(); avatares.assinarUrlAvatar.mockImplementation(async (chave: string | null) => (chave ? "https://bucket.s3.amazonaws.com/signed-get" : null));`.
+5. No teste "lista os membros do escritório da sessão", trocar o mock e a asserção por:
 
 ```ts
-import { USUARIO_SERVICE_AVATAR } from "./tokens";
+    service.listarMembros.mockResolvedValue([{ id: "membro-1", usuario: { avatarUrl: null } }]);
 
-const avatares = { assinarUrlAvatar: jest.fn() };
+    await request(await subir())
+      .get("/api/membros")
+      .expect(200, { membros: [{ id: "membro-1", usuario: { avatarUrl: null } }] });
+    expect(service.listarMembros).toHaveBeenCalledWith(CTX_OWNER);
+```
 
+Depois, acrescentar ao fim do arquivo o caso novo:
+
+```ts
 describe("GET /api/membros — avatar", () => {
-  afterEach(() => jest.clearAllMocks());
-
   it("assina o avatarUrl de cada membro antes de responder", async () => {
-    const membroService = {
-      listarMembros: jest.fn().mockResolvedValue([
+    service.listarMembros.mockResolvedValue([
         {
           id: "membro-1",
           role: "owner",
@@ -14617,25 +14591,13 @@ describe("GET /api/membros — avatar", () => {
           role: "padrao",
           usuario: { id: "user-2", nome: "Sem Foto", email: "s@teste.com", telefone: null, avatarUrl: null },
         },
-      ]),
-    };
-    avatares.assinarUrlAvatar.mockImplementation(async (chave: string | null) =>
-      chave ? "https://bucket.s3.amazonaws.com/signed-get" : null
-    );
-    const app = await criarAppDeTeste({
-      imports: [MembrosModule],
-      overrides: [
-        [MEMBRO_SERVICE, membroService],
-        [USUARIO_SERVICE_AVATAR, avatares],
-      ],
-    });
+    ]);
 
-    const res = await request(app.getHttpServer()).get("/api/membros").expect(200);
+    const res = await request(await subir()).get("/api/membros").expect(200);
 
     expect(avatares.assinarUrlAvatar).toHaveBeenCalledWith("development/avatares/user-1/foto.png");
     expect(res.body.membros[0].usuario.avatarUrl).toBe("https://bucket.s3.amazonaws.com/signed-get");
     expect(res.body.membros[1].usuario.avatarUrl).toBeNull();
-    await app.close();
   });
 });
 ```
@@ -15171,8 +15133,8 @@ git commit -m "feat(web): hooks de escritórios, membros e perfil e base de test
 **Files:**
 - Create: `apps/web/src/paginas/layouts/layout-auth.tsx`, `apps/web/src/paginas/login.tsx`, `apps/web/src/paginas/cadastro.tsx`, `apps/web/src/paginas/onboarding.tsx`
 - Test: `apps/web/src/paginas/login.test.tsx`, `apps/web/src/paginas/cadastro.test.tsx`, `apps/web/src/paginas/onboarding.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`; o componente `RotaProtegida` (e o teste dele), se ainda não aceitar `exigirEscritorio`
-- Delete: `src/app/(auth)/**`, `src/app/(onboarding)/**`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`, `playwright.config.ts`, `e2e/web-infra.spec.ts`; o componente `RotaProtegida` (e o teste dele), se ainda não aceitar `exigirEscritorio`
+- Delete: `src/app/(auth)/**`, `src/app/(onboarding)/**`, `apps/web/src/paginas/auth/layout-auth.tsx` (provisório da Task 4.7, substituído por `paginas/layouts/layout-auth.tsx`)
 
 **Interfaces:**
 - Consumes: `entrar(email, senha): Promise<boolean>` de `@/lib/sessao`; `useTituloPagina`; `AuthBrandingPanel`, `PasswordStrengthMeter`, `NovoEscritorioForm`.
@@ -15581,11 +15543,26 @@ Em `apps/web/src/rotas.tsx`:
 - `/onboarding` fica sob `{ element: <RotaProtegida exigirEscritorio={false} /> }` com `element: <PaginaOnboarding />`;
 - os imports vêm de `./paginas/layouts/layout-auth`, `./paginas/login`, `./paginas/cadastro` e `./paginas/onboarding`.
 
-- [ ] **Step 4: Remover as páginas Next migradas**
+- [ ] **Step 4: Remover as páginas Next migradas, atualizar o teste de rotas e inverter o alvo do E2E**
 
 ```bash
 git rm -r "src/app/(auth)" "src/app/(onboarding)"
+git rm apps/web/src/paginas/auth/layout-auth.tsx
 ```
+
+O `LayoutAuth` de `paginas/layouts/layout-auth.tsx` substitui o provisório da Task 4.7. Confirmar que `rotas.tsx` não importa mais `@/paginas/auth/layout-auth`: `grep -rn "paginas/auth/layout-auth" apps/web/src` deve vir vazio.
+
+Em `apps/web/src/rotas.test.tsx`:
+- apagar de `ROTAS_EM_MIGRACAO` as linhas `["/login", ...]`, `["/cadastro", ...]` e `["/onboarding", ...]` (agora são páginas reais);
+- no caso "as rotas do dashboard exigem sessão", trocar a asserção final por `expect(await screen.findByRole("heading", { name: "Bem-vindo(a) de volta" })).toBeInTheDocument();`.
+
+Como o Next deixa de servir `/login` e `/cadastro`, o padrão do E2E passa a ser a SPA. Em `playwright.config.ts`, trocar a linha do `alvo` por:
+
+```ts
+const alvo = process.env.E2E_ALVO === "next" ? "next" : "web";
+```
+
+e, em `e2e/web-infra.spec.ts`, trocar a condição do `test.skip` por `process.env.E2E_ALVO === "next"`. Daqui até a Task 4.34, não rodar a suíte E2E completa: os specs das páginas ainda não portadas só voltam a passar depois da Task 4.32.
 
 - [ ] **Step 5: Rodar**
 
@@ -15608,8 +15585,8 @@ O layout Next lia a sessão e a lista de escritórios no servidor e mandava `esc
 **Files:**
 - Create: `apps/web/src/paginas/layouts/layout-dashboard.tsx`, `apps/web/src/paginas/layouts/layout-configuracoes.tsx`
 - Test: `apps/web/src/paginas/layouts/layout-dashboard.test.tsx`, `apps/web/src/paginas/layouts/layout-configuracoes.test.tsx`
-- Modify: `apps/web/src/components/shell/escritorio-switcher.tsx`, `apps/web/src/components/shell/escritorio-switcher.test.tsx` (reescrito), `apps/web/src/rotas.tsx`
-- Delete: `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/configuracoes/layout.tsx`, `src/app/(dashboard)/configuracoes/page.tsx`
+- Modify: `apps/web/src/components/shell/escritorio-switcher.tsx`, `apps/web/src/components/shell/escritorio-switcher.test.tsx` (reescrito), `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
+- Delete: `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/configuracoes/layout.tsx`, `src/app/(dashboard)/configuracoes/page.tsx`, `apps/web/src/paginas/dashboard/layout-dashboard.tsx` e `apps/web/src/paginas/dashboard/configuracoes/layout-configuracoes.tsx` (provisórios da Task 4.7)
 
 **Interfaces:**
 - Consumes: `useSessaoDoEscritorio`, `useMeusEscritorios` (Task 4.23); `trocarEscritorio` de `@/lib/sessao`; `QueryProvider`, `AppSidebar`, `EscritorioSwitcher`, `HeaderData`, `ConfiguracoesNav`.
@@ -15634,7 +15611,6 @@ jest.mock("@/components/ui/sidebar", () => ({
   SidebarProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarInset: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
-jest.mock("@/components/ui/sonner", () => ({ Toaster: () => null }));
 jest.mock("@/components/shell/header-data", () => ({
   HeaderData: ({ data }: { data: string }) => <span data-testid="header-data">{data}</span>,
 }));
@@ -15821,7 +15797,6 @@ import { Link, Outlet } from "react-router";
 import { Scale } from "lucide-react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { EscritorioSwitcher } from "@/components/shell/escritorio-switcher";
@@ -15830,7 +15805,8 @@ import { formatarDataExtensa } from "@/lib/utils/data";
 import { useMeusEscritorios } from "@/hooks/use-escritorios";
 import { useSessaoDoEscritorio, type SessaoDoEscritorio } from "@/hooks/use-sessao-do-escritorio";
 
-// Shell das telas autenticadas. Fica sob <RotaProtegida>, que já redirecionou quem não
+// Shell das telas autenticadas. O Toaster é global (Provedores, Task 4.8): não renderizar outro aqui.
+// Fica sob <RotaProtegida>, que já redirecionou quem não
 // tem sessão (/login) ou escritório ativo (/onboarding).
 //
 // O QueryProvider nasce por escritório: trocar de tenant (trocarEscritorio → novo
@@ -15874,7 +15850,6 @@ function Shell({ sessao }: { sessao: SessaoDoEscritorio }) {
             <Outlet />
           </main>
         </SidebarInset>
-        <Toaster />
       </SidebarProvider>
     </div>
   );
@@ -15934,6 +15909,7 @@ export function EscritorioSwitcher({ escritorios, ativoId }: EscritorioSwitcherP
 O JSX que vem depois (`return (...)`) não muda.
 
 Em `apps/web/src/rotas.tsx`:
+- importar `LayoutDashboard` de `./paginas/layouts/layout-dashboard` e `LayoutConfiguracoes` de `./paginas/layouts/layout-configuracoes`, no lugar dos provisórios da Task 4.7 (`./paginas/dashboard/...`);
 - o elemento de layout das rotas do dashboard (filho de `<RotaProtegida />`) passa a ser `<LayoutDashboard />`;
 - `/configuracoes` passa a ser `{ path: "configuracoes", element: <LayoutConfiguracoes />, children: [...] }`, com primeiro filho `{ index: true, element: <Navigate to="/configuracoes/escritorio" replace /> }`;
 - `Navigate` vem de `react-router`.
@@ -15942,6 +15918,19 @@ Em `apps/web/src/rotas.tsx`:
 
 ```bash
 git rm "src/app/(dashboard)/layout.tsx" "src/app/(dashboard)/configuracoes/layout.tsx" "src/app/(dashboard)/configuracoes/page.tsx"
+git rm apps/web/src/paginas/dashboard/layout-dashboard.tsx apps/web/src/paginas/dashboard/configuracoes/layout-configuracoes.tsx
+grep -rn "paginas/dashboard/layout-dashboard\|paginas/dashboard/configuracoes/layout-configuracoes" apps/web/src
+```
+
+O `grep` deve vir vazio. O `LayoutDashboard` real busca dados da API; em `apps/web/src/rotas.test.tsx` ele é trocado por um stub (o shell tem teste próprio). Acrescentar, junto dos outros `jest.mock` do arquivo:
+
+```tsx
+jest.mock("./paginas/layouts/layout-dashboard", () => ({
+  LayoutDashboard: () => {
+    const { Outlet } = jest.requireActual("react-router");
+    return <Outlet />;
+  },
+}));
 ```
 
 - [ ] **Step 5: Rodar**
@@ -15960,13 +15949,14 @@ git commit -m "feat(web): shell do dashboard com troca de escritório pela sess�
 
 ### Task 4.26: Dashboard (`/`)
 
-O Server Component fazia prefetch de três queries (`chaveDashboardResumo`, `chaveCasos(filtrosTabelaDashboard(...))`, `chaveCasosFiltroOpcoes`) e as hidratava, com `Suspense` + `DashboardSkeleton` como fallback de streaming. Na SPA não há servidor para fazer prefetch. O `DashboardView` já busca as três pelos próprios hooks (`useDashboardResumo`, `useCasos`, `useCasoFiltroOpcoes`) e tem estados próprios de loading e erro (`isLoading`/`isError`). Por isso a página só monta a view, e o `DashboardSkeleton` (usado só como fallback do `Suspense`) sai junto.
+O Server Component fazia prefetch de três queries (`chaveDashboardResumo`, `chaveCasos(filtrosTabelaDashboard(...))`, `chaveCasosFiltroOpcoes`) e as hidratava, com `Suspense` + `DashboardSkeleton` como fallback de streaming. Na SPA não há servidor para fazer prefetch. O `DashboardView` já busca as três pelos próprios hooks (`useDashboardResumo`, `useCasos`, `useCasoFiltroOpcoes`) e tem estados próprios de loading e erro (`isLoading`/`isError`). Por isso a página só monta a view, e o componente `DashboardSkeleton` (usado só como fallback do `Suspense`) sai do arquivo. Os outros dois exports de `dashboard-skeleton.tsx` (`StatusStatCardsSkeleton`, `CasosStatusDonutChartSkeleton`) continuam em uso pelo `DashboardView`, então o arquivo **não é apagado**.
 
 **Files:**
 - Create: `apps/web/src/paginas/inicio.tsx`
 - Test: `apps/web/src/paginas/inicio.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
-- Delete: `src/app/(dashboard)/page.tsx`, `apps/web/src/components/dashboard/dashboard-skeleton.tsx`, `apps/web/src/components/dashboard/dashboard-skeleton.test.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
+- Modify: `apps/web/src/components/dashboard/dashboard-skeleton.tsx` (remove só `DashboardSkeleton` e seus imports), `apps/web/src/components/dashboard/dashboard-skeleton.test.tsx` (remove só o teste do `DashboardSkeleton`)
+- Delete: `src/app/(dashboard)/page.tsx`
 
 **Interfaces:**
 - Consumes: `DashboardView({ atorUsuarioId, atorNome, atorRole, dataHoje })`, `useSessaoDoEscritorio`, `formatarDataExtensa`.
@@ -16044,12 +16034,26 @@ Em `apps/web/src/rotas.tsx`, a rota índice (`index: true`) sob `<LayoutDashboar
 
 - [ ] **Step 4: Remover o código morto**
 
+Em `apps/web/src/rotas.test.tsx`, apagar de `ROTAS_EM_MIGRACAO` as linhas abaixo (as rotas deixaram de ser placeholder):
+  - `["/", "src/app/(dashboard)/page.tsx"]`
+
 ```bash
-git rm "src/app/(dashboard)/page.tsx" apps/web/src/components/dashboard/dashboard-skeleton.tsx apps/web/src/components/dashboard/dashboard-skeleton.test.tsx
-grep -rn "DashboardSkeleton\|query-client-servidor\|HydrationBoundary" apps/web/src
+git rm "src/app/(dashboard)/page.tsx"
 ```
 
-Expected do grep: nenhuma ocorrência.
+Em `apps/web/src/components/dashboard/dashboard-skeleton.tsx`, **manter** `StatusStatCardsSkeleton` e `CasosStatusDonutChartSkeleton` (importados por `dashboard-view.tsx`) e remover só o que é do `DashboardSkeleton`: os imports `DashboardSaudacaoCard` e `CasosTabelaSimplificadaSkeleton` (linhas 3-4) e o trecho que vai de `export interface DashboardSkeletonProps` até o fim do arquivo.
+
+```bash
+sed -i '' -e '/^import { DashboardSaudacaoCard }/d' -e '/^import { CasosTabelaSimplificadaSkeleton }/d' -e '/^export interface DashboardSkeletonProps/,$d' apps/web/src/components/dashboard/dashboard-skeleton.tsx
+```
+
+Em `dashboard-skeleton.test.tsx`, remover `DashboardSkeleton` do `import { ... } from "./dashboard-skeleton"` e apagar o bloco `describe("DashboardSkeleton", ...)` inteiro (os dois primeiros `describe` ficam).
+
+```bash
+grep -rn "DashboardSkeleton\b\|query-client-servidor\|HydrationBoundary" apps/web/src
+```
+
+Expected do grep: nenhuma ocorrência (o `\b` evita casar `CasosStatusDonutChartSkeleton`/`StatusStatCardsSkeleton`).
 
 - [ ] **Step 5: Rodar**
 
@@ -16072,7 +16076,7 @@ Os nomes do autor dos comentários (`atorNome`) vinham do `auth()` e agora vêm 
 **Files:**
 - Create: `apps/web/src/paginas/clientes.tsx`, `apps/web/src/paginas/casos.tsx`
 - Test: `apps/web/src/paginas/clientes.test.tsx`, `apps/web/src/paginas/casos.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
 - Delete: `src/app/(dashboard)/clientes/page.tsx`, `src/app/(dashboard)/casos/page.tsx`
 
 **Interfaces:**
@@ -16206,6 +16210,10 @@ Em `apps/web/src/rotas.tsx`, `clientes` → `<PaginaClientes />` e `casos` → `
 
 - [ ] **Step 4: Remover e rodar**
 
+Em `apps/web/src/rotas.test.tsx`, apagar de `ROTAS_EM_MIGRACAO` as linhas abaixo (as rotas deixaram de ser placeholder):
+  - `["/clientes", "src/app/(dashboard)/clientes/page.tsx"]`
+  - `["/casos", "src/app/(dashboard)/casos/page.tsx"]`
+
 ```bash
 git rm "src/app/(dashboard)/clientes/page.tsx" "src/app/(dashboard)/casos/page.tsx"
 npm run web:test -- paginas/clientes paginas/casos
@@ -16230,7 +16238,7 @@ A página só garantia o tenant e envolvia `AgendaView` em `Suspense` (exigênci
 - Move: `src/app/(dashboard)/agenda/_components/**` → `apps/web/src/paginas/agenda/_components/**`
 - Create: `apps/web/src/paginas/agenda.tsx`
 - Test: `apps/web/src/paginas/agenda.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
 - Delete: `src/app/(dashboard)/agenda/page.tsx`
 
 **Interfaces:**
@@ -16242,11 +16250,11 @@ A página só garantia o tenant e envolvia `AgendaView` em `Suspense` (exigênci
 ```bash
 mkdir -p apps/web/src/paginas/agenda
 git mv "src/app/(dashboard)/agenda/_components" apps/web/src/paginas/agenda/_components
-grep -rlE '"next/(link|navigation|image)"' apps/web/src/paginas/agenda | xargs -r perl -pi -e 's#"next/link"#"\@/compat/next-link"#g; s#"next/navigation"#"\@/compat/next-navigation"#g; s#"next/image"#"\@/compat/next-image"#g'
-grep -rn '"next/\|next-auth' apps/web/src/paginas/agenda
+node apps/web/scripts/codemod-imports.ts apps/web/src/paginas/agenda
+grep -rnE "(from |import |jest\.mock\()['\"](next(/|['\"])|next-auth|@/types/|@/lib/auth/)" apps/web/src/paginas/agenda
 ```
 
-Expected do último grep: nenhuma ocorrência. Os imports internos são relativos (`./...`) ou `@/...` e continuam válidos.
+O codemod da Task 4.2 troca `next/*` pela ponte e `@/types/*` e os utils compartilhados (`@/lib/utils/{campanha-*,telefone,...}`) por `@dominio/*`, que o Vite e o Jest do web resolvem. Expected do último grep: nenhuma ocorrência. Os imports internos são relativos (`./...`) ou `@/...` e continuam válidos.
 
 - [ ] **Step 2: Rodar os testes movidos**
 
@@ -16308,6 +16316,9 @@ Em `apps/web/src/rotas.tsx`, `agenda` → `<PaginaAgenda />`.
 
 - [ ] **Step 5: Remover e rodar**
 
+Em `apps/web/src/rotas.test.tsx`, apagar de `ROTAS_EM_MIGRACAO` as linhas abaixo (as rotas deixaram de ser placeholder):
+  - `["/agenda", "src/app/(dashboard)/agenda/page.tsx"]`
+
 ```bash
 git rm "src/app/(dashboard)/agenda/page.tsx"
 npm run web:test -- paginas/agenda
@@ -16332,7 +16343,7 @@ Três páginas. Na lista e no detalhe, `somenteLeitura = role === "padrao"`. Na 
 - Move: `src/app/(dashboard)/campanhas/_components/**` → `apps/web/src/paginas/campanhas/_components/**`; `src/app/(dashboard)/campanhas/nova/_components/**` → `apps/web/src/paginas/campanhas/nova/_components/**`; `src/app/(dashboard)/campanhas/[id]/_components/**` → `apps/web/src/paginas/campanhas/detalhe/_components/**` (mesma profundidade, então o `../../_components/...` do `detalhe-campanha.tsx` continua resolvendo)
 - Create: `apps/web/src/paginas/campanhas/lista.tsx`, `apps/web/src/paginas/campanhas/nova.tsx`, `apps/web/src/paginas/campanhas/detalhe.tsx`
 - Test: `apps/web/src/paginas/campanhas/paginas-campanhas.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
 - Delete: `src/app/(dashboard)/campanhas/page.tsx`, `src/app/(dashboard)/campanhas/nova/page.tsx`, `src/app/(dashboard)/campanhas/[id]/page.tsx`
 
 **Interfaces:**
@@ -16346,11 +16357,11 @@ mkdir -p apps/web/src/paginas/campanhas/nova apps/web/src/paginas/campanhas/deta
 git mv "src/app/(dashboard)/campanhas/_components" apps/web/src/paginas/campanhas/_components
 git mv "src/app/(dashboard)/campanhas/nova/_components" apps/web/src/paginas/campanhas/nova/_components
 git mv "src/app/(dashboard)/campanhas/[id]/_components" apps/web/src/paginas/campanhas/detalhe/_components
-grep -rlE '"next/(link|navigation|image)"' apps/web/src/paginas/campanhas | xargs -r perl -pi -e 's#"next/link"#"\@/compat/next-link"#g; s#"next/navigation"#"\@/compat/next-navigation"#g; s#"next/image"#"\@/compat/next-image"#g'
-grep -rn '"next/\|next-auth' apps/web/src/paginas/campanhas
+node apps/web/scripts/codemod-imports.ts apps/web/src/paginas/campanhas
+grep -rnE "(from |import |jest\.mock\()['\"](next(/|['\"])|next-auth|@/types/|@/lib/auth/)" apps/web/src/paginas/campanhas
 ```
 
-Expected do último grep: nenhuma ocorrência. O `jest.mock("next/navigation", ...)` de `formulario-campanha.test.tsx` vira `jest.mock("@/compat/next-navigation", ...)` pela mesma substituição.
+O codemod da Task 4.2 também reescreve `@/types/*` e os utils compartilhados (`@/lib/utils/{campanha-*,telefone,...}`) para `@dominio/*`. Expected do último grep: nenhuma ocorrência. O `jest.mock("next/navigation", ...)` de `formulario-campanha.test.tsx` vira `jest.mock("@/compat/next-navigation", ...)` pela mesma substituição.
 
 - [ ] **Step 2: Rodar os testes movidos**
 
@@ -16512,6 +16523,11 @@ Em `apps/web/src/rotas.tsx`:
 
 - [ ] **Step 5: Remover e rodar**
 
+Em `apps/web/src/rotas.test.tsx`, apagar de `ROTAS_EM_MIGRACAO` as linhas abaixo (as rotas deixaram de ser placeholder):
+  - `["/campanhas", "src/app/(dashboard)/campanhas/page.tsx"]`
+  - `["/campanhas/nova", "src/app/(dashboard)/campanhas/nova/page.tsx"]`
+  - `["/campanhas/abc123", "src/app/(dashboard)/campanhas/[id]/page.tsx"]`
+
 ```bash
 git rm "src/app/(dashboard)/campanhas/page.tsx" "src/app/(dashboard)/campanhas/nova/page.tsx" "src/app/(dashboard)/campanhas/[id]/page.tsx"
 npm run web:test -- paginas/campanhas
@@ -16534,7 +16550,7 @@ git commit -m "feat(web): páginas de campanhas com papel e id vindos da sessão
 - Move: `src/app/(dashboard)/instancias/_components/**` → `apps/web/src/paginas/instancias/_components/**`
 - Create: `apps/web/src/paginas/instancias.tsx`
 - Test: `apps/web/src/paginas/instancias.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
 - Delete: `src/app/(dashboard)/instancias/page.tsx`
 
 **Interfaces:**
@@ -16546,11 +16562,12 @@ git commit -m "feat(web): páginas de campanhas com papel e id vindos da sessão
 ```bash
 mkdir -p apps/web/src/paginas/instancias
 git mv "src/app/(dashboard)/instancias/_components" apps/web/src/paginas/instancias/_components
-grep -rlE '"next/(link|navigation|image)"' apps/web/src/paginas/instancias | xargs -r perl -pi -e 's#"next/link"#"\@/compat/next-link"#g; s#"next/navigation"#"\@/compat/next-navigation"#g; s#"next/image"#"\@/compat/next-image"#g'
+node apps/web/scripts/codemod-imports.ts apps/web/src/paginas/instancias
+grep -rnE "(from |import |jest\.mock\()['\"](next(/|['\"])|next-auth|@/types/|@/lib/auth/)" apps/web/src/paginas/instancias
 npm run web:test -- paginas/instancias/_components
 ```
 
-Expected: PASS (`lista-instancias`, `nova-instancia-dialog`, `qrcode-dialog`, `status-badge-instancia`).
+Expected: o `grep` não imprime nada (o codemod da Task 4.2 cuida de `next/*`, `@/types/*` e dos utils compartilhados) e os testes passam (`lista-instancias`, `nova-instancia-dialog`, `qrcode-dialog`, `status-badge-instancia`).
 
 - [ ] **Step 2: Teste da página (falha)**
 
@@ -16611,6 +16628,9 @@ Em `apps/web/src/rotas.tsx`, `instancias` → `<PaginaInstancias />`.
 
 - [ ] **Step 4: Remover, rodar e commitar**
 
+Em `apps/web/src/rotas.test.tsx`, apagar de `ROTAS_EM_MIGRACAO` as linhas abaixo (as rotas deixaram de ser placeholder):
+  - `["/instancias", "src/app/(dashboard)/instancias/page.tsx"]`
+
 ```bash
 git rm "src/app/(dashboard)/instancias/page.tsx"
 npm run web:test -- paginas/instancias
@@ -16629,7 +16649,7 @@ A página lia o perfil do banco porque o JWT não era renovado pelo `PATCH`. Iss
 **Files:**
 - Create: `apps/web/src/paginas/perfil.tsx`
 - Test: `apps/web/src/paginas/perfil.test.tsx` (sucessor de `src/app/(dashboard)/perfil/page.test.tsx`)
-- Modify: `apps/web/src/rotas.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
 - Delete: `src/app/(dashboard)/perfil/page.tsx`, `src/app/(dashboard)/perfil/page.test.tsx`
 
 **Interfaces:**
@@ -16771,6 +16791,9 @@ Em `apps/web/src/rotas.tsx`, `perfil` → `<PaginaPerfil />`.
 
 - [ ] **Step 4: Remover, rodar e commitar**
 
+Em `apps/web/src/rotas.test.tsx`, apagar de `ROTAS_EM_MIGRACAO` as linhas abaixo (as rotas deixaram de ser placeholder):
+  - `["/perfil", "src/app/(dashboard)/perfil/page.tsx"]`
+
 ```bash
 git rm "src/app/(dashboard)/perfil/page.tsx" "src/app/(dashboard)/perfil/page.test.tsx"
 npm run web:test -- paginas/perfil components/perfil
@@ -16787,7 +16810,7 @@ Expected do teste: PASS. `perfil-form` e `avatar-upload` seguem verdes porque co
 **Files:**
 - Create: `apps/web/src/paginas/configuracoes/escritorio.tsx`, `apps/web/src/paginas/configuracoes/membros.tsx`, `apps/web/src/paginas/configuracoes/status.tsx`, `apps/web/src/paginas/configuracoes/tipos-processo.tsx`
 - Test: `apps/web/src/paginas/configuracoes/escritorio.test.tsx`, `apps/web/src/paginas/configuracoes/membros.test.tsx` (sucessor de `src/app/(dashboard)/configuracoes/membros/page.test.tsx`), `apps/web/src/paginas/configuracoes/status-e-tipos.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx`
 - Delete: `src/app/(dashboard)/configuracoes/{escritorio,membros,status,tipos-processo}/page.tsx`, `src/app/(dashboard)/configuracoes/membros/page.test.tsx`
 
 **Interfaces:**
@@ -17176,6 +17199,19 @@ Em `apps/web/src/rotas.tsx`, os filhos de `configuracoes` ficam:
 
 - [ ] **Step 4: Remover, rodar e commitar**
 
+Em `apps/web/src/rotas.test.tsx`, as quatro rotas de configurações deixam de ser placeholder. Como `ROTAS_EM_MIGRACAO` fica vazia (e `it.each([])` lança erro no Jest), apagar a constante inteira e o caso `it.each(ROTAS_EM_MIGRACAO)(...)`. Os dois casos que ainda navegam para `/configuracoes/escritorio` e `/configuracoes/membros` passam a renderizar as páginas reais, então mockar essas duas páginas, junto dos outros `jest.mock` do arquivo:
+
+```tsx
+jest.mock("./paginas/configuracoes/escritorio", () => ({
+  PaginaConfiguracoesEscritorio: () => <p>PaginaConfiguracoesEscritorio</p>,
+}));
+jest.mock("./paginas/configuracoes/membros", () => ({
+  PaginaConfiguracoesMembros: () => <p>PaginaConfiguracoesMembros</p>,
+}));
+```
+
+No caso "/configuracoes redireciona para /configuracoes/escritorio", trocar a asserção por `expect(await screen.findByText("PaginaConfiguracoesEscritorio")).toBeInTheDocument();`. A Task 4.33 reescreve este arquivo por completo.
+
 ```bash
 git rm "src/app/(dashboard)/configuracoes/escritorio/page.tsx" "src/app/(dashboard)/configuracoes/membros/page.tsx" "src/app/(dashboard)/configuracoes/membros/page.test.tsx" "src/app/(dashboard)/configuracoes/status/page.tsx" "src/app/(dashboard)/configuracoes/tipos-processo/page.tsx"
 npm run web:test -- paginas/configuracoes components/configuracoes
@@ -17194,8 +17230,8 @@ O Next tinha `not-found` e `error` padrão. A SPA precisa dos equivalentes. Esta
 **Files:**
 - Create: `apps/web/src/paginas/nao-encontrada.tsx`, `apps/web/src/paginas/erro-rota.tsx`
 - Test: `apps/web/src/paginas/nao-encontrada.test.tsx`, `apps/web/src/paginas/erro-rota.test.tsx`
-- Modify: `apps/web/src/rotas.tsx`
-- Delete: o arquivo do `PaginaEmMigracao` (e o teste dele), localizado com `grep -rln "export function PaginaEmMigracao" apps/web/src`
+- Modify: `apps/web/src/rotas.tsx`, `apps/web/src/rotas.test.tsx` (reescrito)
+- Delete: o arquivo do `PaginaEmMigracao` (e o teste dele), localizado com `grep -rln "export function PaginaEmMigracao" apps/web/src`; `apps/web/src/paginas/pagina-nao-encontrada.tsx` (provisório da Task 4.7, substituído por `paginas/nao-encontrada.tsx`)
 
 **Interfaces:**
 - Produces: `PaginaNaoEncontrada`, `ErroRota`; a árvore `RouteObject[]` final.
@@ -17298,7 +17334,8 @@ export function ErroRota() {
 
 ```tsx
 import { Navigate, type RouteObject } from "react-router";
-import { RotaProtegida } from "./componentes/rota-protegida"; // caminho real definido pela 4a
+import { LayoutRaiz } from "./paginas/layout-raiz";
+import { RotaProtegida } from "./paginas/rota-protegida";
 import { LayoutAuth } from "./paginas/layouts/layout-auth";
 import { LayoutDashboard } from "./paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "./paginas/layouts/layout-configuracoes";
@@ -17323,6 +17360,7 @@ import { ErroRota } from "./paginas/erro-rota";
 
 export const rotas: RouteObject[] = [
   {
+    element: <LayoutRaiz />,
     errorElement: <ErroRota />,
     children: [
       {
@@ -17362,21 +17400,136 @@ export const rotas: RouteObject[] = [
                   { path: "tipos-processo", element: <PaginaConfiguracoesTiposProcesso /> },
                 ],
               },
-              { path: "*", element: <PaginaNaoEncontrada /> },
             ],
           },
         ],
       },
+      { path: "*", element: <PaginaNaoEncontrada /> },
     ],
   },
 ];
 ```
 
-O 404 fica dentro do shell autenticado, como no Next, onde só `/login` e `/cadastro` escapavam do middleware. Uma URL inexistente sem sessão vai para `/login` primeiro.
+O `LayoutRaiz` (com o `ScrollRestoration`) da Task 4.7 continua sendo a raiz da árvore, agora também com o `errorElement`. O 404 (`path: "*"`) fica fora do shell autenticado, como na árvore da Task 4.8: a URL inexistente mostra a página de 404 mesmo sem sessão, e o `app.test.tsx` (sessão nula) continua válido.
 
-- [ ] **Step 3: Remover o `PaginaEmMigracao`**
+- [ ] **Step 3: Remover o `PaginaEmMigracao` e o 404 provisório, e reescrever o teste de rotas**
+
+`apps/web/src/rotas.test.tsx` (substitui o arquivo inteiro; já não há placeholders, então as páginas são stubs e o teste só confere o mapeamento rota → página):
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { RouterProvider, createMemoryRouter } from "react-router";
+import { useSessao } from "@/lib/sessao";
+import { rotas } from "./rotas";
+
+jest.mock("@/lib/sessao", () => ({ useSessao: jest.fn() }));
+jest.mock("./paginas/layouts/layout-dashboard", () => ({
+  LayoutDashboard: () => {
+    const { Outlet } = jest.requireActual("react-router");
+    return <Outlet />;
+  },
+}));
+jest.mock("./paginas/login", () => ({ PaginaLogin: () => <p>PaginaLogin</p> }));
+jest.mock("./paginas/cadastro", () => ({ PaginaCadastro: () => <p>PaginaCadastro</p> }));
+jest.mock("./paginas/onboarding", () => ({ PaginaOnboarding: () => <p>PaginaOnboarding</p> }));
+jest.mock("./paginas/inicio", () => ({ PaginaInicio: () => <p>PaginaInicio</p> }));
+jest.mock("./paginas/clientes", () => ({ PaginaClientes: () => <p>PaginaClientes</p> }));
+jest.mock("./paginas/casos", () => ({ PaginaCasos: () => <p>PaginaCasos</p> }));
+jest.mock("./paginas/agenda", () => ({ PaginaAgenda: () => <p>PaginaAgenda</p> }));
+jest.mock("./paginas/campanhas/lista", () => ({ PaginaCampanhas: () => <p>PaginaCampanhas</p> }));
+jest.mock("./paginas/campanhas/nova", () => ({ PaginaNovaCampanha: () => <p>PaginaNovaCampanha</p> }));
+jest.mock("./paginas/campanhas/detalhe", () => ({ PaginaCampanha: () => <p>PaginaCampanha</p> }));
+jest.mock("./paginas/instancias", () => ({ PaginaInstancias: () => <p>PaginaInstancias</p> }));
+jest.mock("./paginas/perfil", () => ({ PaginaPerfil: () => <p>PaginaPerfil</p> }));
+jest.mock("./paginas/configuracoes/escritorio", () => ({
+  PaginaConfiguracoesEscritorio: () => <p>PaginaConfiguracoesEscritorio</p>,
+}));
+jest.mock("./paginas/configuracoes/membros", () => ({
+  PaginaConfiguracoesMembros: () => <p>PaginaConfiguracoesMembros</p>,
+}));
+jest.mock("./paginas/configuracoes/status", () => ({
+  PaginaConfiguracoesStatus: () => <p>PaginaConfiguracoesStatus</p>,
+}));
+jest.mock("./paginas/configuracoes/tipos-processo", () => ({
+  PaginaConfiguracoesTiposProcesso: () => <p>PaginaConfiguracoesTiposProcesso</p>,
+}));
+
+const mockedUseSessao = useSessao as jest.Mock;
+
+function navegarPara(rota: string) {
+  render(<RouterProvider router={createMemoryRouter(rotas, { initialEntries: [rota] })} />);
+}
+
+const ROTAS: [string, string][] = [
+  ["/login", "PaginaLogin"],
+  ["/cadastro", "PaginaCadastro"],
+  ["/onboarding", "PaginaOnboarding"],
+  ["/", "PaginaInicio"],
+  ["/clientes", "PaginaClientes"],
+  ["/casos", "PaginaCasos"],
+  ["/agenda", "PaginaAgenda"],
+  ["/campanhas", "PaginaCampanhas"],
+  ["/campanhas/nova", "PaginaNovaCampanha"],
+  ["/campanhas/abc123", "PaginaCampanha"],
+  ["/instancias", "PaginaInstancias"],
+  ["/perfil", "PaginaPerfil"],
+  ["/configuracoes/escritorio", "PaginaConfiguracoesEscritorio"],
+  ["/configuracoes/membros", "PaginaConfiguracoesMembros"],
+  ["/configuracoes/status", "PaginaConfiguracoesStatus"],
+  ["/configuracoes/tipos-processo", "PaginaConfiguracoesTiposProcesso"],
+];
+
+describe("árvore de rotas", () => {
+  beforeEach(() => {
+    mockedUseSessao.mockReturnValue({
+      data: {
+        usuario: { id: "user-1", nome: "Fulana", email: "fulana@teste.com" },
+        escritorioId: "esc-1",
+        role: "owner",
+      },
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+  });
+
+  it.each(ROTAS)("%s renderiza %s", async (rota, pagina) => {
+    navegarPara(rota);
+
+    expect(await screen.findByText(pagina)).toBeInTheDocument();
+  });
+
+  it("/configuracoes redireciona para /configuracoes/escritorio", async () => {
+    navegarPara("/configuracoes");
+
+    expect(await screen.findByText("PaginaConfiguracoesEscritorio")).toBeInTheDocument();
+  });
+
+  it("as rotas de configurações ficam dentro da nav lateral própria", async () => {
+    navegarPara("/configuracoes/membros");
+
+    expect(await screen.findByRole("link", { name: "Membros" })).toHaveAttribute("data-active");
+  });
+
+  it("as rotas do dashboard exigem sessão", async () => {
+    mockedUseSessao.mockReturnValue({ data: null, isPending: false, isError: false, refetch: jest.fn() });
+
+    navegarPara("/clientes");
+
+    expect(await screen.findByText("PaginaLogin")).toBeInTheDocument();
+  });
+
+  it("rota inexistente mostra a página não encontrada", async () => {
+    navegarPara("/rota-que-nao-existe");
+
+    expect(await screen.findByRole("heading", { name: "Página não encontrada" })).toBeInTheDocument();
+  });
+});
+```
 
 ```bash
+git rm apps/web/src/paginas/pagina-nao-encontrada.tsx
+grep -rn "pagina-nao-encontrada" apps/web/src
 ARQ=$(grep -rln "export function PaginaEmMigracao" apps/web/src)
 git rm $ARQ ${ARQ%.tsx}.test.tsx 2>/dev/null || git rm $ARQ
 grep -rn "PaginaEmMigracao" apps/web/src
@@ -17542,9 +17695,79 @@ Pré-condição: Tasks 4.20–4.34 verdes. Depois desta task, nenhum `next*` res
 
 **Files:**
 - Delete: `src/app/` (restam `layout.tsx`, `icon.tsx`, `globals.css`, `(dashboard)/_lib/**`), `src/proxy.ts`, `next.config.ts`, `next-env.d.ts`, `tsconfig.tsbuildinfo`, `src/lib/query/query-client-servidor.ts` (ou a cópia em `apps/web`), `src/types/next-auth.d.ts` (se a Fase 3 não removeu), `postcss.config.mjs` (se o web usa `@tailwindcss/vite`)
-- Move (se a 4a não moveu): `public/images` → `apps/web/public/images`; `components.json` → `apps/web/components.json`
-- Create: `apps/web/public/favicon.svg` (se não existir)
-- Modify: `package.json`, `jest.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `playwright.config.ts` (só se ainda usar `next`), `apps/web/src/components/ui/sonner.tsx`, `apps/web/index.html` (favicon, fontes, `lang`)
+- Move (se a 4a não moveu): `public/images` → `apps/web/public/images`; `public/favicon.svg` → `apps/web/public/favicon.svg`; `components.json` → `apps/web/components.json`
+- Create: `src/lib/api/erros.test.ts`
+- Modify: `src/lib/api/erros.ts`, `src/lib/api/erros-campanha.ts`, `erros-caso.ts`, `erros-cliente.ts`, `erros-comentario.ts`, `erros-documento.ts`, `erros-evento.ts`, `erros-instancia-whatsapp.ts`, `erros-status.ts`, `erros-tipo-processo.ts` (troca `NextResponse` por `Response`)
+- Modify: `apps/web/vite.config.ts` (remove `publicDir`), `e2e/web-infra.spec.ts` (remove o `test.skip` do alvo), `package.json`, `jest.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `playwright.config.ts` (só se ainda usar `next`), `apps/web/src/components/ui/sonner.tsx`, `apps/web/index.html` (favicon, fontes, `lang`)
+
+- [ ] **Step 0: Tirar o `NextResponse` dos tradutores de erro do domínio**
+
+A API Nest reaproveita `tratarErroDeContexto`, `respostaDadosInvalidos` e os `tratarErroDe*` de `src/lib/api/erros*.ts` (via `ErrosHttpFilter`). Esses 10 arquivos importam `NextResponse` de `next/server`, e o Step 5 desinstala o `next`. `NextResponse` só estende `Response`, e o filtro (`apps/api/src/comum/erros-http.filter.ts`) já tipa o retorno dos tradutores como `Response | null` e consome só `.status` e `await .json()`. Logo, `Response.json(body, init)` é substituto direto. Fazer a troca antes de qualquer remoção, porque o Step 1 e o Step 8 acusam `next/server`.
+
+Primeiro o teste, que prova que os tradutores devolvem um `Response` puro. `src/lib/api/erros.test.ts`:
+
+```ts
+/** @jest-environment node */
+import { z } from "zod";
+import { tratarErroDeContexto, respostaDadosInvalidos } from "./erros";
+import { AcessoNegadoError, NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
+
+describe("tradutores de erro sem dependência do Next", () => {
+  it.each([
+    [new NaoAutenticadoError(), 401],
+    [new SemEscritorioAtivoError(), 409],
+    [new AcessoNegadoError(), 403],
+  ])("traduz %p para %i com o corpo { error }", async (erro, status) => {
+    const resposta = tratarErroDeContexto(erro);
+
+    expect(resposta).toBeInstanceOf(Response);
+    expect(resposta?.status).toBe(status);
+    expect(await resposta?.json()).toEqual({ error: erro.message });
+  });
+
+  it("devolve null para erro desconhecido", () => {
+    expect(tratarErroDeContexto(new Error("boom"))).toBeNull();
+  });
+
+  it("respostaDadosInvalidos devolve 400 com os detalhes por campo", async () => {
+    const parse = z.object({ nome: z.string() }).safeParse({});
+    const resposta = respostaDadosInvalidos(parse.success ? undefined : parse.error);
+
+    expect(resposta).toBeInstanceOf(Response);
+    expect(resposta.status).toBe(400);
+    const corpo = await resposta.json();
+    expect(corpo.error).toBe("Dados inválidos");
+    expect(corpo.detalhes.nome).toBeDefined();
+  });
+});
+```
+
+Run: `npx jest src/lib/api/erros.test.ts`
+Expected: PASS ainda com `NextResponse` (ele é subclasse de `Response`). O teste serve de rede de segurança para a troca.
+
+Agora a troca nos 10 arquivos (`erros.ts` e os nove `erros-*.ts`):
+
+```bash
+perl -pi -e 's/\bNextResponse\.json\(/Response.json(/g; $_ = "" if m{^import \{ NextResponse \} from "next/server";\s*$}' src/lib/api/erros.ts src/lib/api/erros-campanha.ts src/lib/api/erros-caso.ts src/lib/api/erros-cliente.ts src/lib/api/erros-comentario.ts src/lib/api/erros-documento.ts src/lib/api/erros-evento.ts src/lib/api/erros-instancia-whatsapp.ts src/lib/api/erros-status.ts src/lib/api/erros-tipo-processo.ts
+grep -rn "NextResponse\|next/server" src/lib
+```
+
+Expected do grep: nenhuma ocorrência (se sobrar um `NextResponse` fora do padrão `NextResponse.json(`, como tipo de retorno, trocar por `Response` à mão). As rotas Next que ainda existirem continuam funcionando, porque devolver um `Response` puro de um Route Handler é válido. Os testes existentes (`erros-caso.test.ts`, `erros-documento.test.ts`) só leem `.status`, e nenhum teste da API importa `NextResponse`.
+
+Confirmar que o filtro do Nest segue compatível:
+
+```bash
+npx jest src/lib/api
+npm run api:test -- erros-http.filter
+npm run api:typecheck && npx tsc --noEmit
+```
+
+Expected: tudo PASS. O `ErrosHttpFilter` não muda: `traduzida.status` e `await traduzida.json()` funcionam igual em `Response`.
+
+```bash
+git add src/lib/api
+git commit -m "refactor(api): tradutores de erro do domínio devolvem Response puro, sem next/server"
+```
 
 - [ ] **Step 1: Verificar a pré-condição**
 
@@ -17560,12 +17783,21 @@ Expected: nenhuma saída nos quatro comandos, a não ser `src/app/(dashboard)/_l
 - [ ] **Step 2: Assets, favicon, fontes e idioma no `apps/web`**
 
 ```bash
-[ -d apps/web/public/images ] || { mkdir -p apps/web/public && git mv public/images apps/web/public/images; }
+mkdir -p apps/web/public
+[ -d apps/web/public/images ] || git mv public/images apps/web/public/images
+[ -f apps/web/public/favicon.svg ] || git mv public/favicon.svg apps/web/public/favicon.svg
 [ -d public ] && [ -z "$(ls -A public)" ] && rmdir public
 grep -n 'rel="icon"\|fonts.googleapis\|<html' apps/web/index.html
 ```
 
-Se `apps/web/public/favicon.svg` não existir, criá-lo. É o mesmo desenho do `src/app/icon.tsx`:
+Em `apps/web/vite.config.ts`, apagar a linha `publicDir: caminho("../../public"),` e o comentário acima dela: sem o `public/` da raiz, o padrão do Vite (`apps/web/public`) passa a valer, e é de lá que saem `/images/*.webp` e `/favicon.svg`.
+
+```bash
+grep -n "publicDir" apps/web/vite.config.ts
+ls apps/web/public/favicon.svg apps/web/public/images | head -3
+```
+
+Expected: o `grep` não imprime nada e o `ls` lista o favicon e as imagens. Se `favicon.svg` não existir nem na raiz (a Task 4.6 o cria em `public/`), criá-lo em `apps/web/public/favicon.svg`. É o mesmo desenho do `src/app/icon.tsx`:
 
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
@@ -17746,7 +17978,42 @@ Remover os comentários `eslint-disable-next-line @next/next/...` que sobraram, 
 grep -rln "@next/next" apps src e2e | xargs -r perl -ni -e 'print unless m{eslint-disable-next-line \@next/next/}'
 ```
 
-Em `playwright.config.ts`, se `webServer.command` ainda for `npm run build && npm run start`, trocar pelo comando que a 4a usa para o Vite + API. Se ela não definiu, usar `command: "npm run dev"`, `url: "http://localhost:3000"` (porta do Vite configurada na 4a) e `reuseExistingServer: !process.env.CI`.
+Em `playwright.config.ts`, a Task 4.24 já inverteu o padrão para a SPA. Agora remover o ramo `next` (e a variável `E2E_ALVO`), deixando só a API Nest e o front Vite em `:5173`:
+
+```ts
+import { defineConfig, devices } from "@playwright/test";
+
+// Fluxos críticos cobertos aqui: docs/testes/estrategia-tdd.md
+// Sobe a API Nest (:3001) e o front React/Vite (build + preview em :5173), que encaminha
+// /api para a API pelo proxy do Vite.
+const reaproveitar = !process.env.CI;
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  reporter: "html",
+  use: { baseURL: "http://localhost:5173", trace: "on-first-retry" },
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  webServer: [
+    {
+      command: "npm run api:dev",
+      url: "http://localhost:3001/api/saude",
+      reuseExistingServer: reaproveitar,
+      timeout: 120_000,
+    },
+    {
+      command: "npm run web:build && npm run web:preview",
+      url: "http://localhost:5173",
+      reuseExistingServer: reaproveitar,
+      timeout: 180_000,
+    },
+  ],
+});
+```
+
+A porta do Vite é `:5173` (`server.port` em `apps/web/vite.config.ts`); `:3000` era a do Next e não existe mais. Em `e2e/web-infra.spec.ts`, apagar a linha `test.skip(process.env.E2E_ALVO === "next", ...)`. No `package.json`, apagar o script `e2e:web` (o `e2e` já roda contra a SPA).
 
 - [ ] **Step 8: Varredura final**
 
@@ -18339,7 +18606,7 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: ["/node_modules/(?!(@nestjs|jose)/)"],
+  transformIgnorePatterns: ["/node_modules/(?!(@nestjs|jose|archiver|zip-stream|compress-commons|crc32-stream|is-stream)/)"],
   moduleNameMapper: {
     "^@dominio/(.*)$": "<rootDir>/src/dominio/$1",
     "^@crm/compartilhado/(.*)$": "<rootDir>/../../packages/compartilhado/src/$1",
@@ -18719,6 +18986,7 @@ process.exit(resultado.status ?? 1);
     "archiver": "^8.0.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
+    "express": "^5.1.0",
     "jose": "^6.1.0",
     "newrelic": "^13.0.0",
     "reflect-metadata": "^0.2.2",
