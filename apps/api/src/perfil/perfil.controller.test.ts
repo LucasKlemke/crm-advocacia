@@ -135,6 +135,15 @@ describe("PATCH /api/perfil/senha", () => {
     await request(await subir()).patch("/api/perfil/senha").send(payloadValido).expect(400, { error: erro.message });
   });
 
+  it("responde 400 para JSON malformado", async () => {
+    await request(await subir())
+      .patch("/api/perfil/senha")
+      .set("content-type", "application/json")
+      .send("{x")
+      .expect(400, { error: "Dados inválidos" });
+    expect(service.alterarSenha).not.toHaveBeenCalled();
+  });
+
   it("responde 401 sem sessão", async () => {
     await request(await subir({ usuarioId: new NaoAutenticadoError() }))
       .patch("/api/perfil/senha")
