@@ -13,6 +13,7 @@ const ROTAS_NA_API_NEST = [
   "perfil",
   "escritorios/atual",
   "membros",
+  "convites",
 ];
 
 const nextConfig: NextConfig = {
