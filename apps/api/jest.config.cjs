@@ -16,7 +16,9 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: ["/node_modules/(?!(@nestjs|next-auth|@auth|@panva|jose|oauth4webapi)/)"],
+  transformIgnorePatterns: [
+    "/node_modules/(?!(@nestjs|next-auth|@auth|@panva|jose|oauth4webapi|archiver|zip-stream|compress-commons|crc32-stream|is-stream)/)",
+  ],
   moduleNameMapper: { "^@/(.*)$": "<rootDir>/../../src/$1" },
   moduleFileExtensions: ["ts", "js", "mjs", "json"],
 };

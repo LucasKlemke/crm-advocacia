@@ -77,3 +77,12 @@ export const edicaoClienteSchema = z.object({
   nascimento: nascimentoSchema,
   profissao: profissaoSchema,
 });
+
+// Ação em lote da tabela de clientes. O teto de 200 ids limita o tamanho da transação;
+// ids de outro escritório (RN19) e já desativados são descartados pelo Service.
+export const acaoEmLoteClientesSchema = z.object({
+  ids: z.array(z.uuid()).min(1, "Selecione ao menos um cliente.").max(200),
+  acao: z.enum(["desativar", "restaurar"]),
+});
+
+export type AcaoEmLoteClientes = z.infer<typeof acaoEmLoteClientesSchema>;
