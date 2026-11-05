@@ -30,7 +30,7 @@ import type {
   DadosNovoEvento,
   DadosEdicaoEvento,
 } from "@dominio/services/evento.service";
-import type { EventoComRelacoes } from "@dominio/repositories/evento.repository";
+import type { EventoComRelacoes } from "@dominio/lib/api/serializa-evento";
 import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
 // Agenda compartilhada do escritório (RN31). `podeEditar` de cada evento é resolvido

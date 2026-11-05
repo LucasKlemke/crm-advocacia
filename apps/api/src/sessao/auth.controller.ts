@@ -12,12 +12,12 @@ import {
 import type { Request, Response } from "express";
 import { ValidacaoZodPipe } from "../comum/validacao.pipe";
 import { gravarCookieSessao, lerSessaoDaRequisicao, limparCookieSessao } from "../comum/sessao/cookie-sessao";
-import { AUTORIZAR_CREDENCIAIS, MEMBRO_REPOSITORY, USUARIO_SERVICE } from "./tokens";
+import { AUTORIZAR_CREDENCIAIS, MEMBRO_SERVICE, USUARIO_SERVICE } from "./tokens";
 import { loginSchema, type DadosLogin } from "./schemas";
 import { NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 import type { authorizeCredentials } from "@dominio/lib/auth/authorize";
 import type { usuarioService } from "@dominio/services/usuario.service";
-import type { membroRepository } from "@dominio/repositories/membro.repository";
+import type { membroService } from "@dominio/services/membro.service";
 
 // Substitui o NextAuth (Fase 3). Rotas públicas: não usam TenantGuard/UsuarioGuard —
 // login cria a sessão, logout funciona sem ela e /sessao responde 401 por conta própria.
@@ -26,8 +26,7 @@ export class AuthController {
   constructor(
     @Inject(AUTORIZAR_CREDENCIAIS) private readonly autorizar: typeof authorizeCredentials,
     @Inject(USUARIO_SERVICE) private readonly usuarios: Pick<typeof usuarioService, "obterPerfil">,
-    @Inject(MEMBRO_REPOSITORY)
-    private readonly membros: Pick<typeof membroRepository, "findByUsuarioEEscritorio">
+    @Inject(MEMBRO_SERVICE) private readonly membros: Pick<typeof membroService, "obterMembroDoUsuario">
   ) {}
 
   // authorizeCredentials já recusa usuário inativo (RN02a) e escolhe o escritório inicial
@@ -72,7 +71,7 @@ export class AuthController {
 
     // role sempre do banco (RN19); escritório sem membership nunca é devolvido.
     const membro = sessao.escritorioId
-      ? await this.membros.findByUsuarioEEscritorio(sessao.sub, sessao.escritorioId)
+      ? await this.membros.obterMembroDoUsuario(sessao.sub, sessao.escritorioId)
       : null;
 
     return {

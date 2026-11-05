@@ -46,6 +46,12 @@ export const membroService = {
     return memberships.map((membro) => ({ escritorio: membro.escritorio, role: membro.role }));
   },
 
+  // Leitura da membership atual (role sempre do banco, RN19). Devolve null quando o
+  // usuário não é (mais) membro, em vez de lançar como trocarEscritorioAtivo.
+  async obterMembroDoUsuario(usuarioId: string, escritorioId: string): Promise<Membro | null> {
+    return membroRepository.findByUsuarioEEscritorio(usuarioId, escritorioId);
+  },
+
   // Só troca para um escritório onde o usuário realmente é membro (RN19).
   async trocarEscritorioAtivo(usuarioId: string, escritorioId: string): Promise<Membro> {
     const membro = await membroRepository.findByUsuarioEEscritorio(usuarioId, escritorioId);

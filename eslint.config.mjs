@@ -78,7 +78,7 @@ export default defineConfig([
       "no-restricted-imports": "off",
       "@typescript-eslint/no-restricted-imports": [
         "error",
-        { patterns: [{ group: ["@dominio/repositories/*"], message: "Controller nunca chama Repository: passe pelo Service.", allowTypeImports: true }] },
+        { patterns: [{ group: ["@dominio/repositories/*", "**/dominio/repositories/*"], message: "Controller nunca importa Repository (nem só o tipo): passe pelo Service." }] },
       ],
     },
   },

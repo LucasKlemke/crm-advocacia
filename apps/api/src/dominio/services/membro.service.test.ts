@@ -39,6 +39,23 @@ describe("membroService.listarEscritoriosDoUsuario", () => {
   });
 });
 
+describe("membroService.obterMembroDoUsuario", () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it("devolve o membro do escritório quando existe", async () => {
+    mockedMembroRepo.findByUsuarioEEscritorio.mockResolvedValue({ role: "admin" } as never);
+
+    await expect(membroService.obterMembroDoUsuario("user-1", "esc-1")).resolves.toEqual({ role: "admin" });
+    expect(mockedMembroRepo.findByUsuarioEEscritorio).toHaveBeenCalledWith("user-1", "esc-1");
+  });
+
+  it("devolve null (sem lançar) quando o usuário não é membro", async () => {
+    mockedMembroRepo.findByUsuarioEEscritorio.mockResolvedValue(null);
+
+    await expect(membroService.obterMembroDoUsuario("user-1", "esc-1")).resolves.toBeNull();
+  });
+});
+
 describe("membroService.trocarEscritorioAtivo", () => {
   afterEach(() => jest.clearAllMocks());
 

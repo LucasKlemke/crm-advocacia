@@ -3,12 +3,12 @@ import request from "supertest";
 import { criarAppDeTeste } from "../../test/utils";
 import { cookieDeSessao, setCookieDaSessao, tokenDoSetCookie, usarSegredoDeTeste } from "../../test/sessao";
 import { SessaoModule } from "./sessao.module";
-import { AUTORIZAR_CREDENCIAIS, MEMBRO_REPOSITORY, USUARIO_SERVICE } from "./tokens";
+import { AUTORIZAR_CREDENCIAIS, MEMBRO_SERVICE, USUARIO_SERVICE } from "./tokens";
 import { verificarSessao } from "@dominio/lib/auth/sessao-jwt";
 
 const autorizar = jest.fn();
 const usuarioService = { obterPerfil: jest.fn() };
-const membroRepository = { findByUsuarioEEscritorio: jest.fn() };
+const membroService = { obterMembroDoUsuario: jest.fn() };
 
 const USUARIO = { id: "user-1", nome: "Fulana", email: "fulana@teste.com", ativo: true };
 
@@ -20,7 +20,7 @@ async function subir() {
     overrides: [
       [AUTORIZAR_CREDENCIAIS, autorizar],
       [USUARIO_SERVICE, usuarioService],
-      [MEMBRO_REPOSITORY, membroRepository],
+      [MEMBRO_SERVICE, membroService],
     ],
   });
   return app.getHttpServer();
@@ -122,7 +122,7 @@ describe("POST /api/auth/logout", () => {
 describe("GET /api/auth/sessao", () => {
   it("devolve usuário, escritório ativo e role do banco", async () => {
     usuarioService.obterPerfil.mockResolvedValue(USUARIO);
-    membroRepository.findByUsuarioEEscritorio.mockResolvedValue({ escritorioId: "esc-1", role: "admin" });
+    membroService.obterMembroDoUsuario.mockResolvedValue({ escritorioId: "esc-1", role: "admin" });
 
     await request(await subir())
       .get("/api/auth/sessao")
@@ -132,12 +132,12 @@ describe("GET /api/auth/sessao", () => {
         escritorioId: "esc-1",
         role: "admin",
       });
-    expect(membroRepository.findByUsuarioEEscritorio).toHaveBeenCalledWith("user-1", "esc-1");
+    expect(membroService.obterMembroDoUsuario).toHaveBeenCalledWith("user-1", "esc-1");
   });
 
   it("não devolve escritório do qual o usuário deixou de ser membro (RN19)", async () => {
     usuarioService.obterPerfil.mockResolvedValue(USUARIO);
-    membroRepository.findByUsuarioEEscritorio.mockResolvedValue(null);
+    membroService.obterMembroDoUsuario.mockResolvedValue(null);
 
     const res = await request(await subir())
       .get("/api/auth/sessao")
@@ -156,7 +156,7 @@ describe("GET /api/auth/sessao", () => {
       .expect(200);
 
     expect(res.body).toMatchObject({ escritorioId: null, role: null });
-    expect(membroRepository.findByUsuarioEEscritorio).not.toHaveBeenCalled();
+    expect(membroService.obterMembroDoUsuario).not.toHaveBeenCalled();
   });
 
   it("responde 401 sem cookie", async () => {

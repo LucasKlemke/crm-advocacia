@@ -1,5 +1,8 @@
 import { usuarioService } from "@dominio/services/usuario.service";
 import type { EventoComRelacoes } from "@dominio/repositories/evento.repository";
+
+// Reexportado aqui para a camada HTTP não importar do repository (regra de camadas do lint).
+export type { EventoComRelacoes };
 import type { EventoDTO, EventoMembroDTO } from "@crm/compartilhado/tipos/evento";
 
 type MembroBruto = { id: string; usuario: { id: string; nome: string; email: string; avatarUrl: string | null } };
