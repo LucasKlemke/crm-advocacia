@@ -1,4 +1,3 @@
-import "./instrumentacao";
 import "reflect-metadata";
 import { resolve } from "node:path";
 import { NestFactory } from "@nestjs/core";

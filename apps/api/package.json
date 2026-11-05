@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "tsx watch --import ./src/instrumentacao.ts src/main.ts",
     "build": "tsup",
-    "start": "node --enable-source-maps dist/main.js",
+    "start": "node --enable-source-maps --import ./dist/instrumentacao.js dist/main.js",
     "vercel-build": "prisma generate && node scripts/migrar-no-deploy.mjs && tsup",
     "test": "jest",
     "test:coverage": "jest --coverage",

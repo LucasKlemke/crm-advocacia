@@ -7,7 +7,7 @@ import { defineConfig } from "tsup";
 // - emite decorators legados (experimentalDecorators). NÃO emite design:paramtypes:
 //   a injeção é sempre por token explícito (@Inject(TOKEN)), ver docs/arquitetura/migracao-nestjs.md.
 export default defineConfig({
-  entry: { main: "src/main.ts" },
+  entry: { main: "src/main.ts", instrumentacao: "src/instrumentacao.ts" },
   format: ["esm"],
   platform: "node",
   target: "node24",
