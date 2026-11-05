@@ -43,6 +43,10 @@ const s3 = s3Client as jest.Mocked<typeof s3Client>;
 
 const ctx: TenantContext = { usuarioId: "user-1", escritorioId: "esc-1", role: "padrao" };
 
+// Data fixa: com new Date() duas chamadas de documentoFake() podiam cair em milissegundos
+// diferentes e quebrar o toEqual da idempotência.
+const DATA_FIXA = new Date("2026-01-01T12:00:00.000Z");
+
 function documentoFake(over: Partial<Documento> = {}): Documento {
   return {
     id: "doc-1",
@@ -55,8 +59,8 @@ function documentoFake(over: Partial<Documento> = {}): Documento {
     tamanhoKb: 100,
     storageKey: "development/esc-1/documentos/cliente/cli-1/doc-1-contrato.pdf",
     softDeletedAt: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: DATA_FIXA,
+    updatedAt: DATA_FIXA,
     ...over,
   };
 }
