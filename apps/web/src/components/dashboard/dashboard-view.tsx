@@ -30,11 +30,11 @@ export interface DashboardViewProps {
   atorUsuarioId: string;
   atorNome: string;
   atorRole: RoleMembro;
-  /** Data formatada no servidor — ver DashboardSaudacaoCard. */
+  /** Data de hoje já formatada, repassada ao DashboardSaudacaoCard. */
   dataHoje: string;
 }
 
-// Boundary cliente da tela /: o filtro de responsável/cliente/período no topo se
+// Tela /: o filtro de responsável/cliente/período no topo se
 // aplica a tudo (cards, gráficos e tabela de preview) — vale dizer, ao próprio
 // useDashboardResumo, não só à tabela.
 export function DashboardView({
@@ -113,8 +113,8 @@ export function DashboardView({
       </div>
 
       {isLoading ? (
-        // Caminho raro: no primeiro carregamento o resumo já chega hidratado do servidor.
-        // Sobra para cache frio — troca de escritório, por exemplo.
+        // Caminho raro: o resumo costuma estar em cache do React Query.
+        // Aparece no primeiro carregamento e no cache frio (troca de escritório, por exemplo).
         <div className="flex flex-col gap-4">
           <StatusStatCardsSkeleton />
           <div className="grid gap-4 lg:grid-cols-2">

@@ -9,8 +9,8 @@ import { atualizarEscritorioSchema } from "@dominio/lib/api/schemas-escritorio";
 import type { escritorioService, AtualizarEscritorioInput } from "@dominio/services/escritorio.service";
 import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
-// Escritório ativo da sessão. A criação (POST /api/escritorios) continua no Next até a
-// Fase 3, porque troca o escritório ativo dentro do cookie de sessão.
+// Escritório ativo da sessão. A criação (POST /api/escritorios) fica em
+// sessao/criar-escritorio.controller.ts, porque troca o escritório ativo no cookie de sessão.
 @Controller("escritorios/atual")
 @UseGuards(TenantGuard)
 @UseFilters(new ErrosHttpFilter([tratarErroDeEscritorio]))

@@ -11,8 +11,7 @@ export interface UsuarioAutenticado {
   role: RoleMembro | null;
 }
 
-// Lógica de autenticação por credenciais (e-mail/senha), extraída do provider do
-// NextAuth para ser testável isoladamente. Usuário inativo nunca autentica (RN02a).
+// Lógica de autenticação por credenciais (e-mail/senha), isolada do controller de login para ser testável isoladamente. Usuário inativo nunca autentica (RN02a).
 // Escritório inicial da sessão é a membership mais antiga do usuário (0 memberships -> null).
 export async function authorizeCredentials(
   email: unknown,

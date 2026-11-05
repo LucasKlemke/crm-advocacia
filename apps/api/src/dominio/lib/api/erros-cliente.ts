@@ -10,8 +10,8 @@ export function tratarErroDeCliente(error: unknown) {
   if (error instanceof ClienteNaoEncontradoError) {
     return Response.json({ error: error.message }, { status: 404 });
   }
-  // Formato inválido é 400. As rotas já barram isso no zod (com erro por campo);
-  // este ramo cobre quem chama o Service direto, como um Server Component.
+  // Formato inválido é 400. Os controllers já barram isso no zod (com erro por campo);
+  // este ramo cobre quem chama o Service direto.
   if (
     error instanceof CpfInvalidoError ||
     error instanceof TelefoneInvalidoError ||

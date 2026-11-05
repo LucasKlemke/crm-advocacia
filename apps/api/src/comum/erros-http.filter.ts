@@ -3,9 +3,9 @@ import type { Request, Response as ExpressResponse } from "express";
 import { tratarErroDeContexto, respostaDadosInvalidos } from "@dominio/lib/api/erros";
 import { DadosInvalidosError } from "./validacao.pipe";
 
-// Os mapeadores de erro de domínio em src/lib/api/erros-*.ts devolvem um Response
-// (NextResponse estende Response). Reaproveitá-los aqui mantém um mapeamento só
-// enquanto Next e Nest convivem; na Fase 5 eles viram tradutores nativos do Nest.
+// Os mapeadores de erro de domínio (dominio/lib/api/erros-*.ts) devolvem um Response
+// padrão da Web API; o filtro o repassa ao Express. Manter o mapeamento num só lugar,
+// independente do framework HTTP, é a decisão atual.
 export type TradutorDeErro = (error: unknown) => Response | null;
 
 const MENSAGEM_ERRO_INESPERADO = "Não foi possível concluir a operação.";

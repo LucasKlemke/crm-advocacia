@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { queryClientRaiz } from "@/lib/query/query-client-raiz";
 import { rotas } from "@/rotas";
 
-// Providers globais. O tema é fixo em light: o app Next nunca teve ThemeProvider, então
-// a página sempre foi clara (next-themes só cuida da classe .dark — não depende do Next).
+// Providers globais. O tema é fixo em light: o app nunca ofereceu modo escuro, então
+// a página é sempre clara (next-themes só cuida da classe .dark).
 // O cache dos dados do escritório não mora aqui: a RotaProtegida monta um QueryProvider
 // por tenant; este client guarda só a sessão e as telas públicas. Toaster é global.
 export function Provedores({ children }: { children: ReactNode }) {

@@ -6,7 +6,7 @@ describe("useTituloPagina", () => {
     document.title = "CRM Advocacia";
   });
 
-  it("aplica o mesmo template do metadata do Next: '<título> | CRM Advocacia'", () => {
+  it("aplica o template '<título> | CRM Advocacia'", () => {
     renderHook(() => useTituloPagina("Clientes"));
 
     expect(document.title).toBe("Clientes | CRM Advocacia");

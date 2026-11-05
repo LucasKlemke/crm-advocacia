@@ -18,7 +18,7 @@ export function headersDaRequisicao(req: Request): Headers {
   return headers;
 }
 
-// Fase 3: a sessão é o cookie crm_sessao (src/lib/auth/sessao-jwt.ts). O JWT só informa
+// Fase 3: a sessão é o cookie crm_sessao (dominio/lib/auth/sessao-jwt.ts). O JWT só informa
 // quem é o usuário e qual escritório está ativo; papel e membership vêm do banco via
 // resolverTenantContext — a regra do RN19.
 export async function resolverTenantDaRequisicao(req: Request): Promise<TenantContext> {

@@ -53,7 +53,7 @@ describe("RotaProtegida", () => {
     expect(screen.queryByText("conteúdo protegido")).not.toBeInTheDocument();
   });
 
-  // RN01: mesma regra do proxy.ts do Next — guarda o destino (path + query) no callbackUrl.
+  // RN01: guarda o destino (path + query) no callbackUrl.
   it("sem sessão manda para /login guardando a rota atual", () => {
     sessaoComo({ data: null });
 

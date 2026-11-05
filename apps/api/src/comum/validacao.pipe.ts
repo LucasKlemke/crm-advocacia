@@ -10,7 +10,7 @@ export class DadosInvalidosError extends Error {
   }
 }
 
-// Reaproveita os schemas Zod de src/lib/api/schemas-*.ts — a validação continua sendo
+// Reaproveita os schemas Zod de dominio/lib/api/schemas-*.ts — a validação continua sendo
 // definida num lugar só, compartilhado com o front.
 export class ValidacaoZodPipe<T> implements PipeTransform<unknown, T> {
   constructor(private readonly schema: ZodType<T>) {}

@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 
 // Sessão própria do CRM (Fase 3 da migração — docs/arquitetura/migracao-nestjs.md).
 // Este módulo é a única fonte de verdade de como o cookie é assinado e lido, e é usado
-// em três lugares: guards da API Nest, proxy.ts e Server Components do Next.
+// pelos guards e controllers da API Nest (login/logout/sessão).
 //
 // O JWT só diz QUEM é o usuário e QUAL escritório está ativo. Papel e membership vêm
 // sempre do banco (resolverTenantContext), nunca daqui (RN19).
@@ -20,15 +20,15 @@ export interface OpcoesCookieSessao {
   sameSite: "lax";
   path: string;
   secure: boolean;
-  // Em SEGUNDOS (convenção do cookies() do Next). O res.cookie do Express espera
+  // Em SEGUNDOS (convenção do JWT: exp/iat em segundos). O res.cookie do Express espera
   // milissegundos: a conversão fica em apps/api/src/comum/sessao/cookie-sessao.ts.
   maxAge: number;
 }
 
 const ALGORITMO = "HS256";
 
-// Mesmo segredo do .env que o NextAuth usava, então nenhum ambiente precisa de
-// variável nova. Sem segredo é erro de configuração: lançar em vez de tratar como
+// AUTH_SECRET é o segredo atual; NEXTAUTH_SECRET fica como fallback documentado, para
+// ambientes que ainda tenham só a variável antiga. Sem segredo é erro de configuração: lançar em vez de tratar como
 // "deslogado" evita que um deploy quebrado pareça uma sessão expirada.
 function chave(): Uint8Array {
   const segredo = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;

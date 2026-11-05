@@ -23,8 +23,7 @@ import { PaginaConfiguracoesTiposProcesso } from "@/paginas/configuracoes/tipos-
 import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 
-// Espelha src/app do Next: route groups viram rotas de layout sem `path`; [id] vira :id.
-// Mapa completo Next → rota → arquivo no plano da Fase 4.
+// Route groups são rotas de layout sem `path`; parâmetros dinâmicos usam :id.
 export const rotas: RouteObject[] = [
   {
     element: <LayoutRaiz />,

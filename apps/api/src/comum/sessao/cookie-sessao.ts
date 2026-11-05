@@ -8,7 +8,7 @@ import {
   type SessaoJwt,
 } from "@dominio/lib/auth/sessao-jwt";
 
-// Ponte entre o módulo compartilhado (src/lib/auth/sessao-jwt.ts) e o Express. Só os
+// Ponte entre o módulo compartilhado (dominio/lib/auth/sessao-jwt.ts) e o Express. Só os
 // controllers do SessaoModule gravam/limpam o cookie; os guards apenas leem.
 
 export async function lerSessaoDaRequisicao(req: Request): Promise<SessaoJwt | null> {
@@ -18,7 +18,7 @@ export async function lerSessaoDaRequisicao(req: Request): Promise<SessaoJwt | n
 export async function gravarCookieSessao(res: Response, payload: SessaoJwt): Promise<void> {
   const token = await assinarSessao(payload);
   const { maxAge, ...opcoes } = opcoesCookieSessao();
-  // O Express espera maxAge em milissegundos (o Next, em segundos).
+  // O Express espera maxAge em milissegundos (o módulo compartilhado usa segundos).
   res.cookie(NOME_COOKIE_SESSAO_CRM, token, { ...opcoes, maxAge: maxAge * 1000 });
 }
 

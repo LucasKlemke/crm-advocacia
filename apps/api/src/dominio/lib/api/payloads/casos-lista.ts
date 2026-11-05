@@ -6,9 +6,8 @@ import type { ListaCasos } from "@crm/compartilhado/tipos/caso";
 
 export const POR_PAGINA = 20;
 
-// Montagem do payload de GET /api/casos, extraída do route handler para ser reusada
-// pelo prefetch no servidor (src/app/(dashboard)/page.tsx): as duas pontas precisam
-// produzir exatamente o mesmo DTO, senão o React Query hidratado divergiria da rota.
+// Montagem do payload de GET /api/casos, isolada do controller para ser testada sem HTTP
+// e manter o DTO (ListaCasos) definido num único lugar, compartilhado com o front.
 export async function montarListaCasos(
   ctx: TenantContext,
   filtros: Omit<FiltrosCaso, "skip" | "take">,

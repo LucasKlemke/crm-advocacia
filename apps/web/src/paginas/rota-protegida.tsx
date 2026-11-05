@@ -8,7 +8,7 @@ export interface RotaProtegidaProps {
   exigirEscritorio?: boolean;
 }
 
-// Substitui o proxy.ts do Next (RN01) e os redirects do (dashboard)/layout.tsx: sem sessão
+// Guarda de rotas autenticadas (RN01): sem sessão
 // → /login com o destino guardado; sem escritório ativo → /onboarding. O cache de dados
 // nasce aqui, preso ao escritório da sessão (QueryProvider troca o client inteiro quando
 // o tenant muda — RN19 no front).
