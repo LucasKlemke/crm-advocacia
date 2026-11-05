@@ -6,6 +6,7 @@ import { TiposProcessoModule } from "./tipos-processo/tipos-processo.module";
 import { ClientesModule } from "./clientes/clientes.module";
 import { CasosModule } from "./casos/casos.module";
 import { ComentariosModule } from "./comentarios/comentarios.module";
+import { PerfilModule } from "./perfil/perfil.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ComentariosModule } from "./comentarios/comentarios.module";
     ClientesModule,
     CasosModule,
     ComentariosModule,
+    PerfilModule,
   ],
   controllers: [SaudeController],
 })
