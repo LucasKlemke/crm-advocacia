@@ -1,7 +1,6 @@
 import { Navigate, type RouteObject } from "react-router";
 import { LayoutRaiz } from "@/paginas/layout-raiz";
 import { RotaProtegida } from "@/paginas/rota-protegida";
-import { PaginaEmMigracao } from "@/paginas/pagina-em-migracao";
 import { PaginaNaoEncontrada } from "@/paginas/pagina-nao-encontrada";
 import { LayoutAuth } from "@/paginas/layouts/layout-auth";
 import { PaginaLogin } from "@/paginas/login";
@@ -16,11 +15,12 @@ import { PaginaNovaCampanha } from "@/paginas/campanhas/nova";
 import { PaginaCampanha } from "@/paginas/campanhas/detalhe";
 import { PaginaInstancias } from "@/paginas/instancias";
 import { PaginaPerfil } from "@/paginas/perfil";
+import { PaginaConfiguracoesEscritorio } from "@/paginas/configuracoes/escritorio";
+import { PaginaConfiguracoesMembros } from "@/paginas/configuracoes/membros";
+import { PaginaConfiguracoesStatus } from "@/paginas/configuracoes/status";
+import { PaginaConfiguracoesTiposProcesso } from "@/paginas/configuracoes/tipos-processo";
 import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
-
-// Placeholder da parte A: a parte B troca cada chamada pela página portada.
-const emMigracao = (caminhoNext: string) => <PaginaEmMigracao caminhoNext={caminhoNext} />;
 
 // Espelha src/app do Next: route groups viram rotas de layout sem `path`; [id] vira :id.
 // Mapa completo Next → rota → arquivo no plano da Fase 4.
@@ -69,22 +69,10 @@ export const rotas: RouteObject[] = [
                 element: <LayoutConfiguracoes />,
                 children: [
                   { index: true, element: <Navigate replace to="/configuracoes/escritorio" /> },
-                  {
-                    path: "escritorio",
-                    element: emMigracao("src/app/(dashboard)/configuracoes/escritorio/page.tsx"),
-                  },
-                  {
-                    path: "membros",
-                    element: emMigracao("src/app/(dashboard)/configuracoes/membros/page.tsx"),
-                  },
-                  {
-                    path: "status",
-                    element: emMigracao("src/app/(dashboard)/configuracoes/status/page.tsx"),
-                  },
-                  {
-                    path: "tipos-processo",
-                    element: emMigracao("src/app/(dashboard)/configuracoes/tipos-processo/page.tsx"),
-                  },
+                  { path: "escritorio", element: <PaginaConfiguracoesEscritorio /> },
+                  { path: "membros", element: <PaginaConfiguracoesMembros /> },
+                  { path: "status", element: <PaginaConfiguracoesStatus /> },
+                  { path: "tipos-processo", element: <PaginaConfiguracoesTiposProcesso /> },
                 ],
               },
             ],

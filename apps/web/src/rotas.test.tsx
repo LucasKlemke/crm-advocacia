@@ -12,20 +12,18 @@ jest.mock("./paginas/layouts/layout-dashboard", () => ({
   },
 }));
 
+jest.mock("./paginas/configuracoes/escritorio", () => ({
+  PaginaConfiguracoesEscritorio: () => <p>PaginaConfiguracoesEscritorio</p>,
+}));
+jest.mock("./paginas/configuracoes/membros", () => ({
+  PaginaConfiguracoesMembros: () => <p>PaginaConfiguracoesMembros</p>,
+}));
+
 const mockedUseSessao = useSessao as jest.Mock;
 
 function navegarPara(rota: string) {
   render(<RouterProvider router={createMemoryRouter(rotas, { initialEntries: [rota] })} />);
 }
-
-// Rota React Router → página do Next que ela ainda espera. A parte B remove cada linha
-// ao portar a página correspondente.
-const ROTAS_EM_MIGRACAO: [string, string][] = [
-  ["/configuracoes/escritorio", "src/app/(dashboard)/configuracoes/escritorio/page.tsx"],
-  ["/configuracoes/membros", "src/app/(dashboard)/configuracoes/membros/page.tsx"],
-  ["/configuracoes/status", "src/app/(dashboard)/configuracoes/status/page.tsx"],
-  ["/configuracoes/tipos-processo", "src/app/(dashboard)/configuracoes/tipos-processo/page.tsx"],
-];
 
 describe("árvore de rotas", () => {
   beforeEach(() => {
@@ -41,18 +39,10 @@ describe("árvore de rotas", () => {
     });
   });
 
-  it.each(ROTAS_EM_MIGRACAO)("%s aponta para %s", async (rota, caminhoNext) => {
-    navegarPara(rota);
-
-    expect(await screen.findByText(caminhoNext)).toBeInTheDocument();
-  });
-
   it("/configuracoes redireciona para /configuracoes/escritorio", async () => {
     navegarPara("/configuracoes");
 
-    expect(
-      await screen.findByText("src/app/(dashboard)/configuracoes/escritorio/page.tsx")
-    ).toBeInTheDocument();
+    expect(await screen.findByText("PaginaConfiguracoesEscritorio")).toBeInTheDocument();
   });
 
   it("as rotas de configurações ficam dentro da nav lateral própria", async () => {
