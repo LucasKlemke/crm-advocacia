@@ -20,6 +20,11 @@ for (const { nome, minimo, resumos } of GRUPOS) {
     total += t.lines.total;
   }
   const pct = total === 0 ? 0 : (cobertas / total) * 100;
+  if (total === 0) {
+    falhou = true;
+    process.stdout.write(`FALHA ${nome}: nenhuma linha medida — ${resumos.join(" + ")}\n`);
+    continue;
+  }
   const ok = pct >= minimo;
   falhou ||= !ok;
   process.stdout.write(`${ok ? "OK  " : "FALHA"} ${nome}: ${pct.toFixed(2)}% de linhas (piso ${minimo}%) — ${resumos.join(" + ")}\n`);

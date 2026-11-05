@@ -83,6 +83,32 @@ describe("ClientesTable", () => {
     expect(within(barra).getByText("1 selecionado(s)")).toBeInTheDocument();
   });
 
+  // Regressão: o timer do debounce agendado na montagem zerava a seleção feita antes dos 300ms.
+  it("mantém a seleção feita logo após a montagem depois que o debounce inicial expira", async () => {
+    const usuario = userEvent.setup();
+    renderTabela();
+    await screen.findByText("Maria Silva");
+
+    await usuario.click(screen.getByRole("checkbox", { name: "Selecionar Maria Silva" }));
+    await new Promise((resolver) => setTimeout(resolver, 450));
+
+    expect(screen.getByText("1 selecionado(s)")).toBeInTheDocument();
+  });
+
+  it("zera a seleção quando a busca muda e o debounce expira", async () => {
+    const usuario = userEvent.setup();
+    renderTabela();
+    await screen.findByText("Maria Silva");
+
+    await usuario.click(screen.getByRole("checkbox", { name: "Selecionar Maria Silva" }));
+    expect(screen.getByText("1 selecionado(s)")).toBeInTheDocument();
+    await usuario.type(screen.getByLabelText("Buscar clientes"), "joao");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Ações em lote" })).not.toBeInTheDocument()
+    );
+  });
+
   it("o checkbox do cabeçalho seleciona todas as linhas ativas", async () => {
     const usuario = userEvent.setup();
     renderTabela();
