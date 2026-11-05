@@ -2,7 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../test/utils";
 import { MembrosModule } from "./membros.module";
-import { MEMBRO_SERVICE } from "./tokens";
+import { MEMBRO_SERVICE, USUARIO_SERVICE_AVATAR } from "./tokens";
 import {
   MembroNaoEncontradoError,
   PermissaoNegadaError,
@@ -14,12 +14,26 @@ import {
   SemEscritorioAtivoError,
 } from "@/lib/auth/resolver-tenant";
 
-const service = { listarMembros: jest.fn(), alterarRole: jest.fn(), remover: jest.fn() };
+const service = {
+  listarMembros: jest.fn(),
+  alterarRole: jest.fn(),
+  remover: jest.fn(),
+};
+const assinar = async (chave: string | null) =>
+  chave ? "https://bucket.s3.amazonaws.com/signed-get" : null;
+const avatares = { assinarUrlAvatar: jest.fn(assinar) };
 
 let app: INestApplication;
 
 async function subir(ctx?: Parameters<typeof criarAppDeTeste>[0]["ctx"]) {
-  app = await criarAppDeTeste({ imports: [MembrosModule], ctx, overrides: [[MEMBRO_SERVICE, service]] });
+  app = await criarAppDeTeste({
+    imports: [MembrosModule],
+    ctx,
+    overrides: [
+      [MEMBRO_SERVICE, service],
+      [USUARIO_SERVICE_AVATAR, avatares],
+    ],
+  });
   return app.getHttpServer();
 }
 
@@ -29,6 +43,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   jest.clearAllMocks();
+  avatares.assinarUrlAvatar.mockImplementation(assinar);
   await app?.close();
 });
 
@@ -38,14 +53,22 @@ describe("GET /api/membros", () => {
     [new SemEscritorioAtivoError(), 409],
     [new AcessoNegadoError(), 403],
   ])("responde o erro de tenant %p com %i", async (erro, status) => {
-    await request(await subir(erro)).get("/api/membros").expect(status);
+    await request(await subir(erro))
+      .get("/api/membros")
+      .expect(status);
     expect(service.listarMembros).not.toHaveBeenCalled();
   });
 
   it("lista os membros do escritório da sessão", async () => {
-    service.listarMembros.mockResolvedValue([{ id: "membro-1" }]);
+    service.listarMembros.mockResolvedValue([
+      { id: "membro-1", usuario: { avatarUrl: null } },
+    ]);
 
-    await request(await subir()).get("/api/membros").expect(200, { membros: [{ id: "membro-1" }] });
+    await request(await subir())
+      .get("/api/membros")
+      .expect(200, {
+        membros: [{ id: "membro-1", usuario: { avatarUrl: null } }],
+      });
     expect(service.listarMembros).toHaveBeenCalledWith(CTX_OWNER);
   });
 
@@ -64,7 +87,10 @@ describe("PATCH /api/membros/:id", () => {
     [new SemEscritorioAtivoError(), 409],
     [new AcessoNegadoError(), 403],
   ])("responde o erro de tenant %p com %i", async (erro, status) => {
-    await request(await subir(erro)).patch("/api/membros/membro-1").send({ role: "admin" }).expect(status);
+    await request(await subir(erro))
+      .patch("/api/membros/membro-1")
+      .send({ role: "admin" })
+      .expect(status);
     expect(service.alterarRole).not.toHaveBeenCalled();
   });
 
@@ -75,11 +101,18 @@ describe("PATCH /api/membros/:id", () => {
       .patch("/api/membros/membro-1")
       .send({ role: "admin" })
       .expect(200, { membro: { id: "membro-1", role: "admin" } });
-    expect(service.alterarRole).toHaveBeenCalledWith(CTX_OWNER, "membro-1", "admin");
+    expect(service.alterarRole).toHaveBeenCalledWith(
+      CTX_OWNER,
+      "membro-1",
+      "admin",
+    );
   });
 
   it("responde 400 para role inválido", async () => {
-    await request(await subir()).patch("/api/membros/membro-1").send({ role: "invalido" }).expect(400);
+    await request(await subir())
+      .patch("/api/membros/membro-1")
+      .send({ role: "invalido" })
+      .expect(400);
     expect(service.alterarRole).not.toHaveBeenCalled();
   });
 
@@ -121,14 +154,18 @@ describe("DELETE /api/membros/:id", () => {
     [new SemEscritorioAtivoError(), 409],
     [new AcessoNegadoError(), 403],
   ])("responde o erro de tenant %p com %i", async (erro, status) => {
-    await request(await subir(erro)).delete("/api/membros/membro-1").expect(status);
+    await request(await subir(erro))
+      .delete("/api/membros/membro-1")
+      .expect(status);
     expect(service.remover).not.toHaveBeenCalled();
   });
 
   it("remove e responde { ok: true }", async () => {
     service.remover.mockResolvedValue(undefined);
 
-    await request(await subir()).delete("/api/membros/membro-1").expect(200, { ok: true });
+    await request(await subir())
+      .delete("/api/membros/membro-1")
+      .expect(200, { ok: true });
     expect(service.remover).toHaveBeenCalledWith(CTX_OWNER, "membro-1");
   });
 
@@ -139,7 +176,9 @@ describe("DELETE /api/membros/:id", () => {
   ])("mapeia %p para %i", async (erro, status) => {
     service.remover.mockRejectedValue(erro);
 
-    await request(await subir()).delete("/api/membros/membro-1").expect(status, { error: erro.message });
+    await request(await subir())
+      .delete("/api/membros/membro-1")
+      .expect(status, { error: erro.message });
   });
 
   it("responde 500 genérico para erro inesperado", async () => {
@@ -148,5 +187,47 @@ describe("DELETE /api/membros/:id", () => {
     await request(await subir())
       .delete("/api/membros/membro-1")
       .expect(500, { error: "Não foi possível concluir a operação." });
+  });
+});
+
+describe("GET /api/membros — avatar", () => {
+  it("assina o avatarUrl de cada membro antes de responder", async () => {
+    service.listarMembros.mockResolvedValue([
+      {
+        id: "membro-1",
+        role: "owner",
+        usuario: {
+          id: "user-1",
+          nome: "Dona Owner",
+          email: "owner@teste.com",
+          telefone: null,
+          avatarUrl: "development/avatares/user-1/foto.png",
+        },
+      },
+      {
+        id: "membro-2",
+        role: "padrao",
+        usuario: {
+          id: "user-2",
+          nome: "Sem Foto",
+          email: "s@teste.com",
+          telefone: null,
+          avatarUrl: null,
+        },
+      },
+    ]);
+
+    const res = await request(await subir())
+      .get("/api/membros")
+      .expect(200);
+
+    expect(avatares.assinarUrlAvatar).toHaveBeenCalledWith(
+      "development/avatares/user-1/foto.png",
+    );
+    expect(res.body.membros[0].usuario.avatarUrl).toBe(
+      "https://bucket.s3.amazonaws.com/signed-get",
+    );
+    expect(res.body.membros[1].usuario.avatarUrl).toBeNull();
+    expect(JSON.stringify(res.body)).not.toContain("senhaHash");
   });
 });
