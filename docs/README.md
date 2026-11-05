@@ -9,8 +9,8 @@
 
 ## Arquitetura
 
-- [arquitetura/visao-geral.md](arquitetura/visao-geral.md) — C4 (contexto/containers/componentes), camadas do backend (Auth Middleware → Tenant Context → Controller → Service → Repository), módulos funcionais, decisões de stack e isolamento de tenant. Consulte antes de decidir onde uma nova peça de lógica deve morar.
-- [Migração para React + NestJS](arquitetura/migracao-nestjs.md) — estratégia strangler, fases e convenções da API
+- [arquitetura/visao-geral.md](arquitetura/visao-geral.md) — C4 (contexto/containers/componentes), camadas do backend (TenantGuard → Tenant Context → Controller → Service → Repository), módulos funcionais, decisões de stack e isolamento de tenant. Consulte antes de decidir onde uma nova peça de lógica deve morar.
+- [arquitetura/migracao-nestjs.md](arquitetura/migracao-nestjs.md) — migração do Next.js para React + NestJS (concluída): estratégia strangler, fases, autenticação própria (cookie `crm_sessao`), convenções da API e decisões da consolidação (alias `@dominio`, tsup, Vercel Services).
 
 ## Banco de dados
 
@@ -18,24 +18,24 @@
 - [database/schema.md](database/schema.md) — as 22 tabelas do modelo de dados multi-tenant, relacionamentos e notas de implementação Prisma.
 - [database/migrations-prisma.md](database/migrations-prisma.md) — fluxo obrigatório de migrations (`migrate dev`/`migrate deploy`), como reverter, nomenclatura, seeds, auditoria do histórico de schema. Consulte sempre que for alterar `schema.prisma`.
 
-## App (Next.js)
+## App (monorepo: API Nest, web React, compartilhado)
 
-- [app/estrutura-codigo.md](app/estrutura-codigo.md) — layout de pastas, convenção de nomes por entidade/camada, uso do TanStack Query, regra de fronteira UI → API → Service → Repository.
+- [app/estrutura-codigo.md](app/estrutura-codigo.md) — layout de pastas do monorepo (`apps/api`, `apps/web`, `packages/compartilhado`), aliases, convenção de nomes por entidade/camada, uso do TanStack Query, regra de fronteira entre pacotes (UI → API → Service → Repository).
 - [app/design-system.md](app/design-system.md) — Tailwind + shadcn/ui, regra de sempre usar tokens de tema (nunca cor literal), onde configurar tokens, instalação de componentes via CLI.
 - [app/modularizacao.md](app/modularizacao.md) — hierarquia de componentes, quando extrair componente/hook/função reutilizável, tipagem compartilhada.
 
 ## Testes
 
-- [testes/estrategia-tdd.md](testes/estrategia-tdd.md) — ferramentas (Jest + Testing Library + Playwright), processo TDD obrigatório, metas de cobertura (piso institucional 75% backend / 25% frontend, cobrado na prova de autoria, mais metas internas por camada que garantem esse piso) com gate de CI, fluxos críticos cobertos por E2E.
+- [testes/estrategia-tdd.md](testes/estrategia-tdd.md) — ferramentas (Jest + `@swc/jest`, supertest, Testing Library e Playwright contra o build de produção), processo TDD obrigatório, metas de cobertura (piso institucional 75% backend / 25% frontend, cobrado na prova de autoria, mais metas internas por camada que garantem esse piso) com gate de CI, fluxos críticos cobertos por E2E.
 
 ## Qualidade
 
-- [qualidade/analise-estatica.md](qualidade/analise-estatica.md) — SonarCloud: o que é verificado (bugs, code smells, security hotspots, duplicação, cobertura importada do Jest), configuração, Quality Gate como check obrigatório de PR.
-- [qualidade/observabilidade.md](qualidade/observabilidade.md) — New Relic: o que é monitorado na app e na Lambda de notificações, logs estruturados, alertas e dashboards.
+- [qualidade/analise-estatica.md](qualidade/analise-estatica.md) — SonarCloud: o que é verificado (bugs, code smells, security hotspots, duplicação, cobertura importada do Jest), configuração, setup do SonarCloud, proteção de branch e Quality Gate como check obrigatório de PR.
+- [qualidade/observabilidade.md](qualidade/observabilidade.md) — New Relic: o que é monitorado na API e na Lambda de notificações, logs estruturados, alertas e dashboards.
 
 ## Deploy
 
-- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica em RDS+S3, produção real em Supabase), por que dois deploys Vercel a partir do mesmo repositório, o S3Client compatível com múltiplos provedores, variáveis de ambiente por Project, pipeline de deploy, rollback.
+- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica em RDS+S3, produção real em Supabase), por que dois deploys Vercel a partir do mesmo repositório (cada um com os services `web` e `api`, via Vercel Services), passo a passo manual dos Projects (variáveis, spike de go/no-go, plano B), o S3Client compatível com múltiplos provedores, variáveis de ambiente por Project, pipeline de deploy, rollback.
 
 ## Git
 

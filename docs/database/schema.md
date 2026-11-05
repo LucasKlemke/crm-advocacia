@@ -91,7 +91,7 @@ Cadastro dos clientes do escritório.
 
 Não há coluna `ativo` nem `observacoes`: a desativação é o próprio `soft_deleted_at` (uma única fonte de verdade, reversível por "Restaurar"), e as anotações livres viraram um CRUD de comentários na tabela `comentario`.
 
-CPF, telefone e e-mail são validados no `ClienteService` antes de qualquer escrita (dígitos verificadores do CPF, celular brasileiro completo, forma do e-mail). As rotas repetem a checagem no schema zod para que o erro volte por campo em `detalhes` e o formulário destaque o input certo — os dois lados usam os mesmos validadores de `src/lib/utils/`.
+CPF, telefone e e-mail são validados no `ClienteService` antes de qualquer escrita (dígitos verificadores do CPF, celular brasileiro completo, forma do e-mail). As rotas repetem a checagem no schema zod para que o erro volte por campo em `detalhes` e o formulário destaque o input certo — os dois lados usam os mesmos validadores de `packages/compartilhado/src/utils/`.
 
 O CPF de um cliente desativado continua reservado pela constraint. O Service detecta esse caso e devolve um erro específico orientando restaurar o cadastro, em vez de um erro cru de constraint.
 
