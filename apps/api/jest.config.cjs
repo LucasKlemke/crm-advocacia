@@ -42,7 +42,7 @@ module.exports = {
     "!src/**/tokens.ts",
     "!src/dominio/lib/prisma.ts",
   ],
-  coverageReporters: ["text-summary", "lcov", "json-summary"],
+  coverageReporters: ["text-summary", ["lcov", { projectRoot: "../.." }], "json-summary"],
   coverageThreshold: {
     global: { branches: 70, functions: 75, lines: 75, statements: 75 },
     "./src/dominio/services/": { branches: 90, functions: 90, lines: 90, statements: 90 },

@@ -6,9 +6,12 @@ on:
   push:
     branches: [dev, main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Valores só de CI (banco efêmero do service container); nada de produção aqui.
 env:

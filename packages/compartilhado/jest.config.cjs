@@ -12,7 +12,7 @@ module.exports = {
   moduleFileExtensions: ["ts", "js", "json"],
   // tipos/ só tem interfaces (sem código executável) e enums.ts é coberto pelo próprio teste.
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.test.ts", "!src/tipos/**"],
-  coverageReporters: ["text-summary", "lcov", "json-summary"],
+  coverageReporters: ["text-summary", ["lcov", { projectRoot: "../.." }], "json-summary"],
   // Grupo "backend" do piso institucional (validação usada pela API): mesma meta
   // interna dos Services, porque tudo aqui é função pura.
   coverageThreshold: {
