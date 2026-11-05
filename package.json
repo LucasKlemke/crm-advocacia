@@ -6,6 +6,11 @@
     "apps/*"
   ],
   "scripts": {
+    "web:dev": "npm run dev -w @crm/web",
+    "web:build": "npm run build -w @crm/web",
+    "web:preview": "npm run preview -w @crm/web",
+    "web:test": "npm test -w @crm/web",
+    "web:typecheck": "npm run typecheck -w @crm/web",
     "predev": "docker compose up -d",
     "dev": "next dev",
     "dev:tunnel": "concurrently -k -n dev,ngrok -c blue,green \"npm run dev\" \"ngrok http 3000 --log=stdout\"",
