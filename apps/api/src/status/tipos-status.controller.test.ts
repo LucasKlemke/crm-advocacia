@@ -2,7 +2,7 @@ import request from "supertest";
 import { criarAppDeTeste, CTX_OWNER } from "../../test/utils";
 import { StatusModule } from "./status.module";
 import { STATUS_SERVICE, TIPO_STATUS_SERVICE } from "./tokens";
-import { SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
+import { NaoAutenticadoError, SemEscritorioAtivoError } from "@/lib/auth/resolver-tenant";
 
 const tipoStatusService = { listar: jest.fn() };
 
@@ -31,6 +31,32 @@ describe("GET /api/tipos-status", () => {
     });
 
     await request(app.getHttpServer()).get("/api/tipos-status").expect(409);
+    await app.close();
+  });
+
+  it("responde 401 sem sessão e não chama o service", async () => {
+    const app = await criarAppDeTeste({
+      imports: [StatusModule],
+      ctx: new NaoAutenticadoError(),
+      overrides: [[TIPO_STATUS_SERVICE, tipoStatusService], [STATUS_SERVICE, {}]],
+    });
+
+    await request(app.getHttpServer()).get("/api/tipos-status").expect(401);
+    expect(tipoStatusService.listar).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("responde 500 genérico, sem vazar o erro interno", async () => {
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+    tipoStatusService.listar.mockRejectedValue(new Error("connection reset by peer"));
+    const app = await criarAppDeTeste({
+      imports: [StatusModule],
+      overrides: [[TIPO_STATUS_SERVICE, tipoStatusService], [STATUS_SERVICE, {}]],
+    });
+
+    const res = await request(app.getHttpServer()).get("/api/tipos-status").expect(500);
+    expect(res.body.error).not.toMatch(/connection reset/);
+    spy.mockRestore();
     await app.close();
   });
 });

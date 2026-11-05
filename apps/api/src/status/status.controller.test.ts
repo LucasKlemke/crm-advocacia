@@ -7,6 +7,7 @@ import {
   StatusNaoEncontradoError,
   NomeStatusDuplicadoError,
   StatusComCasosError,
+  TipoStatusInvalidoError,
   PermissaoNegadaError,
 } from "@/services/status.service";
 import { NaoAutenticadoError } from "@/lib/auth/resolver-tenant";
@@ -113,5 +114,73 @@ describe("DELETE /api/status/:id", () => {
     await request(await subir()).delete("/api/status/s1").expect(409, {
       error: "Este status tem processos vinculados e não pode ser excluído.",
     });
+  });
+});
+
+describe("caminhos de erro (portados das rotas Next)", () => {
+  it("POST responde 400 quando tipoStatusId não é uuid", async () => {
+    const res = await request(await subir()).post("/api/status").send({ ...corpoValido, tipoStatusId: "nao-e-uuid" }).expect(400);
+    expect(res.body.detalhes.tipoStatusId).toBeDefined();
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("POST responde 400 com detalhes para ícone inexistente", async () => {
+    const res = await request(await subir()).post("/api/status").send({ ...corpoValido, icone: "IconeInexistente" }).expect(400);
+    expect(res.body.detalhes.icone).toBeDefined();
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("POST responde 400 quando o corpo não é JSON", async () => {
+    await request(await subir())
+      .post("/api/status")
+      .set("Content-Type", "application/json")
+      .send("nao-e-json")
+      .expect(400);
+    expect(service.criar).not.toHaveBeenCalled();
+  });
+
+  it("POST responde 400 para TipoStatusInvalidoError vindo do service", async () => {
+    service.criar.mockRejectedValue(new TipoStatusInvalidoError());
+    const res = await request(await subir()).post("/api/status").send(corpoValido).expect(400);
+    expect(res.body.error).toEqual(expect.any(String));
+  });
+
+  it("POST responde 500 genérico, sem vazar o erro interno", async () => {
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+    service.criar.mockRejectedValue(new Error("connection reset by peer"));
+    const res = await request(await subir()).post("/api/status").send(corpoValido).expect(500);
+    expect(res.body.error).not.toMatch(/connection reset/);
+    spy.mockRestore();
+  });
+
+  it("PATCH responde 400 com detalhes quando o nome é vazio", async () => {
+    const res = await request(await subir()).patch("/api/status/s1").send({ nome: "" }).expect(400);
+    expect(res.body.detalhes.nome).toBeDefined();
+    expect(service.atualizar).not.toHaveBeenCalled();
+  });
+
+  it("PATCH responde 409 em colisão de nome", async () => {
+    service.atualizar.mockRejectedValue(new NomeStatusDuplicadoError());
+    await request(await subir()).patch("/api/status/s1").send({ nome: "Já Usado" }).expect(409);
+  });
+
+  it("PATCH responde 403 quando o papel não permite", async () => {
+    service.atualizar.mockRejectedValue(new PermissaoNegadaError());
+    await request(await subir()).patch("/api/status/s1").send({ nome: "Novo" }).expect(403);
+  });
+
+  it("PATCH responde 401 sem sessão e não chama o service", async () => {
+    await request(await subir(new NaoAutenticadoError())).patch("/api/status/s1").send({ nome: "Novo" }).expect(401);
+    expect(service.atualizar).not.toHaveBeenCalled();
+  });
+
+  it("DELETE responde 404 para status de outro escritório", async () => {
+    service.excluir.mockRejectedValue(new StatusNaoEncontradoError());
+    await request(await subir()).delete("/api/status/s1").expect(404);
+  });
+
+  it("DELETE responde 403 quando o papel não permite", async () => {
+    service.excluir.mockRejectedValue(new PermissaoNegadaError());
+    await request(await subir()).delete("/api/status/s1").expect(403);
   });
 });
