@@ -15,6 +15,7 @@ import { EventosModule } from "./eventos/eventos.module";
 import { DocumentosModule } from "./documentos/documentos.module";
 import { InstanciasModule } from "./instancias/instancias.module";
 import { CampanhasModule } from "./campanhas/campanhas.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CampanhasModule } from "./campanhas/campanhas.module";
     DocumentosModule,
     InstanciasModule,
     CampanhasModule,
+    WebhooksModule,
   ],
   controllers: [SaudeController],
 })

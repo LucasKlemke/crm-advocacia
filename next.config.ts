@@ -19,6 +19,7 @@ const ROTAS_NA_API_NEST = [
   "documentos",
   "instancias",
   "campanhas",
+  "webhooks/uazapi",
 ];
 
 const nextConfig: NextConfig = {
