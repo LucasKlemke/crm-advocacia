@@ -11,6 +11,7 @@ import { EscritoriosModule } from "./escritorios/escritorios.module";
 import { MembrosModule } from "./membros/membros.module";
 import { ConvitesModule } from "./convites/convites.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
+import { EventosModule } from "./eventos/eventos.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
     MembrosModule,
     ConvitesModule,
     DashboardModule,
+    EventosModule,
   ],
   controllers: [SaudeController],
 })
