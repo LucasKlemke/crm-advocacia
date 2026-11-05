@@ -1,13 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { signIn } from "next-auth/react";
+import { entrar } from "@/lib/auth/cliente-sessao";
 import CadastroPage from "./page";
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
-}));
+jest.mock("@/lib/auth/cliente-sessao", () => ({ entrar: jest.fn() }));
 
-const mockedSignIn = signIn as jest.Mock;
+const mockedEntrar = entrar as jest.Mock;
 
 async function preencherFormulario(
   user: ReturnType<typeof userEvent.setup>,
@@ -68,7 +66,7 @@ describe("CadastroPage", () => {
     await user.click(screen.getByRole("button", { name: /cadastrar/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/já está cadastrado/i);
-    expect(mockedSignIn).not.toHaveBeenCalled();
+    expect(mockedEntrar).not.toHaveBeenCalled();
     expect(window.location.href).toBe("");
   });
 
@@ -77,7 +75,7 @@ describe("CadastroPage", () => {
       ok: true,
       json: async () => ({ temEscritorio: false }),
     });
-    mockedSignIn.mockResolvedValue({ error: undefined, ok: true });
+    mockedEntrar.mockResolvedValue(true);
     const user = userEvent.setup();
 
     render(<CadastroPage />);
@@ -88,6 +86,7 @@ describe("CadastroPage", () => {
       "/api/cadastro",
       expect.objectContaining({ method: "POST" })
     );
+    expect(mockedEntrar).toHaveBeenCalledWith("fulano@teste.com", "senha-forte-123");
     expect(window.location.href).toBe("/onboarding");
   });
 
@@ -96,7 +95,7 @@ describe("CadastroPage", () => {
       ok: true,
       json: async () => ({ temEscritorio: true }),
     });
-    mockedSignIn.mockResolvedValue({ error: undefined, ok: true });
+    mockedEntrar.mockResolvedValue(true);
     const user = userEvent.setup();
 
     render(<CadastroPage />);
@@ -104,5 +103,17 @@ describe("CadastroPage", () => {
     await user.click(screen.getByRole("button", { name: /cadastrar/i }));
 
     expect(window.location.href).toBe("/");
+  });
+
+  it("manda para o login quando o cadastro deu certo mas a sessão não abriu", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ temEscritorio: false }) });
+    mockedEntrar.mockResolvedValue(false);
+    const user = userEvent.setup();
+
+    render(<CadastroPage />);
+    await preencherFormulario(user);
+    await user.click(screen.getByRole("button", { name: /cadastrar/i }));
+
+    expect(window.location.href).toBe("/login");
   });
 });

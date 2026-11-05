@@ -33,8 +33,8 @@ export interface EscritorioSwitcherProps {
   ativoId: string;
 }
 
-// Troca de escritório: POST valida a membership no servidor -> unstable_update grava a
-// sessão -> router.refresh() recarrega os Server Components com o novo tenant.
+// Troca de escritório: POST valida a membership no servidor e a API regrava o cookie
+// crm_sessao -> router.refresh() recarrega os Server Components com o novo tenant.
 export function EscritorioSwitcher({ escritorios, ativoId }: EscritorioSwitcherProps) {
   const router = useRouter();
   const [trocando, setTrocando] = useState(false);

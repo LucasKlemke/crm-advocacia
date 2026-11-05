@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { signIn } from "next-auth/react";
+import { entrar } from "@/lib/auth/cliente-sessao";
 import Link from "next/link";
 import { User, Mail, Lock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,13 +47,10 @@ export default function CadastroPage() {
         return;
       }
 
-      const loginResult = await signIn("credentials", {
-        email: payload.email,
-        senha: payload.senha,
-        redirect: false,
-      });
+      // A API de cadastro só cria o usuário; a sessão (crm_sessao) nasce no login.
+      const logou = await entrar(String(payload.email ?? ""), String(payload.senha ?? "")).catch(() => false);
 
-      if (loginResult?.error) {
+      if (!logou) {
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/login";
         return;

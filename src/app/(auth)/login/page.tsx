@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { signIn } from "next-auth/react";
+import { entrar } from "@/lib/auth/cliente-sessao";
 import Link from "next/link";
 import { LogIn, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,13 +30,9 @@ export default function LoginPage() {
     const formData = new FormData(event.currentTarget);
 
     try {
-      const result = await signIn("credentials", {
-        email: formData.get("email"),
-        senha: formData.get("senha"),
-        redirect: false,
-      });
+      const logou = await entrar(String(formData.get("email") ?? ""), String(formData.get("senha") ?? ""));
 
-      if (result?.error) {
+      if (!logou) {
         setErro("E-mail ou senha inválidos.");
         return;
       }

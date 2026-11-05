@@ -7,9 +7,6 @@ jest.mock("next/navigation", () => ({
   usePathname: jest.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  signOut: jest.fn(),
-}));
 
 const mockedUsePathname = usePathname as jest.Mock;
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { sair } from "@/lib/auth/cliente-sessao";
 import { ChevronsUpDown, LogOut, Settings2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,7 +63,14 @@ export function NavUsuario({ usuario }: NavUsuarioProps) {
               }
             />
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+            <DropdownMenuItem
+              onClick={async () => {
+                await sair();
+                // Navegação forçada: descarta o Router Cache do usuário que saiu.
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                window.location.href = "/login";
+              }}
+            >
               <LogOut />
               Sair
             </DropdownMenuItem>
