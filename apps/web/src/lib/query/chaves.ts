@@ -38,3 +38,7 @@ export const RAIZ_EVENTOS = ["eventos"] as const;
 
 export const chaveEventos = (filtros?: FiltrosEventos) =>
   filtros ? ([...RAIZ_EVENTOS, "periodo", filtros.inicio, filtros.fim] as const) : RAIZ_EVENTOS;
+
+// Sessão do usuário logado (GET /api/auth/sessao). Vive no queryClientRaiz, fora do
+// cache do tenant — ver lib/query/query-client-raiz.ts.
+export const chaveSessao = () => ["sessao"] as const;
