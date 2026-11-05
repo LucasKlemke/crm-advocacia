@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   // pacote ESM puro (package.json "type": "module"). Sem transpilePackages o Jest
   // (via next/jest) ignora node_modules por padrão e falha ao interpretar o
   // `import` do pacote — precisa ser transpilado como o resto do app.
-  transpilePackages: ["archiver", "zip-stream", "compress-commons", "crc32-stream", "is-stream"],
+  transpilePackages: ["archiver", "zip-stream", "compress-commons", "crc32-stream", "is-stream", "jose"],
 
   async rewrites() {
     const api = process.env.API_NEST_URL;
