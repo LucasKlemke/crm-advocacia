@@ -71,3 +71,9 @@ if (typeof AbortSignal !== "undefined" && !AbortSignal.timeout) {
     return controlador.signal;
   };
 }
+
+// jsdom não implementa window.scrollTo (só loga "Not implemented"); o <ScrollRestoration>
+// do React Router chama a cada navegação dos testes de rota.
+if (typeof window !== "undefined") {
+  window.scrollTo = () => {};
+}
