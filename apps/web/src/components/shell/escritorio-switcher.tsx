@@ -35,7 +35,7 @@ export interface EscritorioSwitcherProps {
 }
 
 // Troca de escritório: trocarEscritorio valida a membership no servidor (RN19) e
-// atualiza a sessão. O novo escritorioId remonta o QueryProvider do LayoutDashboard,
+// atualiza a sessão. O novo escritorioId remonta o QueryProvider da RotaProtegida,
 // que descarta o cache do tenant anterior.
 export function EscritorioSwitcher({ escritorios, ativoId }: EscritorioSwitcherProps) {
   const [trocando, setTrocando] = useState(false);

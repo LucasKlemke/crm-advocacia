@@ -2,7 +2,6 @@ import { Link, Outlet } from "react-router";
 import { Scale } from "lucide-react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { QueryProvider } from "@/components/providers/query-provider";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { EscritorioSwitcher } from "@/components/shell/escritorio-switcher";
 import { HeaderData } from "@/components/shell/header-data";
@@ -14,18 +13,13 @@ import { useSessaoDoEscritorio, type SessaoDoEscritorio } from "@/hooks/use-sess
 // Fica sob <RotaProtegida>, que já redirecionou quem não
 // tem sessão (/login) ou escritório ativo (/onboarding).
 //
-// O QueryProvider nasce por escritório: trocar de tenant (trocarEscritorio → novo
-// escritorioId na sessão) cria um client novo e remonta a árvore, descartando o cache
-// do escritório anterior. O header fica dentro dele de propósito, porque a lista do
-// switcher também é dado da sessão atual.
+// O cache por escritório vem do QueryProvider da RotaProtegida: trocar de tenant
+// (trocarEscritorio → novo escritorioId na sessão) cria um client novo e remonta a árvore,
+// descartando o cache do escritório anterior. A lista do switcher também é dado da sessão atual.
 export function LayoutDashboard() {
   const sessao = useSessaoDoEscritorio();
 
-  return (
-    <QueryProvider escritorioId={sessao.escritorioId}>
-      <Shell sessao={sessao} />
-    </QueryProvider>
-  );
+  return <Shell sessao={sessao} />;
 }
 
 function Shell({ sessao }: { sessao: SessaoDoEscritorio }) {

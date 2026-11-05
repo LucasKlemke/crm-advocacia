@@ -1,7 +1,8 @@
 import { Navigate, type RouteObject } from "react-router";
 import { LayoutRaiz } from "@/paginas/layout-raiz";
 import { RotaProtegida } from "@/paginas/rota-protegida";
-import { PaginaNaoEncontrada } from "@/paginas/pagina-nao-encontrada";
+import { PaginaNaoEncontrada } from "@/paginas/nao-encontrada";
+import { ErroRota } from "@/paginas/erro-rota";
 import { LayoutAuth } from "@/paginas/layouts/layout-auth";
 import { PaginaLogin } from "@/paginas/login";
 import { PaginaCadastro } from "@/paginas/cadastro";
@@ -27,6 +28,7 @@ import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 export const rotas: RouteObject[] = [
   {
     element: <LayoutRaiz />,
+    errorElement: <ErroRota />,
     children: [
       // (auth) — públicas
       {
