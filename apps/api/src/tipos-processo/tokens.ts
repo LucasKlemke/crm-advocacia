@@ -1,0 +1,1 @@
+export const TIPO_PROCESSO_SERVICE = Symbol("TIPO_PROCESSO_SERVICE");

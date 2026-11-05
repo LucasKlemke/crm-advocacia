@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 // Migração strangler para NestJS (docs/arquitetura/migracao-nestjs.md): cada grupo de
 // rota listado aqui é respondido pela API em apps/api. O browser continua falando só
 // com o Next (mesma origem), então o cookie de sessão segue sem CORS.
-const ROTAS_NA_API_NEST = ["status", "tipos-status"];
+const ROTAS_NA_API_NEST = ["status", "tipos-status", "tipos-processo"];
 
 const nextConfig: NextConfig = {
   // "archiver" (e "zip-stream"/"is-stream", suas deps internas) é publicado como
