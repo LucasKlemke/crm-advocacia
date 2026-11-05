@@ -1,5 +1,17 @@
 import { Body, Controller, HttpCode, Post } from "@nestjs/common";
 
+// Campo que identifica o evento no payload da UAZAPI (EventType ou event); sem ele, o
+// typeof do que chegou ("string" para corpo não-JSON, "null" para corpo vazio).
+function tipoDoEvento(payload: unknown): string {
+  if (payload && typeof payload === "object") {
+    const { EventType, event } = payload as { EventType?: unknown; event?: unknown };
+    for (const candidato of [EventType, event]) {
+      if (typeof candidato === "string") return candidato;
+    }
+  }
+  return payload === null ? "null" : typeof payload;
+}
+
 // Endpoint PÚBLICO (sem TenantGuard — a UAZAPI não carrega sessão nossa), por ora só
 // para observar os eventos reais antes de decidir o que persistir e como correlacionar
 // com instancia_whatsapp. Sempre responde 200 para a UAZAPI não desativar o webhook,
@@ -15,10 +27,11 @@ export class UazapiWebhookController {
     try {
       payload = bruto ? JSON.parse(bruto) : null;
     } catch {
-      // corpo não-JSON: loga como texto bruto mesmo assim
+      // corpo não-JSON: segue só com o tamanho e o tipo "string"
     }
 
-    console.log("[webhook uazapi]", payload);
+    // O payload traz telefone e texto de mensagem (LGPD): só metadados vão para o log.
+    console.log("[webhook uazapi]", { tipo: tipoDoEvento(payload), bytes: Buffer.byteLength(bruto) });
 
     return { ok: true };
   }

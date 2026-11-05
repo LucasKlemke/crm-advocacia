@@ -4,17 +4,18 @@ import { text } from "express";
 import { ErrosHttpFilter } from "./comum/erros-http.filter";
 
 // POST /api/campanhas manda o CSV inteiro como JSON (até MAX_DESTINATARIOS linhas, ver
-// schemas-campanha.ts) — passa fácil dos 100 KB padrão do Express. O Route Handler do
-// Next não tinha limite próprio (o teto era o de 4,5 MB do Vercel); 10 MB garante que
-// a API nunca seja o gargalo. O limite de negócio continua sendo o do schema.
+// schemas-campanha.ts) — passa fácil dos 100 KB padrão do Express. 10 MB garante
+// que o parser nunca seja o gargalo. O limite de negócio continua sendo o do schema.
 export const LIMITE_CORPO_JSON = "10mb";
 
 // O webhook da UAZAPI precisa responder 2xx sempre. O parser JSON global transformaria
 // JSON malformado em 400 antes do roteamento (filtros de controller não alcançam erro de
 // middleware), então este caminho lê o corpo como texto, de qualquer content-type, e o
-// controller faz o parse tolerante. Caminho absoluto: app.use não aplica o prefixo global.
+// controller faz o parse tolerante. Rota pública: o limite é baixo (256 KB) para não
+// aceitar corpos grandes de quem não é a UAZAPI; acima dele a resposta é 413.
+// Caminho absoluto: app.use não aplica o prefixo global.
 export const CAMINHO_WEBHOOK_UAZAPI = "/api/webhooks/uazapi";
-export const LIMITE_CORPO_WEBHOOK = "10mb";
+export const LIMITE_CORPO_WEBHOOK = "256kb";
 
 // Opções de criação da app, compartilhadas por main.ts e testes. O body parser padrão do
 // Nest registra também o urlencoded, o único tipo (além de multipart/text) que um <form>
