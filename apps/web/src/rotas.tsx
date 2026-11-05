@@ -8,6 +8,8 @@ import { PaginaLogin } from "@/paginas/login";
 import { PaginaCadastro } from "@/paginas/cadastro";
 import { PaginaOnboarding } from "@/paginas/onboarding";
 import { PaginaInicio } from "@/paginas/inicio";
+import { PaginaClientes } from "@/paginas/clientes";
+import { PaginaCasos } from "@/paginas/casos";
 import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 
@@ -43,8 +45,8 @@ export const rotas: RouteObject[] = [
             element: <LayoutDashboard />,
             children: [
               { index: true, element: <PaginaInicio /> },
-              { path: "clientes", element: emMigracao("src/app/(dashboard)/clientes/page.tsx") },
-              { path: "casos", element: emMigracao("src/app/(dashboard)/casos/page.tsx") },
+              { path: "clientes", element: <PaginaClientes /> },
+              { path: "casos", element: <PaginaCasos /> },
               { path: "agenda", element: emMigracao("src/app/(dashboard)/agenda/page.tsx") },
               {
                 path: "campanhas",
