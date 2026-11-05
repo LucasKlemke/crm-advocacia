@@ -33,7 +33,18 @@ async function abrirSwitcher(page: Page) {
 async function criarEscritorioPeloSwitcher(page: Page, nome: string) {
   await abrirSwitcher(page);
   await page.getByRole("menuitem", { name: /criar escritório/i }).click();
-  await criarEscritorio(page, nome);
+  await page.getByLabel("Nome do escritório").fill(nome);
+  const [criacao] = await Promise.all([
+    page.waitForResponse((res) => res.url().endsWith("/api/escritorios") && res.request().method() === "POST"),
+    page.getByRole("button", { name: /criar escritório/i }).click(),
+  ]);
+  expect(criacao.status()).toBe(201);
+  // O dialog termina em reload: o gatilho do switcher passa a mostrar o escritório novo (ativo).
+  await expect(switcher(page)).toContainText(nome);
+}
+
+function switcher(page: Page) {
+  return page.getByRole("button", { name: /selecionar escritório/i });
 }
 
 async function entrar(page: Page, email: string) {
@@ -74,6 +85,11 @@ test.describe("Sessão própria (crm_sessao)", () => {
 
     await criarEscritorioPeloSwitcher(page, "Escritório Novo E2E");
 
+    await abrirSwitcher(page);
+    await expect(page.getByRole("menuitem", { name: "Escritório Antigo E2E" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Escritório Novo E2E" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
     await sair(page, nome);
     expect((await context.cookies()).some((cookie) => cookie.name === "crm_sessao")).toBe(false);
     expect((await page.request.get("/api/auth/sessao")).status()).toBe(401);
@@ -92,6 +108,7 @@ test.describe("Sessão própria (crm_sessao)", () => {
     await cadastrar(page, "Advogada Troca Sessão", `e2e-troca-sessao-${Date.now()}@teste.com`);
     await criarEscritorio(page, "Escritório A Sessão");
     await criarEscritorioPeloSwitcher(page, "Escritório B Sessão");
+    await expect(switcher(page)).toContainText("Escritório B Sessão");
 
     await abrirSwitcher(page);
     const [troca] = await Promise.all([
