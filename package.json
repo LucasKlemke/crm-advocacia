@@ -2,6 +2,7 @@
   "name": "crm-advocacia",
   "version": "0.1.0",
   "private": true,
+  "workspaces": ["apps/*"],
   "scripts": {
     "predev": "docker compose up -d",
     "dev": "next dev",
@@ -18,6 +19,9 @@
     "db:down": "docker compose down",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "api:dev": "npm run dev -w @crm/api",
+    "api:test": "npm test -w @crm/api",
+    "api:typecheck": "npm run typecheck -w @crm/api",
     "postinstall": "prisma generate"
   },
   "dependencies": {

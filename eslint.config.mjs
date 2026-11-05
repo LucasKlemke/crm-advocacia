@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "coverage/**",
+    // A API ganha lint próprio na Fase 5.
+    "apps/**",
   ]),
 ]);
 
