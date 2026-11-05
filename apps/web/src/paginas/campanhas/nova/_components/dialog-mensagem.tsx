@@ -19,7 +19,7 @@ import {
   type ConfigVariavel,
   type LinhaCsv,
   type MapeamentoVariaveis,
-} from "@/lib/utils/campanha-mensagem";
+} from "@dominio/lib/utils/campanha-mensagem";
 import { ConfigVariavelRow } from "./config-variavel";
 import { PreviewWhatsapp } from "./preview-whatsapp";
 

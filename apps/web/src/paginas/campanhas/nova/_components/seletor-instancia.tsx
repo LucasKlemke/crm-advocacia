@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/compat/next-link";
 import { Smartphone } from "lucide-react";
 import { useInstanciasWhatsapp } from "@/hooks/use-instancias-whatsapp";
 import {
@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/select";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { cn } from "@/lib/utils";
-import { formatarTelefone } from "@/lib/utils/telefone";
-import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
+import { formatarTelefone } from "@dominio/lib/utils/telefone";
+import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
 import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 
 export interface InstanciaEscolhida {

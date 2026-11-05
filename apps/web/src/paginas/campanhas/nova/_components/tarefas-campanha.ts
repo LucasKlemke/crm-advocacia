@@ -2,7 +2,7 @@ import {
   extrairVariaveis,
   variaveisNaoMapeadas,
   type MapeamentoVariaveis,
-} from "@/lib/utils/campanha-mensagem";
+} from "@dominio/lib/utils/campanha-mensagem";
 
 export interface TarefaCampanha {
   id: string;

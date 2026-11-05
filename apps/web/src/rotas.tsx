@@ -11,6 +11,9 @@ import { PaginaInicio } from "@/paginas/inicio";
 import { PaginaClientes } from "@/paginas/clientes";
 import { PaginaCasos } from "@/paginas/casos";
 import { PaginaAgenda } from "@/paginas/agenda";
+import { PaginaCampanhas } from "@/paginas/campanhas/lista";
+import { PaginaNovaCampanha } from "@/paginas/campanhas/nova";
+import { PaginaCampanha } from "@/paginas/campanhas/detalhe";
 import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 
@@ -52,9 +55,9 @@ export const rotas: RouteObject[] = [
               {
                 path: "campanhas",
                 children: [
-                  { index: true, element: emMigracao("src/app/(dashboard)/campanhas/page.tsx") },
-                  { path: "nova", element: emMigracao("src/app/(dashboard)/campanhas/nova/page.tsx") },
-                  { path: ":id", element: emMigracao("src/app/(dashboard)/campanhas/[id]/page.tsx") },
+                  { index: true, element: <PaginaCampanhas /> },
+                  { path: "nova", element: <PaginaNovaCampanha /> },
+                  { path: ":id", element: <PaginaCampanha /> },
                 ],
               },
               { path: "instancias", element: emMigracao("src/app/(dashboard)/instancias/page.tsx") },

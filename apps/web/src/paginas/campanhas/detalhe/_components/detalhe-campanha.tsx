@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/compat/next-link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Pause, Play, RefreshCw } from "lucide-react";
@@ -20,14 +20,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { formatarTelefone } from "@/lib/utils/telefone";
-import { normalizarMapeamento } from "@/lib/utils/campanha-mensagem";
-import { TRATAMENTOS_DISPONIVEIS } from "@/lib/utils/campanha-tratamentos";
+import { formatarTelefone } from "@dominio/lib/utils/telefone";
+import { normalizarMapeamento } from "@dominio/lib/utils/campanha-mensagem";
+import { TRATAMENTOS_DISPONIVEIS } from "@dominio/lib/utils/campanha-tratamentos";
 import {
   chaveTelefone,
   resumirPorNumero,
   type ResumoMensagem,
-} from "@/lib/utils/campanha-status-mensagem";
+} from "@dominio/lib/utils/campanha-status-mensagem";
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { rotuloInstancia } from "../../_components/rotulo-instancia";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";

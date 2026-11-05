@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/compat/next-link";
+import { useRouter } from "@/compat/next-navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, MessageSquare, Upload } from "lucide-react";
@@ -14,7 +14,7 @@ import {
   sugerirMapeamento,
   type ConfigVariavel,
   type MapeamentoVariaveis,
-} from "@/lib/utils/campanha-mensagem";
+} from "@dominio/lib/utils/campanha-mensagem";
 import { CsvInvalidoError, lerPlanilha, sugerirColunaNumero } from "@/lib/utils/csv-campanha";
 import { CLASSE_ITEM_BARRA } from "./barra-acoes";
 import { BotaoCriarCampanha } from "./botao-criar-campanha";

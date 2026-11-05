@@ -1,5 +1,5 @@
 import { BadgeStatus } from "@/components/shared/badge-status";
-import type { StatusMensagem } from "@/lib/utils/campanha-status-mensagem";
+import type { StatusMensagem } from "@dominio/lib/utils/campanha-status-mensagem";
 
 // Cor fixa por status da mensagem na UAZAPI — não é dado do tenant, mesma técnica do
 // status-badge-campanha. A escala segue o caminho da mensagem: cinza esperando, azul saiu,

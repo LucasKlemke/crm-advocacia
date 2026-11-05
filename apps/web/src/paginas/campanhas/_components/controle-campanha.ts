@@ -1,4 +1,4 @@
-import type { CampanhaDTO } from "@/types/campanha";
+import type { CampanhaDTO } from "@dominio/types/campanha";
 
 // Pausar só faz sentido em campanha viva; retomar, só em pausada. Concluída e excluindo não
 // aceitam nenhuma das duas (a UAZAPI recusaria). Mora num módulo próprio porque a listagem

@@ -8,8 +8,8 @@ import {
   type ConfigVariavel,
   type LinhaCsv,
   type MapeamentoVariaveis,
-} from "@/lib/utils/campanha-mensagem";
-import { TRATAMENTOS_DISPONIVEIS } from "@/lib/utils/campanha-tratamentos";
+} from "@dominio/lib/utils/campanha-mensagem";
+import { TRATAMENTOS_DISPONIVEIS } from "@dominio/lib/utils/campanha-tratamentos";
 import { PreviewWhatsapp } from "./preview-whatsapp";
 
 const ROTULO_TRATAMENTO = new Map(TRATAMENTOS_DISPONIVEIS.map((t) => [t.id, t.rotulo]));

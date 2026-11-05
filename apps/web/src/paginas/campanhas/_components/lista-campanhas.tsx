@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/compat/next-link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Megaphone, Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { podePausar, podeRetomar } from "./controle-campanha";
 import { rotuloInstancia } from "./rotulo-instancia";
 import { StatusBadgeCampanha } from "./status-badge-campanha";
-import type { CampanhaDTO } from "@/types/campanha";
+import type { CampanhaDTO } from "@dominio/types/campanha";
 
 export interface ListaCampanhasProps {
   somenteLeitura: boolean;

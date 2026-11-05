@@ -1,5 +1,5 @@
 import { podePausar, podeRetomar } from "./controle-campanha";
-import type { CampanhaDTO } from "@/types/campanha";
+import type { CampanhaDTO } from "@dominio/types/campanha";
 
 const TODOS: CampanhaDTO["status"][] = [
   "agendada",

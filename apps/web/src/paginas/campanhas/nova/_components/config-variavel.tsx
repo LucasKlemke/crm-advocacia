@@ -14,8 +14,8 @@ import {
 import {
   TRATAMENTOS_DISPONIVEIS,
   type Tratamento,
-} from "@/lib/utils/campanha-tratamentos";
-import { resolverValor, type ConfigVariavel, type LinhaCsv } from "@/lib/utils/campanha-mensagem";
+} from "@dominio/lib/utils/campanha-tratamentos";
+import { resolverValor, type ConfigVariavel, type LinhaCsv } from "@dominio/lib/utils/campanha-mensagem";
 
 export interface ConfigVariavelRowProps {
   variavel: string;

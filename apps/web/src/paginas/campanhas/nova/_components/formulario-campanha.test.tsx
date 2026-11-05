@@ -2,13 +2,13 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderComQuery } from "@/lib/test-utils";
 import { FormularioCampanha } from "./formulario-campanha";
-import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
 import { CsvInvalidoError } from "@/lib/utils/csv-campanha";
 
 const mutateCriar = jest.fn();
 const push = jest.fn();
 
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+jest.mock("@/compat/next-navigation", () => ({ useRouter: () => ({ push }) }));
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("@/hooks/use-campanhas", () => ({
   useCriarCampanha: () => ({ mutateAsync: mutateCriar, isPending: false }),

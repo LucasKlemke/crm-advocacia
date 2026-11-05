@@ -19,8 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { corrigirTelefone, normalizarTelefone, telefoneValido } from "@/lib/utils/telefone";
-import type { LinhaCsv } from "@/lib/utils/campanha-mensagem";
+import { corrigirTelefone, normalizarTelefone, telefoneValido } from "@dominio/lib/utils/telefone";
+import type { LinhaCsv } from "@dominio/lib/utils/campanha-mensagem";
 
 export interface PlanilhaSelecionada {
   nomeArquivo: string;
