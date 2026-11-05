@@ -1,5 +1,8 @@
 import { Module } from "@nestjs/common";
 import { AuthController } from "./auth.controller";
+import { EscritorioAtivoController } from "./escritorio-ativo.controller";
+import { CadastroController } from "./cadastro.controller";
+import { CriarEscritorioController } from "./criar-escritorio.controller";
 import {
   AUTORIZAR_CREDENCIAIS,
   ESCRITORIO_SERVICE,
@@ -16,7 +19,7 @@ import { escritorioService } from "@/services/escritorio.service";
 // Tudo que GRAVA o cookie crm_sessao mora aqui: login/logout, troca de escritório,
 // cadastro e criação de escritório. Os demais módulos só leem a sessão via guards.
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, EscritorioAtivoController, CadastroController, CriarEscritorioController],
   providers: [
     { provide: AUTORIZAR_CREDENCIAIS, useValue: authorizeCredentials },
     { provide: USUARIO_SERVICE, useValue: usuarioService },
