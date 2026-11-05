@@ -9,17 +9,16 @@ import { statusRepository } from "@/repositories/status.repository";
 import { tipoStatusRepository } from "@/repositories/tipo-status.repository";
 import { tipoProcessoRepository } from "@/repositories/tipo-processo.repository";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/repositories/cliente.repository", () => ({
   clienteRepository: { listar: jest.fn() },
 }));

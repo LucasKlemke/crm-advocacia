@@ -10,17 +10,16 @@ import {
   UltimoOwnerError,
 } from "@/services/membro.service";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/services/membro.service", () => {
   const actual = jest.requireActual("@/services/membro.service");
   return { ...actual, membroService: { alterarRole: jest.fn(), remover: jest.fn() } };

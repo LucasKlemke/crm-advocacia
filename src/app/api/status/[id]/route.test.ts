@@ -5,17 +5,16 @@ import { PATCH, DELETE } from "./route";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { statusService } from "@/services/status.service";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/services/status.service", () => {
   class StatusNaoEncontradoError extends Error {}
   class NomeStatusDuplicadoError extends Error {}

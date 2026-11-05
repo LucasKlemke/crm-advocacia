@@ -5,17 +5,16 @@ import { GET } from "./route";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { tipoStatusService } from "@/services/tipo-status.service";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/services/tipo-status.service", () => ({
   tipoStatusService: { listar: jest.fn() },
 }));

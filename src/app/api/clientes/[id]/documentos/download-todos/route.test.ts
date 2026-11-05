@@ -9,17 +9,16 @@ import { montarZipDocumentos } from "@/lib/documentos/zip";
 import { Readable } from "node:stream";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/services/cliente.service", () => ({
   clienteService: { obter: jest.fn() },
   ClienteNaoEncontradoError: class ClienteNaoEncontradoError extends Error {},

@@ -6,17 +6,16 @@ import { getTenantContext } from "@/lib/auth/tenant-context";
 import { eventoService } from "@/services/evento.service";
 import { serializarEvento } from "@/lib/api/serializa-evento";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/services/evento.service", () => {
   class EventoNaoEncontradoError extends Error {}
   class VinculoEventoExclusivoError extends Error {}

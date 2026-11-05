@@ -6,17 +6,16 @@ import { getTenantContext } from "@/lib/auth/tenant-context";
 import { documentoService, DocumentoNaoEncontradoError } from "@/services/documento.service";
 import type { Documento } from "@prisma/client";
 
-jest.mock("@/lib/auth/tenant-context", () => {
+jest.mock("@/lib/auth/resolver-tenant", () => {
   class NaoAutenticadoError extends Error {}
   class SemEscritorioAtivoError extends Error {}
   class AcessoNegadoError extends Error {}
-  return {
-    getTenantContext: jest.fn(),
-    NaoAutenticadoError,
-    SemEscritorioAtivoError,
-    AcessoNegadoError,
-  };
+  return { NaoAutenticadoError, SemEscritorioAtivoError, AcessoNegadoError };
 });
+jest.mock("@/lib/auth/tenant-context", () => ({
+  getTenantContext: jest.fn(),
+  ...jest.requireMock("@/lib/auth/resolver-tenant"),
+}));
 jest.mock("@/services/documento.service", () => {
   class TipoInvalidoError extends Error {}
   class DocumentoConflitanteError extends Error {}

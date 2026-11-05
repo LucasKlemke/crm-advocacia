@@ -3,7 +3,7 @@ import {
   NaoAutenticadoError,
   SemEscritorioAtivoError,
   AcessoNegadoError,
-} from "@/lib/auth/tenant-context";
+} from "@/lib/auth/resolver-tenant";
 import type { ZodError } from "zod";
 
 // Os erros de tenant têm sempre o mesmo mapeamento HTTP em toda rota protegida —
