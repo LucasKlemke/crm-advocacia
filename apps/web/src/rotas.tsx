@@ -15,6 +15,7 @@ import { PaginaCampanhas } from "@/paginas/campanhas/lista";
 import { PaginaNovaCampanha } from "@/paginas/campanhas/nova";
 import { PaginaCampanha } from "@/paginas/campanhas/detalhe";
 import { PaginaInstancias } from "@/paginas/instancias";
+import { PaginaPerfil } from "@/paginas/perfil";
 import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 
@@ -62,7 +63,7 @@ export const rotas: RouteObject[] = [
                 ],
               },
               { path: "instancias", element: <PaginaInstancias /> },
-              { path: "perfil", element: emMigracao("src/app/(dashboard)/perfil/page.tsx") },
+              { path: "perfil", element: <PaginaPerfil /> },
               {
                 path: "configuracoes",
                 element: <LayoutConfiguracoes />,

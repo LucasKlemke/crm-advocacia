@@ -21,7 +21,6 @@ function navegarPara(rota: string) {
 // Rota React Router → página do Next que ela ainda espera. A parte B remove cada linha
 // ao portar a página correspondente.
 const ROTAS_EM_MIGRACAO: [string, string][] = [
-  ["/perfil", "src/app/(dashboard)/perfil/page.tsx"],
   ["/configuracoes/escritorio", "src/app/(dashboard)/configuracoes/escritorio/page.tsx"],
   ["/configuracoes/membros", "src/app/(dashboard)/configuracoes/membros/page.tsx"],
   ["/configuracoes/status", "src/app/(dashboard)/configuracoes/status/page.tsx"],
