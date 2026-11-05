@@ -11,7 +11,6 @@ const ROTAS_NA_API_NEST = [
   "casos",
   "comentarios",
   "perfil",
-  "escritorios/atual",
   "membros",
   "convites",
   "dashboard",
@@ -20,6 +19,12 @@ const ROTAS_NA_API_NEST = [
   "instancias",
   "campanhas",
   "webhooks/uazapi",
+  // Fase 3: sessão própria (crm_sessao) — login/logout/sessão, cadastro, troca e
+  // criação de escritório. Com "auth" aqui, /api/auth/* do NextAuth fica inalcançável.
+  "auth",
+  "cadastro",
+  "sessao",
+  "escritorios",
 ];
 
 const nextConfig: NextConfig = {

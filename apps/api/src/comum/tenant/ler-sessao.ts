@@ -1,15 +1,14 @@
 import type { Request } from "express";
-import { lerTokenDaSessao } from "@/lib/auth/token";
-import {
-  NaoAutenticadoError,
-  resolverTenantContext,
-  type TenantContext,
-} from "@/lib/auth/resolver-tenant";
+import { resolverTenantContext, NaoAutenticadoError, type TenantContext } from "@/lib/auth/resolver-tenant";
+import { lerSessaoDaRequisicao } from "../sessao/cookie-sessao";
 
 export const RESOLVEDOR_TENANT = Symbol("RESOLVEDOR_TENANT");
 export type ResolvedorTenant = (req: Request) => Promise<TenantContext>;
 
-// lerTokenDaSessao espera a interface Headers do fetch; o Express entrega um objeto.
+export const RESOLVEDOR_USUARIO = Symbol("RESOLVEDOR_USUARIO");
+export type ResolvedorUsuario = (req: Request) => Promise<string>;
+
+// Utilitário para quem precisa da interface Headers do fetch a partir do Express.
 export function headersDaRequisicao(req: Request): Headers {
   const headers = new Headers();
   for (const [nome, valor] of Object.entries(req.headers)) {
@@ -19,32 +18,20 @@ export function headersDaRequisicao(req: Request): Headers {
   return headers;
 }
 
-// Fase 1–2: a sessão ainda é a do NextAuth (mesmo cookie, mesmo AUTH_SECRET). O JWT só
-// informa quem é o usuário e qual escritório está ativo; papel e membership vêm do banco
-// via resolverTenantContext — a mesma regra que o getTenantContext() do Next usa.
+// Fase 3: a sessão é o cookie crm_sessao (src/lib/auth/sessao-jwt.ts). O JWT só informa
+// quem é o usuário e qual escritório está ativo; papel e membership vêm do banco via
+// resolverTenantContext — a mesma regra que o getTenantContext() do Next usa (RN19).
 export async function resolverTenantDaRequisicao(req: Request): Promise<TenantContext> {
-  const token = await lerTokenDaSessao({ headers: headersDaRequisicao(req) });
-  return resolverTenantContext(
-    token
-      ? {
-          usuarioId: token.sub ?? null,
-          escritorioId: (token.escritorioId as string | null | undefined) ?? null,
-        }
-      : null
-  );
+  const sessao = await lerSessaoDaRequisicao(req);
+  return resolverTenantContext(sessao ? { usuarioId: sessao.sub, escritorioId: sessao.escritorioId } : null);
 }
 
-export const RESOLVEDOR_USUARIO = Symbol("RESOLVEDOR_USUARIO");
-export type ResolvedorUsuario = (req: Request) => Promise<string>;
-
-// Rotas do usuário (perfil), não do tenant: exigem sessão, mas não escritório ativo — o
-// usuário pode estar no onboarding, sem nenhum escritório. Equivale ao auth() /
-// lerUsuarioIdDaSessao() das rotas Next. Fase 3: passa a ler o cookie próprio da API,
-// mantendo nome e assinatura.
+// Rotas fora de tenant (perfil, criação de escritório, troca de escritório): só exigem
+// um usuário autenticado.
 export async function resolverUsuarioDaRequisicao(req: Request): Promise<string> {
-  const token = await lerTokenDaSessao({ headers: headersDaRequisicao(req) });
-  if (!token?.sub) {
+  const sessao = await lerSessaoDaRequisicao(req);
+  if (!sessao) {
     throw new NaoAutenticadoError();
   }
-  return token.sub;
+  return sessao.sub;
 }
