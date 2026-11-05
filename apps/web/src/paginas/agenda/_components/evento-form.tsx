@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SeletorVinculo, type VinculoEvento } from "./seletor-vinculo";
 import { SeletorParticipantes } from "./seletor-participantes";
-import type { EventoDTO, ModalidadeEvento } from "@/types/evento";
+import type { EventoDTO, ModalidadeEvento } from "@dominio/types/evento";
 
 export interface EventoFormProps {
   evento?: EventoDTO;

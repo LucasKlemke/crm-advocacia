@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FaixaHoras } from "./faixa-horas";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 const DIA = new Date(2026, 8, 10);
 

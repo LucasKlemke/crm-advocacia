@@ -37,7 +37,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { EventoForm } from "./evento-form";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 export type ModoEventoSheet = "criar" | "ver" | "editar";
 

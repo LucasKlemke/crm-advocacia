@@ -5,7 +5,7 @@ import { agruparPorDia, separarDiaInteiro } from "@/lib/utils/agenda-eventos";
 import { chaveDoDia, ehHoje } from "@/lib/utils/agenda-grade";
 import { FaixaDiaInteiro } from "./faixa-dia-inteiro";
 import { FaixaHoras } from "./faixa-horas";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 const FORMATO_DIA_SEMANA = new Intl.DateTimeFormat("pt-BR", { weekday: "short" });
 

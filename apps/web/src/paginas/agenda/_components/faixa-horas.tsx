@@ -6,7 +6,7 @@ import { calcularLayoutDia, minutoParaPct, pctParaMinuto } from "@/lib/utils/age
 import { recortarNoDia, type SegmentoDia } from "@/lib/utils/agenda-eventos";
 import { chaveDoDia, ehHoje } from "@/lib/utils/agenda-grade";
 import { BlocoEvento } from "./bloco-evento";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 // Hora em que a grade abre o scroll: começar em 00:00 desperdiça metade da tela num
 // escritório, e começar no primeiro evento do dia esconde a manhã quando o dia está vazio.

@@ -14,7 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import type { OpcaoFiltroCaso } from "@/types/caso";
+import type { OpcaoFiltroCaso } from "@dominio/types/caso";
 
 export interface SeletorParticipantesProps {
   opcoes: OpcaoFiltroCaso[];

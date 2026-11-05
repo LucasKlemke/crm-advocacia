@@ -1,7 +1,7 @@
 import { renderComQuery, screen } from "@/lib/test-utils";
 import userEvent from "@testing-library/user-event";
 import { EventoSheet } from "./evento-sheet";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 

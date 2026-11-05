@@ -3,7 +3,7 @@
 import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { VisaoAgenda } from "@/types/evento";
+import type { VisaoAgenda } from "@dominio/types/evento";
 
 export interface AgendaToolbarProps {
   visao: VisaoAgenda;

@@ -2,7 +2,7 @@
 
 import { chaveDoDia } from "@/lib/utils/agenda-grade";
 import { ChipEventoMes } from "./chip-evento-mes";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 export interface FaixaDiaInteiroProps {
   dias: Date[];

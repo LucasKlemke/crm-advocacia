@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GradeMes } from "./grade-mes";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 const DATA_FOCO = new Date(2026, 8, 15); // 15/09/2026
 

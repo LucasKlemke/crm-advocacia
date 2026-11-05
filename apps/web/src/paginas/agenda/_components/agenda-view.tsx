@@ -11,7 +11,7 @@ import { AgendaToolbar } from "./agenda-toolbar";
 import { GradeMes } from "./grade-mes";
 import { GradeSemana } from "./grade-semana";
 import { EventoSheet, type ModoEventoSheet } from "./evento-sheet";
-import type { EventoDTO } from "@/types/evento";
+import type { EventoDTO } from "@dominio/types/evento";
 
 interface SheetAberta {
   modo: ModoEventoSheet;
