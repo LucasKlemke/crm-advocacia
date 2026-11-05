@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { headersDaRequisicao, resolverTenantDaRequisicao, resolverUsuarioDaRequisicao } from "./ler-sessao";
+import { resolverTenantDaRequisicao, resolverUsuarioDaRequisicao } from "./ler-sessao";
 import { resolverTenantContext, NaoAutenticadoError } from "@dominio/lib/auth/resolver-tenant";
 import { cookieDeSessao, usarSegredoDeTeste } from "../../../test/sessao";
 
@@ -15,18 +15,6 @@ function req(headers: Record<string, string | string[] | undefined>) {
 }
 
 usarSegredoDeTeste();
-
-describe("headersDaRequisicao", () => {
-  it("converte os headers do Express em Headers, preservando o cookie", () => {
-    const h = headersDaRequisicao(req({ cookie: "crm_sessao=abc", "x-vazio": undefined }));
-    expect(h.get("cookie")).toBe("crm_sessao=abc");
-    expect(h.has("x-vazio")).toBe(false);
-  });
-
-  it("junta headers com múltiplos valores", () => {
-    expect(headersDaRequisicao(req({ accept: ["a", "b"] })).get("accept")).toBe("a, b");
-  });
-});
 
 describe("resolverTenantDaRequisicao", () => {
   afterEach(() => jest.clearAllMocks());

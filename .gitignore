@@ -17,9 +17,6 @@ node_modules
 /blob-report
 /playwright/.cache
 
-# next.js
-/.next/
-/out/
 
 # production
 /build
@@ -48,7 +45,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 .worktrees/
 
 # monorepo (apps/*, packages/*)
