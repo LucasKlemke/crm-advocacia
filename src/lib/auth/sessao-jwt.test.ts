@@ -120,6 +120,57 @@ describe("sessao-jwt", () => {
       await expect(verificarSessao(`${cabecalho}.${adulterado}.${assinatura}`)).resolves.toBeNull();
     });
 
+    it("token sem exp (valeria para sempre)", async () => {
+      const token = await new SignJWT({ escritorioId: "esc-1" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setIssuedAt()
+        .sign(chave());
+
+      await expect(verificarSessao(token)).resolves.toBeNull();
+    });
+
+    it("token com alg none montado à mão", async () => {
+      const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
+      const agora = Math.floor(Date.now() / 1000);
+      const token = `${b64({ alg: "none", typ: "JWT" })}.${b64({ sub: "user-1", escritorioId: "esc-1", iat: agora, exp: agora + 3600 })}.`;
+
+      await expect(verificarSessao(token)).resolves.toBeNull();
+    });
+
+    it("token assinado com HS512 e o mesmo segredo", async () => {
+      const token = await new SignJWT({ escritorioId: "esc-1" })
+        .setProtectedHeader({ alg: "HS512" })
+        .setSubject("user-1")
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(chave());
+
+      await expect(verificarSessao(token)).resolves.toBeNull();
+    });
+
+    it("ignora role presente no payload (RN19)", async () => {
+      const token = await new SignJWT({ escritorioId: "esc-1", role: "owner" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(chave());
+
+      await expect(verificarSessao(token)).resolves.toEqual({ sub: "user-1", escritorioId: "esc-1" });
+    });
+
+    it("escritorioId string vazia vira null", async () => {
+      const token = await new SignJWT({ escritorioId: "" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(chave());
+
+      await expect(verificarSessao(token)).resolves.toEqual({ sub: "user-1", escritorioId: null });
+    });
+
     it("escritorioId que não é string vira null", async () => {
       const token = await new SignJWT({ escritorioId: 42 })
         .setProtectedHeader({ alg: "HS256" })

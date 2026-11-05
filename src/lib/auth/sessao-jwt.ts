@@ -49,19 +49,30 @@ export async function assinarSessao(payload: SessaoJwt): Promise<string> {
     .sign(chave());
 }
 
-export async function verificarSessao(token: string | null | undefined): Promise<SessaoJwt | null> {
+export async function verificarSessao(
+  token: string | null | undefined,
+): Promise<SessaoJwt | null> {
   if (!token) return null;
   const segredo = chave();
 
   try {
     // `algorithms` fixo: impede downgrade para "none" ou para outro algoritmo.
-    const { payload } = await jwtVerify(token, segredo, { algorithms: [ALGORITMO] });
+    const { payload } = await jwtVerify(token, segredo, {
+      algorithms: [ALGORITMO],
+      // Sem exp um token vazado valeria para sempre; maxTokenAge limita pelo iat.
+      requiredClaims: ["exp", "iat"],
+      maxTokenAge: DURACAO_SESSAO_SEGUNDOS,
+    });
     if (typeof payload.sub !== "string" || payload.sub.length === 0) {
       return null;
     }
     return {
       sub: payload.sub,
-      escritorioId: typeof payload.escritorioId === "string" ? payload.escritorioId : null,
+      escritorioId:
+        typeof payload.escritorioId === "string" &&
+        payload.escritorioId.length > 0
+          ? payload.escritorioId
+          : null,
     };
   } catch {
     // Assinatura inválida, expirado ou malformado: para quem chama, é só "sem sessão".
@@ -81,7 +92,9 @@ export function opcoesCookieSessao(): OpcoesCookieSessao {
 
 // O Nest não usa cookie-parser: lê o header Cookie cru. Um JWT é base64url separado por
 // pontos, então não há '=' nem caracteres que o Express codifique.
-export function extrairTokenDoCookie(cabecalhoCookie: string | null | undefined): string | null {
+export function extrairTokenDoCookie(
+  cabecalhoCookie: string | null | undefined,
+): string | null {
   if (!cabecalhoCookie) return null;
   for (const parte of cabecalhoCookie.split(";")) {
     const separador = parte.indexOf("=");
