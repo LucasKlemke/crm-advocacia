@@ -112,14 +112,21 @@ jobs:
     name: SonarCloud
     needs: testes
     runs-on: ubuntu-latest
+    # `secrets` não pode ser usado no `if` do job: expõe a presença do token via env e
+    # cada step o checa, então sem SONAR_TOKEN o job termina verde sem rodar a análise.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v5
+        if: ${{ env.SONAR_TOKEN != '' }}
         with:
           fetch-depth: 0 # blame/new code precisam do histórico completo
       - uses: actions/download-artifact@v5
+        if: ${{ env.SONAR_TOKEN != '' }}
         with:
           name: cobertura
           path: .
       - uses: SonarSource/sonarqube-scan-action@v5
+        if: ${{ env.SONAR_TOKEN != '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
