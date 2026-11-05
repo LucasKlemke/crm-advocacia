@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
 import { QrcodeDialog, type QrcodeDialogState } from "./qrcode-dialog";
-import type { InstanciaWhatsappDTO } from "@/types/instancia-whatsapp";
+import type { InstanciaWhatsappDTO } from "@dominio/types/instancia-whatsapp";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
