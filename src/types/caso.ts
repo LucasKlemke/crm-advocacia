@@ -105,6 +105,21 @@ export interface FiltrosCasoOpcoes {
 
 export const SEM_RESPONSAVEL = "sem-responsavel";
 
+// Filtros da listagem de casos já validados (saída de parseFiltrosCasoDaQuery).
+export interface FiltrosCaso {
+  busca?: string;
+  statusIds?: string[];
+  tipoStatusIds?: string[];
+  tipoProcessoIds?: string[];
+  clienteIds?: string[];
+  responsavelIds?: string[];
+  dataInicio?: Date;
+  dataFim?: Date;
+  arquivado?: boolean;
+  skip?: number;
+  take?: number;
+}
+
 // Estado dos filtros na UI (casos-view.tsx) — convertido para query string pelos hooks.
 export interface FiltrosCasos {
   busca: string;

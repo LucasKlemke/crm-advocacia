@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { FiltrosCaso } from "@/repositories/caso.repository";
+import type { FiltrosCaso } from "@/types/caso";
 
 export const numeroProcessoCasoSchema = z.string().trim().max(25).nullish();
 

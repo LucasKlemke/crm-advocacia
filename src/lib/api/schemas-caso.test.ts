@@ -1,5 +1,5 @@
 import { novoCasoSchema, edicaoCasoSchema, parseFiltrosCasoDaQuery } from "./schemas-caso";
-import { SEM_RESPONSAVEL } from "@/repositories/caso.repository";
+import { SEM_RESPONSAVEL } from "@/types/caso";
 
 const CLIENTE_ID = "11111111-1111-4111-8111-111111111111";
 const STATUS_ID = "22222222-2222-4222-8222-222222222222";

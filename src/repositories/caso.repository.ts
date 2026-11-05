@@ -1,25 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { SEM_RESPONSAVEL, type FiltrosCaso } from "@/types/caso";
 import type { Caso, Prisma, PrismaClient } from "@prisma/client";
 
 type Db = Pick<PrismaClient, "caso">;
 
-// Sentinela usada em `responsavelIds` para pedir os casos sem responsável — não é um
-// id de Membro de verdade, então nunca colide com um uuid gerado pelo banco.
-export const SEM_RESPONSAVEL = "sem-responsavel";
-
-export interface FiltrosCaso {
-  busca?: string;
-  statusIds?: string[];
-  tipoStatusIds?: string[];
-  tipoProcessoIds?: string[];
-  clienteIds?: string[];
-  responsavelIds?: string[];
-  dataInicio?: Date;
-  dataFim?: Date;
-  arquivado?: boolean;
-  skip?: number;
-  take?: number;
-}
+// Reexport para não mudar os importadores existentes (services, payloads, testes).
+export { SEM_RESPONSAVEL, type FiltrosCaso };
 
 export const CASO_INCLUDE = {
   cliente: true,
