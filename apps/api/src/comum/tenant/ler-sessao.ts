@@ -1,6 +1,10 @@
 import type { Request } from "express";
 import { lerTokenDaSessao } from "@/lib/auth/token";
-import { resolverTenantContext, type TenantContext } from "@/lib/auth/resolver-tenant";
+import {
+  NaoAutenticadoError,
+  resolverTenantContext,
+  type TenantContext,
+} from "@/lib/auth/resolver-tenant";
 
 export const RESOLVEDOR_TENANT = Symbol("RESOLVEDOR_TENANT");
 export type ResolvedorTenant = (req: Request) => Promise<TenantContext>;
@@ -28,4 +32,19 @@ export async function resolverTenantDaRequisicao(req: Request): Promise<TenantCo
         }
       : null
   );
+}
+
+export const RESOLVEDOR_USUARIO = Symbol("RESOLVEDOR_USUARIO");
+export type ResolvedorUsuario = (req: Request) => Promise<string>;
+
+// Rotas do usuário (perfil), não do tenant: exigem sessão, mas não escritório ativo — o
+// usuário pode estar no onboarding, sem nenhum escritório. Equivale ao auth() /
+// lerUsuarioIdDaSessao() das rotas Next. Fase 3: passa a ler o cookie próprio da API,
+// mantendo nome e assinatura.
+export async function resolverUsuarioDaRequisicao(req: Request): Promise<string> {
+  const token = await lerTokenDaSessao({ headers: headersDaRequisicao(req) });
+  if (!token?.sub) {
+    throw new NaoAutenticadoError();
+  }
+  return token.sub;
 }
