@@ -1,5 +1,6 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { useTituloPagina } from "@/hooks/use-titulo-pagina";
+import { chavePerfil } from "@/hooks/use-perfil";
 import { mockApi, renderPagina } from "@/lib/test-paginas";
 import { PaginaPerfil } from "./perfil";
 
@@ -50,5 +51,18 @@ describe("PaginaPerfil", () => {
     mockApi({ "/api/perfil": new Error("boom interno") });
     renderPerfil();
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar seu perfil.");
+  });
+
+  it("mantém os formulários montados quando um refetch em segundo plano falha", async () => {
+    mockApi({ "/api/perfil": { usuario: { id: "u1", nome: "Nome Atual", email: "a@t.com", temAvatar: false } } });
+    const { queryClient } = renderPerfil();
+    expect(await screen.findByText("Nome Atual")).toBeInTheDocument();
+
+    mockApi({ "/api/perfil": new Error("falha no refetch") });
+    await queryClient.invalidateQueries({ queryKey: chavePerfil() });
+
+    await waitFor(() => expect(queryClient.getQueryState(chavePerfil())?.status).toBe("error"));
+    expect(screen.getByText("Nome Atual")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

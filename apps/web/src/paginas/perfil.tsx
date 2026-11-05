@@ -12,7 +12,7 @@ import { useTituloPagina } from "@/hooks/use-titulo-pagina";
 // (de onde o header tira o nome).
 export function PaginaPerfil() {
   useTituloPagina("Perfil");
-  const { data: perfil, isLoading, isError } = usePerfil();
+  const { data: perfil, isLoading } = usePerfil();
 
   return (
     <PageContainer>
@@ -27,7 +27,7 @@ export function PaginaPerfil() {
           <Skeleton className="h-9 w-full max-w-md" />
           <Skeleton className="h-9 w-full max-w-md" />
         </div>
-      ) : isError || !perfil ? (
+      ) : !perfil ? (
         <p role="alert" className="text-sm text-destructive">
           Não foi possível carregar seu perfil.
         </p>

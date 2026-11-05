@@ -1,5 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { chavePerfil } from "@/hooks/use-perfil";
 import { renderPagina, respostaJson, SESSAO_OWNER } from "@/lib/test-paginas";
 import { useSessao } from "@/lib/sessao";
 import { PaginaPerfil } from "./perfil";
@@ -63,5 +64,30 @@ describe("PaginaPerfil depois de salvar", () => {
     // perfil relido (2 GETs) e sessão relida (o nome do header vem dela).
     await waitFor(() => expect(chamadas.filter((c) => c === "GET /api/perfil")).toHaveLength(2));
     await waitFor(() => expect(screen.getByTestId("header")).toHaveTextContent("Nome Novo"));
+  });
+
+  it("refresh sem mudar nome nem e-mail preserva o rascunho digitado", async () => {
+    global.fetch = jest.fn(async (url: RequestInfo | URL) => {
+      if (String(url) === "/api/perfil") {
+        return respostaJson({
+          usuario: { id: "user-1", nome: "Nome Fixo", email: "owner@teste.com", temAvatar: false },
+        });
+      }
+      if (String(url) === "/api/auth/sessao") return respostaJson(SESSAO_OWNER);
+      throw new Error(`fetch inesperado: ${String(url)}`);
+    }) as jest.Mock;
+
+    const { queryClient } = renderPagina(<PaginaPerfil />, {
+      rota: "/perfil",
+      caminho: "/perfil",
+      sessao: SESSAO_OWNER,
+    });
+    const campoNome = await screen.findByLabelText("Nome");
+    await userEvent.type(campoNome, " rascunho");
+
+    await queryClient.invalidateQueries({ queryKey: chavePerfil() });
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+
+    expect(screen.getByLabelText("Nome")).toHaveValue("Nome Fixo rascunho");
   });
 });
