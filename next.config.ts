@@ -11,6 +11,7 @@ const ROTAS_NA_API_NEST = [
   "casos",
   "comentarios",
   "perfil",
+  "escritorios/atual",
 ];
 
 const nextConfig: NextConfig = {

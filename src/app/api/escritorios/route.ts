@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { unstable_update } from "@/lib/auth/config";
 import { lerUsuarioIdDaSessao } from "@/lib/auth/token";
 import { escritorioService } from "@/services/escritorio.service";
-import { criarEscritorioSchema } from "./schemas";
+import { criarEscritorioSchema } from "@/lib/api/schemas-escritorio";
 
 // Sessão exigida (onboarding do primeiro escritório ou criação de outro pelo switcher),
 // mas NÃO passa por getTenantContext() — o usuário pode não ter nenhum escritório ainda.

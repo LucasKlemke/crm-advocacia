@@ -1,0 +1,1 @@
+export const ESCRITORIO_SERVICE = Symbol("ESCRITORIO_SERVICE");

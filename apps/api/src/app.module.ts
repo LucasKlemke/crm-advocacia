@@ -7,6 +7,7 @@ import { ClientesModule } from "./clientes/clientes.module";
 import { CasosModule } from "./casos/casos.module";
 import { ComentariosModule } from "./comentarios/comentarios.module";
 import { PerfilModule } from "./perfil/perfil.module";
+import { EscritoriosModule } from "./escritorios/escritorios.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PerfilModule } from "./perfil/perfil.module";
     CasosModule,
     ComentariosModule,
     PerfilModule,
+    EscritoriosModule,
   ],
   controllers: [SaudeController],
 })
