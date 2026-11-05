@@ -1,0 +1,9 @@
+/* Equivalente ao next/font do layout raiz do Next: Inter (texto) e Geist Mono (código),
+   servidas pelo próprio bundle via @fontsource-variable — sem request ao Google.
+   Fora de @layer de propósito: o globals.css declara --font-sans dentro de @theme (camada
+   "theme" do Tailwind), e CSS sem camada vence qualquer camada — exatamente como a classe
+   que o next/font punha no <html>. */
+:root {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, monospace;
+}
