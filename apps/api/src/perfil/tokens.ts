@@ -1,1 +1,2 @@
 export const USUARIO_SERVICE = Symbol("USUARIO_SERVICE");
+export const USUARIO_SERVICE_PERFIL = Symbol("USUARIO_SERVICE_PERFIL");
