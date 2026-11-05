@@ -1,5 +1,5 @@
-// Chamadas do browser aos endpoints de sessão da API Nest (substituem signIn/signOut do
-// next-auth/react). O cookie crm_sessao é httpOnly: o browser só o recebe/limpa via
+// Chamadas do browser aos endpoints de sessão da API Nest (substituem o login/logout da
+// biblioteca de autenticação anterior). O cookie crm_sessao é httpOnly: o browser só o recebe/limpa via
 // Set-Cookie, nunca o lê.
 
 export async function entrar(email: string, senha: string): Promise<boolean> {

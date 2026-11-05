@@ -42,6 +42,14 @@ front (React + Vite), mantendo o domínio (services/repositories) intacto.
   consciente, para não manter `next-auth/jwt` só para migrar cookies.
 - **Mesmo segredo nos dois processos**: Next (proxy/Server Components) e API verificam o
   mesmo cookie, então `AUTH_SECRET` precisa ser idêntico nos dois.
+- **Token com `exp` e `iat` obrigatórios**: `jwtVerify` exige as duas claims e fixa
+  `algorithms: ["HS256"]`, o que impede downgrade para `none` ou outro algoritmo
+  (`src/lib/auth/sessao-jwt.ts`).
+- **Sem corpo urlencoded**: a API registra só o parser JSON (`OPCOES_APP = { bodyParser: false }`
+  em `apps/api/src/criar-app.ts`). Um `<form>` cross-site consegue enviar urlencoded (além de
+  multipart/text), e sem parser para ele o login não vira CSRF (a vítima ficaria logada na conta do atacante).
+- **Cookie legado ignorado**: `authjs.session-token` nunca é lido; proxy, Server Components
+  e guards só leem `crm_sessao`.
 
 ## Como rodar (durante a migração)
 1. `npm install`
