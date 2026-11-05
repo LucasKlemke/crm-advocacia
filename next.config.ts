@@ -17,6 +17,7 @@ const ROTAS_NA_API_NEST = [
   "dashboard",
   "eventos",
   "documentos",
+  "instancias",
 ];
 
 const nextConfig: NextConfig = {
