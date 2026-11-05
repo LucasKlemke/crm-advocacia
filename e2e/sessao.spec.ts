@@ -133,7 +133,7 @@ test.describe("Sessão própria (crm_sessao)", () => {
 
   test("cookie legado do NextAuth não abre sessão (decisão da Fase 3)", async ({ page, context }) => {
     await context.addCookies([
-      { name: "authjs.session-token", value: "sessao-antiga", url: "http://localhost:3000" },
+      { name: "authjs.session-token", value: "sessao-antiga", url: "http://localhost:4173" },
     ]);
 
     await page.goto("/");
@@ -141,7 +141,7 @@ test.describe("Sessão própria (crm_sessao)", () => {
   });
 
   test("crm_sessao adulterado não abre sessão", async ({ page, context }) => {
-    await context.addCookies([{ name: "crm_sessao", value: "a.b.c", url: "http://localhost:3000" }]);
+    await context.addCookies([{ name: "crm_sessao", value: "a.b.c", url: "http://localhost:4173" }]);
 
     await page.goto("/clientes");
     await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fclientes/);

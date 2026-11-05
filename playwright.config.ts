@@ -19,15 +19,20 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "npm run start -w @crm/api",
+      command:
+        "node -e \"require('fs').accessSync('apps/api/dist/instrumentacao.js')\" && npm run start -w @crm/api",
       url: "http://localhost:3001/api/saude",
-      reuseExistingServer: !process.env.CI,
+      // Nunca reaproveita: um `npm run dev` ou um dist velho faria o e2e passar contra o código errado.
+      reuseExistingServer: false,
+      // webServer.env se mescla ao process.env (e vence). NODE_ENV=test garante cookie sem Secure em http.
+      env: { NODE_ENV: "test" },
       timeout: 60_000,
     },
     {
-      command: "npm run preview -w @crm/web -- --port 4173 --strictPort",
+      command:
+        "node -e \"require('fs').accessSync('apps/web/dist/index.html')\" && npm run preview -w @crm/web -- --port 4173 --strictPort",
       url: "http://localhost:4173",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 60_000,
     },
   ],
