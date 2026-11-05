@@ -1,9 +1,6 @@
 import { ehSessaoExpirada } from "@/lib/api-client";
 
-// Defaults do React Query compartilhados pelo client do navegador (QueryProvider) e pelo
-// client efêmero usado no prefetch do servidor. Se os dois divergissem, um dado
-// prefetchado no servidor poderia nascer "stale" no cliente e ser refeito na hidratação —
-// exatamente o round-trip que o prefetch existe para evitar.
+// Defaults do React Query do app.
 export const opcoesPadraoQuery = {
   staleTime: 30_000,
   refetchOnWindowFocus: false,

@@ -33,7 +33,7 @@ function montar(rota: string, padrao = "*") {
   return { queryClient, ...hook };
 }
 
-describe("compat de next/navigation", () => {
+describe("compat de navigation do Next", () => {
   it("usePathname e useSearchParams leem a URL atual", () => {
     const { result } = montar("/agenda?visao=semana&data=2026-09-10");
 

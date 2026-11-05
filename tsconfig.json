@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -12,47 +12,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
-      "@/compat/*": ["./src/compat-next/*"],
-      "@dominio/*": ["./src/*"],
-      "@/components/*": ["./apps/web/src/components/*"],
-      "@/hooks/*": ["./apps/web/src/hooks/*"],
-      "@/lib/utils": ["./apps/web/src/lib/utils.ts"],
-      "@/lib/api-client": ["./apps/web/src/lib/api-client.ts"],
-      "@/lib/sessao": ["./apps/web/src/lib/sessao.ts"],
-      "@/lib/site-config": ["./apps/web/src/lib/site-config.ts"],
-      "@/lib/test-utils": ["./apps/web/src/lib/test-utils.tsx"],
-      "@/lib/query/chaves": ["./apps/web/src/lib/query/chaves.ts"],
-      "@/lib/query/opcoes-padrao": ["./apps/web/src/lib/query/opcoes-padrao.ts"],
-      "@/lib/query/query-client-raiz": ["./apps/web/src/lib/query/query-client-raiz.ts"],
-      "@/lib/utils/agenda-eventos": ["./apps/web/src/lib/utils/agenda-eventos.ts"],
-      "@/lib/utils/agenda-grade": ["./apps/web/src/lib/utils/agenda-grade.ts"],
-      "@/lib/utils/agenda-layout": ["./apps/web/src/lib/utils/agenda-layout.ts"],
-      "@/lib/utils/csv-campanha": ["./apps/web/src/lib/utils/csv-campanha.ts"],
-      "@/lib/utils/data-input": ["./apps/web/src/lib/utils/data-input.ts"],
-      "@/lib/utils/data": ["./apps/web/src/lib/utils/data.ts"],
-      "@/lib/utils/nome": ["./apps/web/src/lib/utils/nome.ts"],
-      "@/lib/utils/oab": ["./apps/web/src/lib/utils/oab.ts"],
-      "@/lib/utils/role": ["./apps/web/src/lib/utils/role.ts"],
-      "@/lib/utils/tipo-arquivo": ["./apps/web/src/lib/utils/tipo-arquivo.ts"],
-      "@/lib/utils/valor": ["./apps/web/src/lib/utils/valor.ts"],
-      "@/lib/utils/whatsapp-formatacao": ["./apps/web/src/lib/utils/whatsapp-formatacao.ts"],
       "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts"],
   "exclude": ["node_modules", "apps"]
 }

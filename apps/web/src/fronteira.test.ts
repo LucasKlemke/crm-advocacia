@@ -1,6 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { extrairEspecificadores } from "../scripts/transformar-imports";
 
 // Regra de fronteira (docs/app/estrutura-codigo.md) aplicada ao front Vite: o web não
 // conhece o Next nem a camada de dados. Do domínio, só alcança código puro — tipos,
@@ -24,7 +23,7 @@ const DOMINIO_PERMITIDO = [
 
 function motivoDaViolacao(especificador: string): string | null {
   if (/^next(\/|$)/.test(especificador) || especificador.startsWith("next-auth")) {
-    return "import do Next — use @/compat/*";
+    return "import do Next — o front é Vite, sem Next";
   }
   if (
     especificador.startsWith("@dominio/") &&
@@ -42,10 +41,12 @@ function motivoDaViolacao(especificador: string): string | null {
   return null;
 }
 
-// extrairEspecificadores (codemod) não enxerga require("..."): a guarda soma os dois.
+// Só considera string em posição de módulo: `from "x"`, `import "x"`, `import("x")`,
+// `jest.mock("x")` e `require("x")`. Uma string comum com o mesmo texto não conta.
 function especificadoresDe(codigo: string): string[] {
-  const requires = [...codigo.matchAll(/\brequire\s*\(\s*(["'])([^"'\n]+)\1/g)].map((c) => c[2]);
-  return [...extrairEspecificadores(codigo), ...requires];
+  const padrao =
+    /(?:\bfrom\s+|\bimport\s+|\bimport\s*\(\s*|\bjest\.(?:mock|doMock|unmock|requireActual|requireMock)\(\s*|\brequire\s*\(\s*)(["'])([^"'\n]+)\1/g;
+  return [...codigo.matchAll(padrao)].map((casamento) => casamento[2]);
 }
 
 function violacoesDoCodigo(codigo: string): string[] {
@@ -89,7 +90,7 @@ describe("fronteira do apps/web", () => {
 
   describe("detecção", () => {
     it("barra require() de módulo proibido", () => {
-      expect(violacoesDoCodigo('const l = require("next/link");')).toHaveLength(1);
+      expect(violacoesDoCodigo('const l = require("next-auth");')).toHaveLength(1);
       expect(violacoesDoCodigo("const s = require('@/services/cliente-service');")).toHaveLength(1);
     });
 
@@ -111,7 +112,7 @@ describe("fronteira do apps/web", () => {
     });
 
     it("não acusa strings comuns nem requires permitidos", () => {
-      expect(violacoesDoCodigo('const t = "next/link";')).toEqual([]);
+      expect(violacoesDoCodigo('const t = "next-auth";')).toEqual([]);
       expect(violacoesDoCodigo('const u = require("@dominio/lib/utils/cpf");')).toEqual([]);
     });
   });

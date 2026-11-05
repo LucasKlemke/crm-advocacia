@@ -14,8 +14,6 @@ const proxyDaApi = {
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // public/ continua na raiz enquanto o Next existir; a parte B move para apps/web/public.
-  publicDir: caminho("../../public"),
   resolve: {
     alias: [
       // Domínio puro (tipos, utils, permissões) até a Fase 5 mover src/ para apps/api.

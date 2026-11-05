@@ -1,3 +1,5 @@
+// Variáveis do .env (ex.: AWS_S3_PREFIX), como o next/jest carregava antes.
+import "dotenv/config";
 import "@testing-library/jest-dom";
 
 // jsdom não implementa matchMedia — necessário para o hook use-mobile usado pelo

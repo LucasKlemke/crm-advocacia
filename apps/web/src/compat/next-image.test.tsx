@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import Image from "./next-image";
 
-describe("Image (compat de next/image)", () => {
+describe("Image (compat de Image do Next)", () => {
   it("renderiza <img> com src, alt e dimensões, com carregamento lazy por padrão", () => {
     render(
       <Image src="/images/justica-estatua.webp" alt="Estátua" width={320} height={320} className="size-40" />

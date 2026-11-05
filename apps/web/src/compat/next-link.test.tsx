@@ -8,7 +8,7 @@ function LocalAtual() {
   return <p data-testid="local">{pathname}</p>;
 }
 
-describe("Link (compat de next/link)", () => {
+describe("Link (compat de Link do Next)", () => {
   it("navega pelo React Router e repassa className", async () => {
     const user = userEvent.setup();
     render(

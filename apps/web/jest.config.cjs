@@ -1,9 +1,9 @@
 // CJS de propósito: o pacote é "type": "module" e o Jest 29 roda em CommonJS.
-// @swc/jest substitui o next/jest da raiz — mesmas transformações (TS + JSX automático).
+// @swc/jest substitui o jest do Next da raiz — mesmas transformações (TS + JSX automático).
 // Metas de cobertura: docs/testes/estrategia-tdd.md (piso institucional de 25% no front).
 module.exports = {
   testEnvironment: "<rootDir>/test/ambiente-jsdom.cjs",
-  roots: ["<rootDir>/src", "<rootDir>/scripts"],
+  roots: ["<rootDir>/src"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   transform: {
     "^.+\\.(t|j)sx?$": [

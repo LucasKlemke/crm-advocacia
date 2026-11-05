@@ -6,7 +6,7 @@ export interface ImageProps
   alt: string;
   width?: number;
   height?: number;
-  /** Cobre o container (que precisa ser position: relative/absolute), como no next/image. */
+  /** Cobre o container (que precisa ser position: relative/absolute), como no Image do Next. */
   fill?: boolean;
   /** Imagem acima da dobra: carrega de imediato e com prioridade alta. */
   priority?: boolean;
@@ -24,7 +24,7 @@ const ESTILO_FILL: CSSProperties = {
   height: "100%",
 };
 
-// O Vite não tem o otimizador do next/image: as artes do produto já são .webp em
+// O Vite não tem o otimizador do Image do Next: as artes do produto já são .webp em
 // public/images, então um <img> com lazy loading e as mesmas props de layout basta.
 export function Image({
   fill = false,

@@ -3,9 +3,7 @@ import type { FiltrosCasos } from "@dominio/types/caso";
 import type { FiltrosDashboard } from "@dominio/types/dashboard";
 import type { FiltrosEventos } from "@dominio/types/evento";
 
-// Fábricas de query key do React Query. Ficam fora dos arquivos de hook (que são "use
-// client") porque o prefetch no servidor precisa montar exatamente as mesmas keys — um
-// módulo "use client" só exporta referências de cliente, que o servidor não pode chamar.
+// Fábricas de query key compartilhadas entre hooks; uma escrita invalida pela raiz.
 
 // Toda key de casos nasce sob a raiz ["casos"]: um único invalidateQueries({queryKey:
 // ["casos"]}) alcança listagem, kanban e qualquer página filtrada — kanban e tabela

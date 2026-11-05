@@ -36,7 +36,6 @@ function redirecionarParaLogin() {
   // cliente (cache do React Query, sessão do NextAuth em memória), o que um
   // router.push() do App Router não faz. Além disso, apiFetch não é um componente —
   // não há hook de router disponível aqui.
-  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.assign(`/login?callbackUrl=${encodeURIComponent(atual)}`);
 }
 

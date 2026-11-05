@@ -66,7 +66,6 @@ export function QrcodeDialog({ state, onOpenChange }: QrcodeDialogProps) {
         </DialogHeader>
 
         {state?.qrcode ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={state.qrcode}
             alt={`QR Code para conectar a instância ${state.nome}`}

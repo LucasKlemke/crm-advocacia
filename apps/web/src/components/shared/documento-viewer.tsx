@@ -73,7 +73,6 @@ export function DocumentoViewer({ documento, onVoltar }: DocumentoViewerProps) {
           documento.tipoArquivo === "jpeg" ||
           documento.tipoArquivo === "png" ? (
           <div className="flex h-full items-center justify-center overflow-auto p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
               alt={documento.nomeOriginal}

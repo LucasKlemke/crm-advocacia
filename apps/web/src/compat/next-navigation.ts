@@ -9,7 +9,7 @@ import {
 import { chaveSessao } from "@/lib/query/chaves";
 import { queryClientRaiz } from "@/lib/query/query-client-raiz";
 
-// Mesma API de "next/navigation" que os componentes já usavam, implementada sobre o
+// Mesma API de "navigation" do Next que os componentes já usavam, implementada sobre o
 // React Router — o código movido do Next roda sem reescrita (Fase 4 da migração).
 
 export interface OpcoesNavegacao {

@@ -67,7 +67,6 @@ export function NavUsuario({ usuario }: NavUsuarioProps) {
               onClick={async () => {
                 await sair();
                 // Navegação forçada: descarta o Router Cache do usuário que saiu.
-                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                 window.location.href = "/login";
               }}
             >

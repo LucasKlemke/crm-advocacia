@@ -4,14 +4,14 @@ import { Link as LinkDoRouter, useInRouterContext } from "react-router";
 export interface LinkProps extends Omit<ComponentPropsWithRef<"a">, "href"> {
   href: string;
   replace?: boolean;
-  /** `false` preserva a rolagem ao navegar, como no next/link. */
+  /** `false` preserva a rolagem ao navegar, como no Link do Next. */
   scroll?: boolean;
-  /** Aceito só por compatibilidade com next/link — o SPA não faz prefetch de rota. */
+  /** Aceito só por compatibilidade com Link do Next — o SPA não faz prefetch de rota. */
   prefetch?: boolean | null;
 }
 
-// Mesma API de "next/link" sobre o React Router. Fora de um <Router> (componente
-// renderizado isolado num teste) vira um <a> comum, como o next/link se comportava.
+// Mesma API de "Link" do Next sobre o React Router. Fora de um <Router> (componente
+// renderizado isolado num teste) vira um <a> comum, como o Link do Next se comportava.
 // React 19: `ref` chega como prop comum e segue no spread (Base UI usa isso em
 // DropdownMenuItem render={<Link … />}).
 export function Link({ href, replace, scroll, prefetch: _prefetch, ...props }: LinkProps) {

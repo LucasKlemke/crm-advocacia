@@ -45,7 +45,6 @@ export function NovoEscritorioForm() {
       // Navegação forçada (não router.push): a sessão trocou de escritório ativo
       // (a API regravou o cookie crm_sessao) e "/" pode ter uma entrada stale no Router Cache do estado
       // anterior — só um reload garante que o shell autenticado leia o tenant certo.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/";
     } finally {
       setCarregando(false);
