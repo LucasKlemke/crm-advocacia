@@ -12,10 +12,8 @@ describe("novoEventoSchema", () => {
   it("aceita um evento presencial mínimo", () => {
     const r = novoEventoSchema.safeParse(BASE);
     expect(r.success).toBe(true);
-    if (r.success) {
-      expect(r.data.diaInteiro).toBe(false);
-      expect(r.data.participanteMembroIds).toEqual([]);
-    }
+    expect(r.data?.diaInteiro).toBe(false);
+    expect(r.data?.participanteMembroIds).toEqual([]);
   });
 
   it("rejeita fim anterior ou igual ao início (RN35)", () => {
@@ -120,9 +118,7 @@ describe("edicaoEventoSchema", () => {
   it("não injeta defaults em campos não enviados", () => {
     const r = edicaoEventoSchema.safeParse({ titulo: "Novo título" });
     expect(r.success).toBe(true);
-    if (r.success) {
-      expect(Object.keys(r.data)).toEqual(["titulo"]);
-    }
+    expect(Object.keys(r.data ?? {})).toEqual(["titulo"]);
   });
 
   it("aceita desvincular explicitamente com null", () => {

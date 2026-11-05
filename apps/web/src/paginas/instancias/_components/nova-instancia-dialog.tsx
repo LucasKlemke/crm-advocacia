@@ -93,6 +93,7 @@ export function NovaInstanciaDialog({ open, onOpenChange, onCriada }: NovaInstan
                 setErro(null);
               }}
               disabled={criar.isPending}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- foco inicial no campo único do diálogo/edição, aberto por ação explícita do usuário
               autoFocus
             />
           </div>

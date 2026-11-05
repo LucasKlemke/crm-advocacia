@@ -47,9 +47,7 @@ describe("novoCasoSchema", () => {
       valor: "1500.50",
     });
     expect(parsed.success).toBe(true);
-    if (parsed.success) {
-      expect(parsed.data.valor).toBe(1500.5);
-    }
+    expect(parsed.data?.valor).toBe(1500.5);
   });
 
   it("rejeita valor negativo", () => {

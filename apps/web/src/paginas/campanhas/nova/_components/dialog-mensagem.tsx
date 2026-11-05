@@ -91,6 +91,7 @@ export function DialogMensagem({
               // O título do dialog já diz "Escrever mensagem", então um rótulo visível seria
               // redundante — mas o campo continua precisando de nome acessível.
               aria-label="Texto da mensagem"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- foco inicial no campo único do diálogo/edição, aberto por ação explícita do usuário
               autoFocus
               rows={8}
               value={rascunho}

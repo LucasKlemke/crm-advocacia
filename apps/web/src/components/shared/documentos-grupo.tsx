@@ -213,6 +213,7 @@ export function DocumentosGrupo({
                     size="icon-xs"
                     nativeButton={false}
                     aria-label="Baixar todos"
+                    // eslint-disable-next-line jsx-a11y/anchor-has-content -- Base UI injeta o conteúdo do trigger no <a>; nome acessível vem do aria-label do Button
                     render={<a href={hrefBaixarTodos} download />}
                   />
                 }
@@ -366,6 +367,7 @@ export function DocumentosGrupo({
                   id="novo-nome-documento"
                   value={novoNomeBase}
                   onChange={(evento) => setNovoNomeBase(evento.target.value)}
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- foco inicial no campo único do diálogo/edição, aberto por ação explícita do usuário
                   autoFocus
                 />
                 {renomeando ? (

@@ -11,15 +11,18 @@ describe("ValidacaoZodPipe", () => {
   });
 
   it("lança DadosInvalidosError com o ZodError quando inválido", () => {
-    expect.assertions(2);
-    try {
-      pipe.transform({ nome: "" });
-    } catch (error) {
-      expect(error).toBeInstanceOf(DadosInvalidosError);
-      expect((error as DadosInvalidosError).zodError?.flatten().fieldErrors).toEqual({
-        nome: ["Informe o nome"],
-      });
-    }
+    const erro = (() => {
+      try {
+        pipe.transform({ nome: "" });
+      } catch (error) {
+        return error;
+      }
+    })();
+
+    expect(erro).toBeInstanceOf(DadosInvalidosError);
+    expect((erro as DadosInvalidosError).zodError?.flatten().fieldErrors).toEqual({
+      nome: ["Informe o nome"],
+    });
   });
 
   it("trata corpo ausente como inválido", () => {

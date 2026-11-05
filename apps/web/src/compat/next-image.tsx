@@ -36,6 +36,7 @@ export function Image({
   ...props
 }: ImageProps) {
   return (
+    // eslint-disable-next-line jsx-a11y/alt-text -- `alt` vem de ...props (ImageProps o exige)
     <img
       {...props}
       decoding="async"

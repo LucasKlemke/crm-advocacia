@@ -141,6 +141,7 @@ export function ClienteDados({ cliente, onAtualizado }: ClienteDadosProps) {
                   id={`cliente-${campo.nome}`}
                   name={campo.nome}
                   type={campo.tipo}
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- foco inicial no campo único do diálogo/edição, aberto por ação explícita do usuário
                   autoFocus
                   placeholder={campo.placeholder}
                   value={valor}

@@ -37,10 +37,9 @@ describe("novaCampanhaSchema — agendadaPara", () => {
     );
 
     expect(resultado.success).toBe(false);
-    if (!resultado.success) {
-      expect(resultado.error.issues[0].path).toEqual(["agendadaPara"]);
-      expect(resultado.error.issues[0].message).toMatch(/futuro/i);
-    }
+    const issue = resultado.error?.issues[0];
+    expect(issue?.path).toEqual(["agendadaPara"]);
+    expect(issue?.message).toMatch(/futuro/i);
   });
 
   // Tolerância para o tempo entre montar o payload no cliente e ele chegar na rota: sem

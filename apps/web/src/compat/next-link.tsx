@@ -18,6 +18,7 @@ export function Link({ href, replace, scroll, prefetch: _prefetch, ...props }: L
   const dentroDoRouter = useInRouterContext();
 
   if (!dentroDoRouter) {
+    // eslint-disable-next-line jsx-a11y/anchor-has-content -- `children` vem de ...props
     return <a href={href} {...props} />;
   }
 
