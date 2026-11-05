@@ -14,6 +14,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
 import { EventosModule } from "./eventos/eventos.module";
 import { DocumentosModule } from "./documentos/documentos.module";
 import { InstanciasModule } from "./instancias/instancias.module";
+import { CampanhasModule } from "./campanhas/campanhas.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { InstanciasModule } from "./instancias/instancias.module";
     EventosModule,
     DocumentosModule,
     InstanciasModule,
+    CampanhasModule,
   ],
   controllers: [SaudeController],
 })
