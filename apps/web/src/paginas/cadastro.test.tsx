@@ -67,4 +67,11 @@ describe("PaginaCadastro", () => {
     await preencher();
     expect(window.location.href).toBe("/login");
   });
+
+  it("manda ao login se o login automático devolver credencial inválida", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(respostaJson({ temEscritorio: true }, 201));
+    mockedEntrar.mockResolvedValue(false);
+    await preencher();
+    expect(window.location.href).toBe("/login");
+  });
 });

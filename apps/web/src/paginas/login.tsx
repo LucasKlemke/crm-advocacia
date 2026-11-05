@@ -8,13 +8,17 @@ import { InputGroupPasswordInput } from "@/components/ui/input-group-password";
 import { entrar } from "@/lib/sessao";
 import { useTituloPagina } from "@/hooks/use-titulo-pagina";
 
-// Só aceita path relativo interno ("/rota"), nunca URL absoluta/protocol-relative
-// ("//host" ou "https://host"); evita open redirect via callbackUrl manipulado.
+// Resolve o destino contra a origem atual e só o aceita se continuar nela. Pegar só o
+// prefixo "/" não basta: "/\\evil.com", "/\t/evil.com" e afins o browser normaliza para
+// outro host (open redirect via callbackUrl manipulado).
 export function destinoSeguro(callbackUrl: string | null): string {
-  if (!callbackUrl || !callbackUrl.startsWith("/") || callbackUrl.startsWith("//")) {
+  if (!callbackUrl) return "/";
+  try {
+    const url = new URL(callbackUrl, window.location.origin);
+    return url.origin === window.location.origin ? url.pathname + url.search + url.hash : "/";
+  } catch {
     return "/";
   }
-  return callbackUrl;
 }
 
 export function PaginaLogin() {

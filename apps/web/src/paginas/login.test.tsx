@@ -16,7 +16,7 @@ describe("PaginaLogin", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Reflect.deleteProperty(window, "location");
-    window.location = { href: "", search: "", pathname: "/login" } as never;
+    window.location = { href: "", search: "", pathname: "/login", origin: "http://localhost" } as never;
   });
 
   afterAll(() => {
@@ -47,6 +47,7 @@ describe("PaginaLogin", () => {
     mockedEntrar.mockRejectedValue(new Error("Falha ao entrar (HTTP 500)."));
     await enviar();
     expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível entrar/i);
+    expect(window.location.href).toBe("");
   });
 
   it("entra e vai para a home", async () => {
@@ -67,10 +68,20 @@ describe("PaginaLogin", () => {
 describe("destinoSeguro", () => {
   it.each([
     [null, "/"],
-    ["https://evil.example.com", "/"],
-    ["//evil.example.com", "/"],
+    ["", "/"],
+    ["https://evil.com", "/"],
+    ["//evil.com", "/"],
+    ["/\\evil.com", "/"],
+    ["/\t/evil.com", "/"],
+    ["/\n/evil.com", "/"],
+    ["/\\/evil.com", "/"],
+    ["javascript:alert(1)", "/"],
     ["/clientes", "/clientes"],
-  ])("%s → %s", (entrada, esperado) => {
+    ["/casos", "/casos"],
+    ["/clientes?x=1#y", "/clientes?x=1#y"],
+    // %2F não vira barra: o path resolve na mesma origem e é seguro, então é preservado.
+    ["/%2F/evil.com", "/%2F/evil.com"],
+  ])("%j → %j", (entrada, esperado) => {
     expect(destinoSeguro(entrada)).toBe(esperado);
   });
 });
