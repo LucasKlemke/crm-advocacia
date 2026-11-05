@@ -26,12 +26,6 @@ const config: Config = {
     "src/hooks/**/*.{ts,tsx}",
     "!**/*.d.ts",
     "!**/*.test.{ts,tsx}",
-    // Re-export puro dos handlers do NextAuth.js — sem lógica própria, coberta pelo
-    // spec E2E de login/cadastro.
-    "!src/app/api/auth/**",
-    // Wiring declarativo do NextAuth (providers/callbacks) — a lógica de negócio foi
-    // extraída para authorize.ts/tenant-context.ts, que são testados isoladamente.
-    "!src/lib/auth/config.ts",
     // Primitivas geradas pelo shadcn CLI (docs/app/design-system.md: "tratados como
     // gerados", nunca editados à mão) sem lógica própria — cobertas indiretamente
     // pelos componentes que as compõem (ex. Table via MembrosTable), não testadas

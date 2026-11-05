@@ -5,8 +5,8 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { OPCOES_APP, configurarApp } from "./criar-app";
 
-// Mesmo .env do Next: DATABASE_URL e AUTH_SECRET/NEXTAUTH_SECRET precisam ser
-// idênticos, senão o guard não consegue abrir o cookie de sessão.
+// Mesmo .env do Next: DATABASE_URL e AUTH_SECRET precisam ser idênticos, senão a API e o
+// proxy.ts do Next não conseguem verificar o cookie crm_sessao um do outro.
 const raiz = resolve(import.meta.dirname, "../../..");
 config({ path: [resolve(raiz, ".env.local"), resolve(raiz, ".env")], quiet: true });
 

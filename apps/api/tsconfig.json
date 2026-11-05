@@ -15,5 +15,5 @@
     "types": ["node", "jest"],
     "paths": { "@/*": ["../../src/*"] }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "../../src/types/next-auth.d.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }
