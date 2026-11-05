@@ -8,7 +8,17 @@ const createJestConfig = nextJest({ dir: "./" });
 const config: Config = {
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
+  // Ponte da Fase 4 (docs/arquitetura/migracao-nestjs.md): o front mora em apps/web, mas
+  // as páginas do Next (e seus testes) ainda o importam por "@/". Espelha os paths do
+  // tsconfig.json. Sai junto com o Next.
   moduleNameMapper: {
+    "^@/compat/(.*)$": "<rootDir>/src/compat-next/$1",
+    "^@dominio/(.*)$": "<rootDir>/src/$1",
+    "^@/(components|hooks)/(.*)$": "<rootDir>/apps/web/src/$1/$2",
+    "^@/lib/(utils|api-client|sessao|site-config|test-utils)$": "<rootDir>/apps/web/src/lib/$1",
+    "^@/lib/query/(chaves|opcoes-padrao|query-client-raiz)$": "<rootDir>/apps/web/src/lib/query/$1",
+    "^@/lib/utils/(agenda-eventos|agenda-grade|agenda-layout|csv-campanha|data-input|data|nome|oab|role|tipo-arquivo|valor|whatsapp-formatacao)$":
+      "<rootDir>/apps/web/src/lib/utils/$1",
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testPathIgnorePatterns: ["<rootDir>/e2e/", "<rootDir>/node_modules/", "<rootDir>/.next/", "<rootDir>/apps/"],
@@ -22,15 +32,8 @@ const config: Config = {
     "src/lib/query/**/*.{ts,tsx}",
     "src/lib/external/**/*.{ts,tsx}",
     "src/lib/auth/**/*.{ts,tsx}",
-    "src/components/**/*.{ts,tsx}",
-    "src/hooks/**/*.{ts,tsx}",
     "!**/*.d.ts",
     "!**/*.test.{ts,tsx}",
-    // Primitivas geradas pelo shadcn CLI (docs/app/design-system.md: "tratados como
-    // gerados", nunca editados à mão) sem lógica própria — cobertas indiretamente
-    // pelos componentes que as compõem (ex. Table via MembrosTable), não testadas
-    // uma a uma.
-    "!src/components/ui/**",
   ],
   coverageThreshold: {
     global: {},
@@ -57,18 +60,6 @@ const config: Config = {
       functions: 70,
       lines: 70,
       statements: 70,
-    },
-    "src/components/**/*.{ts,tsx}": {
-      branches: 25,
-      functions: 25,
-      lines: 25,
-      statements: 25,
-    },
-    "src/hooks/**/*.{ts,tsx}": {
-      branches: 25,
-      functions: 25,
-      lines: 25,
-      statements: 25,
     },
   },
 };

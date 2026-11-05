@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { entrar } from "@/lib/auth/cliente-sessao";
+import { entrar } from "@/lib/sessao";
 import Link from "next/link";
 import { LogIn, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";

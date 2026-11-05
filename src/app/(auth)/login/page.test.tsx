@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { entrar } from "@/lib/auth/cliente-sessao";
+import { entrar } from "@/lib/sessao";
 import LoginPage from "./page";
 
-jest.mock("@/lib/auth/cliente-sessao", () => ({ entrar: jest.fn() }));
+jest.mock("@/lib/sessao", () => ({ entrar: jest.fn() }));
 
 const mockedEntrar = entrar as jest.Mock;
 

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { siteConfig } from "@/lib/site-config";
-import "./globals.css";
+// Ponte da Fase 4: os tokens de tema vivem em apps/web (shadcn/Tailwind do front Vite).
+import "../../apps/web/src/globals.css";
 
 const inter = Inter({
   variable: "--font-sans",
