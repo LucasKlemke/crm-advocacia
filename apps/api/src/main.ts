@@ -1,14 +1,12 @@
 import "reflect-metadata";
 import { resolve } from "node:path";
-import { config } from "dotenv";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import { carregarEnvLocal } from "./config/carregar-env";
 import { OPCOES_APP, configurarApp } from "./criar-app";
 
-// Mesmo .env do Next: DATABASE_URL e AUTH_SECRET precisam ser idênticos, senão a API e o
-// proxy.ts do Next não conseguem verificar o cookie crm_sessao um do outro.
-const raiz = resolve(import.meta.dirname, "../../..");
-config({ path: [resolve(raiz, ".env.local"), resolve(raiz, ".env")], quiet: true });
+// Lê apps/api/.env.local e apps/api/.env (nada na Vercel). Sem sobrescrever o ambiente.
+carregarEnvLocal(resolve(import.meta.dirname, ".."));
 
 const app = configurarApp(await NestFactory.create(AppModule, OPCOES_APP));
 const porta = Number(process.env.API_PORT ?? 3001);
