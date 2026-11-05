@@ -10,6 +10,7 @@
 ## Arquitetura
 
 - [arquitetura/visao-geral.md](arquitetura/visao-geral.md) — C4 (contexto/containers/componentes), camadas do backend (Auth Middleware → Tenant Context → Controller → Service → Repository), módulos funcionais, decisões de stack e isolamento de tenant. Consulte antes de decidir onde uma nova peça de lógica deve morar.
+- [Migração para React + NestJS](arquitetura/migracao-nestjs.md) — estratégia strangler, fases e convenções da API
 
 ## Banco de dados
 
