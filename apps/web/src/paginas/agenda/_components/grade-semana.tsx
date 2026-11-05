@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 import { agruparPorDia, separarDiaInteiro } from "@/lib/utils/agenda-eventos";
 import { chaveDoDia, ehHoje } from "@/lib/utils/agenda-grade";

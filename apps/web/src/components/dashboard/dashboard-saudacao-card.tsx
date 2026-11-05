@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "@/compat/next-image";
 import { CalendarDays, Scale } from "lucide-react";
 import { Card } from "@/components/ui/card";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { CalendarPlus, History, Info, Paperclip, RotateCcw, Trash2 } from "lucide-react";

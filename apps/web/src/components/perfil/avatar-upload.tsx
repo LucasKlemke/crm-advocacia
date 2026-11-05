@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "@/compat/next-navigation";
 import { toast } from "sonner";

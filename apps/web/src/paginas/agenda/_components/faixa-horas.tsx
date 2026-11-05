@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { calcularLayoutDia, minutoParaPct, pctParaMinuto } from "@/lib/utils/agenda-layout";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { ApiError } from "@/lib/api-client";

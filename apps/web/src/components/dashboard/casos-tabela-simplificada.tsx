@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Banknote, Hash, History, Tag, User } from "lucide-react";
 import { formatarDataHoraCurta } from "@/lib/utils/data";

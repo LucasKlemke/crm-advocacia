@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import Link from "@/compat/next-link";
 import { sair } from "@/lib/sessao";

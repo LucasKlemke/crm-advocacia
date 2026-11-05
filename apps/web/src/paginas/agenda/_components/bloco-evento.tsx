@@ -1,5 +1,3 @@
-"use client";
-
 import { MapPin, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatarHora } from "@/lib/utils/data";

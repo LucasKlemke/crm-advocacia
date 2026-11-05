@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { History, IdCard, Mail, Phone, Plus, Search, Trash2, User } from "lucide-react";

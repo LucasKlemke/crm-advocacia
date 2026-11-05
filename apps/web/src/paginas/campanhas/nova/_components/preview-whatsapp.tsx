@@ -1,5 +1,3 @@
-"use client";
-
 import { ArrowLeft, EllipsisVertical, Phone, Video } from "lucide-react";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";
 import { cn } from "@/lib/utils";

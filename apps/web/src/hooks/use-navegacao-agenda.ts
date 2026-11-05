@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "@/compat/next-navigation";
 import { navegar, rangeDaVisao, rotuloDoPeriodo, chaveDoDia } from "@/lib/utils/agenda-grade";

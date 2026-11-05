@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "@/compat/next-link";
 import { useState } from "react";
 import { toast } from "sonner";

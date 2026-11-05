@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { CalendarX } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";

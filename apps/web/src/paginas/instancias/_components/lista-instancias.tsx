@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus, PowerOff, RefreshCw, Trash2, Wifi } from "lucide-react";

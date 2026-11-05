@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "@/compat/next-link";
 import { Smartphone } from "lucide-react";
 import { useInstanciasWhatsapp } from "@/hooks/use-instancias-whatsapp";

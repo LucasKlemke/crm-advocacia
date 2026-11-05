@@ -1,5 +1,3 @@
-"use client";
-
 import { usePathname } from "@/compat/next-navigation";
 
 // A data fica no header de todas as telas menos o dashboard ("/"), onde ela já

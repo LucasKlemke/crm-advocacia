@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Briefcase, Check, Link2Off, User } from "lucide-react";
 import { cn } from "@/lib/utils";

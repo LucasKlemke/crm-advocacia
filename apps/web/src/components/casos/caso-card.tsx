@@ -1,5 +1,3 @@
-"use client";
-
 import { useDraggable } from "@dnd-kit/core";
 import { FileText, MessageSquare, UserRound } from "lucide-react";
 import { formatarCpf } from "@crm/compartilhado/utils/cpf";

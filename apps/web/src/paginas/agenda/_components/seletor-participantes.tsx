@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { UserPlus, X } from "lucide-react";
 import { AvatarIniciais } from "@/components/shared/avatar-iniciais";

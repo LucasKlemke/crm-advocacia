@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { Briefcase, LayoutGrid, Plus, Search, Table2, Tag, User, Users } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Download, FileText, Image as ImageIcon, Pencil, Trash2, Upload } from "lucide-react";

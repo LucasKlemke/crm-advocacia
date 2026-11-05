@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "@/compat/next-link";
 import { usePathname } from "@/compat/next-navigation";
 import {

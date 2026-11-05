@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Plus, User, Users } from "lucide-react";
 import { useDashboardResumo } from "@/hooks/use-dashboard";

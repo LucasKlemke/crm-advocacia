@@ -1,5 +1,3 @@
-"use client";
-
 import { toast } from "sonner";
 import { Banknote, ExternalLink, Hash, History, Tag, User, Users } from "lucide-react";
 import { ApiError } from "@/lib/api-client";

@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 import { formatarHora } from "@/lib/utils/data";
 import type { EventoDTO } from "@crm/compartilhado/tipos/evento";

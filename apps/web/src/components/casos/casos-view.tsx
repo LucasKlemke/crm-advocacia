@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { CasosHeader, type VisaoCasos } from "@/components/casos/casos-header";
 import { CasosKanban } from "@/components/casos/casos-kanban";

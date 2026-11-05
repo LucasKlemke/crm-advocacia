@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, type FormEvent } from "react";
 import { useRouter } from "@/compat/next-navigation";
 import { Building2, MessageCircle, Scale } from "lucide-react";

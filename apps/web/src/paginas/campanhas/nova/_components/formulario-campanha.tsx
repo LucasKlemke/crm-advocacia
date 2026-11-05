@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "@/compat/next-link";
 import { useRouter } from "@/compat/next-navigation";
 import { useRef, useState } from "react";

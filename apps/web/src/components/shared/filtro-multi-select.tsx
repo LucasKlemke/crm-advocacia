@@ -1,5 +1,3 @@
-"use client";
-
 import { Fragment, useState } from "react";
 import { Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
