@@ -1,7 +1,5 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DashboardSaudacaoCard } from "@/components/dashboard/dashboard-saudacao-card";
-import { CasosTabelaSimplificadaSkeleton } from "@/components/dashboard/casos-tabela-simplificada";
 
 // Nº de TipoStatus do seed (referência global, fixa em 6 — docs/database/schema.md).
 // O esqueleto reserva o mesmo espaço que os cards reais vão ocupar, então a grade não
@@ -56,34 +54,3 @@ export function CasosStatusDonutChartSkeleton() {
   );
 }
 
-export interface DashboardSkeletonProps {
-  nome: string;
-  dataHoje: string;
-}
-
-// Fallback do <Suspense> de (dashboard)/page.tsx enquanto os dados streamam do servidor.
-// Espelha a estrutura de dashboard-view.tsx peça por peça, e a saudação já é a real: ela
-// depende só do nome, que veio junto da sessão e não precisa esperar consulta nenhuma.
-export function DashboardSkeleton({ nome, dataHoje }: DashboardSkeletonProps) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <DashboardSaudacaoCard nome={nome} data={dataHoje} />
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Skeleton className="h-9 w-38 rounded-md" />
-          <Skeleton className="h-9 w-32 rounded-md" />
-          <Skeleton className="h-9 w-26 rounded-md" />
-          <Skeleton className="h-9 w-30 rounded-md" />
-        </div>
-      </div>
-
-      <StatusStatCardsSkeleton />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <CasosTabelaSimplificadaSkeleton />
-        <CasosStatusDonutChartSkeleton />
-      </div>
-    </div>
-  );
-}

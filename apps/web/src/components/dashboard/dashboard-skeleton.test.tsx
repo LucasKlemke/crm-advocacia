@@ -1,7 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import {
   CasosStatusDonutChartSkeleton,
-  DashboardSkeleton,
   StatusStatCardsSkeleton,
 } from "./dashboard-skeleton";
 
@@ -24,21 +23,5 @@ describe("CasosStatusDonutChartSkeleton", () => {
 
     expect(container.querySelectorAll("li")).toHaveLength(6);
     expect(container.querySelector(".rounded-full")).toBeInTheDocument();
-  });
-});
-
-describe("DashboardSkeleton", () => {
-  it("mostra a saudação real enquanto os dados ainda carregam", () => {
-    render(<DashboardSkeleton nome="Ana Souza" dataHoje="22 de agosto de 2026" />);
-
-    expect(screen.getByText("Ana")).toBeInTheDocument();
-  });
-
-  it("mantém o cabeçalho da tabela legível antes de os processos chegarem", () => {
-    render(<DashboardSkeleton nome="Ana" dataHoje="22 de agosto de 2026" />);
-
-    expect(screen.getByText("Nº do processo")).toBeInTheDocument();
-    expect(screen.getByText("Cliente")).toBeInTheDocument();
-    expect(screen.getByText("Atualizado em")).toBeInTheDocument();
   });
 });

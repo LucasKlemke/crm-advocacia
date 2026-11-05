@@ -7,6 +7,7 @@ import { LayoutAuth } from "@/paginas/layouts/layout-auth";
 import { PaginaLogin } from "@/paginas/login";
 import { PaginaCadastro } from "@/paginas/cadastro";
 import { PaginaOnboarding } from "@/paginas/onboarding";
+import { PaginaInicio } from "@/paginas/inicio";
 import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 
@@ -41,7 +42,7 @@ export const rotas: RouteObject[] = [
           {
             element: <LayoutDashboard />,
             children: [
-              { index: true, element: emMigracao("src/app/(dashboard)/page.tsx") },
+              { index: true, element: <PaginaInicio /> },
               { path: "clientes", element: emMigracao("src/app/(dashboard)/clientes/page.tsx") },
               { path: "casos", element: emMigracao("src/app/(dashboard)/casos/page.tsx") },
               { path: "agenda", element: emMigracao("src/app/(dashboard)/agenda/page.tsx") },
