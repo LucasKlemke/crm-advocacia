@@ -10,6 +10,21 @@ export type TradutorDeErro = (error: unknown) => Response | null;
 
 const MENSAGEM_ERRO_INESPERADO = "Não foi possível concluir a operação.";
 
+const MENSAGEM_CORPO_GRANDE_DEMAIS = "O conteúdo enviado é maior que o permitido.";
+
+// O body-parser lança um http-error com type "entity.too.large" quando o corpo passa do
+// limite. O Nest 12 o converte em HttpException 413 (mantendo a mensagem do http-error);
+// 413 com mensagem própria de outro módulo não entra aqui.
+function corpoGrandeDemais(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if ((error as { type?: unknown }).type === "entity.too.large") return true;
+  return (
+    error instanceof HttpException &&
+    error.getStatus() === 413 &&
+    error.message === "request entity too large"
+  );
+}
+
 @Catch()
 export class ErrosHttpFilter implements ExceptionFilter {
   // Tradutores são por controller, nunca globais: services diferentes têm classes de
@@ -38,6 +53,9 @@ export class ErrosHttpFilter implements ExceptionFilter {
   }
 
   private traduzir(error: unknown): Response | null {
+    if (corpoGrandeDemais(error)) {
+      return Response.json({ error: MENSAGEM_CORPO_GRANDE_DEMAIS }, { status: 413 });
+    }
     if (error instanceof DadosInvalidosError) {
       return respostaDadosInvalidos(error.zodError);
     }

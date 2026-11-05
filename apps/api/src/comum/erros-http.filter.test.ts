@@ -74,6 +74,16 @@ describe("ErrosHttpFilter", () => {
     await request(app.getHttpServer()).get("/api/teste").expect(400, { error: "Dados inválidos" });
   });
 
+  it("mapeia corpo grande demais (body-parser) para 413", async () => {
+    erroALancar = Object.assign(new Error("request entity too large"), {
+      type: "entity.too.large",
+      status: 413,
+    });
+    await request(app.getHttpServer())
+      .get("/api/teste")
+      .expect(413, { error: "O conteúdo enviado é maior que o permitido." });
+  });
+
   it("devolve 400 com detalhes por campo quando o Zod reprova", async () => {
     await request(app.getHttpServer())
       .post("/api/teste")
