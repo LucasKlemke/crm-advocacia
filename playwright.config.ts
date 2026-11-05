@@ -1,30 +1,34 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Fluxos críticos cobertos aqui: docs/testes/estrategia-tdd.md
-// Sobe a API Nest (:3001) e o front React/Vite (build + preview em :5173), que encaminha
-// /api para a API pelo proxy do Vite.
-const reaproveitar = !process.env.CI;
-
+// Fluxos críticos: docs/testes/estrategia-tdd.md. Roda contra o BUILD DE PRODUÇÃO
+// (api em dist/main.js + web em vite preview), nunca contra o dev server: é o
+// que prova que o bundle do tsup funciona sem tsx e sem decorator metadata.
+// `npm run e2e` builda antes; no CI o build é um passo separado.
+// A API sobe por `npm run start -w @crm/api`, que carrega a instrumentação do
+// New Relic (--import) antes do Nest; nunca com `node dist/main.js` direto.
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: "html",
-  use: { baseURL: "http://localhost:5173", trace: "on-first-retry" },
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "html",
+  use: {
+    baseURL: "http://localhost:4173",
+    trace: "on-first-retry",
+  },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "npm run api:dev",
+      command: "npm run start -w @crm/api",
       url: "http://localhost:3001/api/saude",
-      reuseExistingServer: reaproveitar,
-      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
     },
     {
-      command: "npm run web:build && npm run web:preview",
-      url: "http://localhost:5173",
-      reuseExistingServer: reaproveitar,
-      timeout: 180_000,
+      command: "npm run preview -w @crm/web -- --port 4173 --strictPort",
+      url: "http://localhost:4173",
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
     },
   ],
 });

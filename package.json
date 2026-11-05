@@ -23,7 +23,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present && node scripts/verificar-piso-cobertura.mjs",
-    "e2e": "playwright test",
+    "e2e": "npm run build && playwright test",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "prisma:generate": "npm run prisma:generate -w @crm/api",
