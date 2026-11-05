@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "@/compat/next-navigation";
 import { useState } from "react";
 import { Building2, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { trocarEscritorio } from "@/lib/sessao";
+import { ApiError } from "@/lib/api-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,10 +34,10 @@ export interface EscritorioSwitcherProps {
   ativoId: string;
 }
 
-// Troca de escritório: POST valida a membership no servidor e a API regrava o cookie
-// crm_sessao -> router.refresh() recarrega os Server Components com o novo tenant.
+// Troca de escritório: trocarEscritorio valida a membership no servidor (RN19) e
+// atualiza a sessão. O novo escritorioId remonta o QueryProvider do LayoutDashboard,
+// que descarta o cache do tenant anterior.
 export function EscritorioSwitcher({ escritorios, ativoId }: EscritorioSwitcherProps) {
-  const router = useRouter();
   const [trocando, setTrocando] = useState(false);
   const [criarAberto, setCriarAberto] = useState(false);
   const ativo = escritorios.find((escritorio) => escritorio.id === ativoId);
@@ -46,19 +47,11 @@ export function EscritorioSwitcher({ escritorios, ativoId }: EscritorioSwitcherP
 
     setTrocando(true);
     try {
-      const response = await fetch("/api/sessao/escritorio-ativo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escritorioId: id }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        toast.error(data?.error ?? "Não foi possível trocar de escritório.");
-        return;
-      }
-
-      router.refresh();
+      await trocarEscritorio(id);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : "Não foi possível trocar de escritório."
+      );
     } finally {
       setTrocando(false);
     }

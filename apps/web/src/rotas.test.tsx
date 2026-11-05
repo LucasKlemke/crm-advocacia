@@ -5,6 +5,13 @@ import { rotas } from "./rotas";
 
 jest.mock("@/lib/sessao", () => ({ useSessao: jest.fn() }));
 
+jest.mock("./paginas/layouts/layout-dashboard", () => ({
+  LayoutDashboard: () => {
+    const { Outlet } = jest.requireActual("react-router");
+    return <Outlet />;
+  },
+}));
+
 const mockedUseSessao = useSessao as jest.Mock;
 
 function navegarPara(rota: string) {

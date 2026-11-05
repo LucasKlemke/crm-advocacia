@@ -7,8 +7,8 @@ import { LayoutAuth } from "@/paginas/layouts/layout-auth";
 import { PaginaLogin } from "@/paginas/login";
 import { PaginaCadastro } from "@/paginas/cadastro";
 import { PaginaOnboarding } from "@/paginas/onboarding";
-import { LayoutDashboard } from "@/paginas/dashboard/layout-dashboard";
-import { LayoutConfiguracoes } from "@/paginas/dashboard/configuracoes/layout-configuracoes";
+import { LayoutDashboard } from "@/paginas/layouts/layout-dashboard";
+import { LayoutConfiguracoes } from "@/paginas/layouts/layout-configuracoes";
 
 // Placeholder da parte A: a parte B troca cada chamada pela página portada.
 const emMigracao = (caminhoNext: string) => <PaginaEmMigracao caminhoNext={caminhoNext} />;
