@@ -4,9 +4,10 @@ import { TenantModule } from "./comum/tenant/tenant.module";
 import { StatusModule } from "./status/status.module";
 import { TiposProcessoModule } from "./tipos-processo/tipos-processo.module";
 import { ClientesModule } from "./clientes/clientes.module";
+import { CasosModule } from "./casos/casos.module";
 
 @Module({
-  imports: [TenantModule, StatusModule, TiposProcessoModule, ClientesModule],
+  imports: [TenantModule, StatusModule, TiposProcessoModule, ClientesModule, CasosModule],
   controllers: [SaudeController],
 })
 export class AppModule {}
