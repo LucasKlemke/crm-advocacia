@@ -3,7 +3,7 @@
 // Metas de cobertura: docs/testes/estrategia-tdd.md (piso institucional de 25% no front).
 module.exports = {
   testEnvironment: "<rootDir>/test/ambiente-jsdom.cjs",
-  roots: ["<rootDir>/src"],
+  roots: ["<rootDir>/src", "<rootDir>/scripts"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   transform: {
     "^.+\\.(t|j)sx?$": [
