@@ -1,16 +1,16 @@
-"use client";
-
 import { useState, type FormEvent } from "react";
-import { entrar } from "@/lib/sessao";
-import Link from "next/link";
+import { Link } from "react-router";
 import { User, Mail, Lock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { InputGroupPasswordInput } from "@/components/ui/input-group-password";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import { entrar } from "@/lib/sessao";
+import { useTituloPagina } from "@/hooks/use-titulo-pagina";
 
-export default function CadastroPage() {
+export function PaginaCadastro() {
+  useTituloPagina("Criar conta");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [senha, setSenha] = useState("");
@@ -47,17 +47,14 @@ export default function CadastroPage() {
         return;
       }
 
-      // A API de cadastro só cria o usuário; a sessão (crm_sessao) nasce no login.
-      const logou = await entrar(String(payload.email ?? ""), String(payload.senha ?? "")).catch(() => false);
-
-      if (!logou) {
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      // Conta criada, mas o login automático falhou: o usuário entra pela tela de login.
+      const entrou = await entrar(String(payload.email ?? ""), String(payload.senha ?? "")).catch(() => false);
+      if (!entrou) {
         window.location.href = "/login";
         return;
       }
 
-      // Navegação forçada (não router.push): evita reusar uma entrada stale do Router
-      // Cache pré-fetchada enquanto ainda deslogado (mesmo problema do /login).
+      // Navegação dura: a SPA relê a sessão recém-criada do zero.
       window.location.href = data?.temEscritorio ? "/" : "/onboarding";
     } finally {
       setCarregando(false);
@@ -142,7 +139,7 @@ export default function CadastroPage() {
       </form>
       <p className="text-center text-sm text-muted-foreground">
         Já possui cadastro?{" "}
-        <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+        <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
           Faça login
         </Link>
       </p>

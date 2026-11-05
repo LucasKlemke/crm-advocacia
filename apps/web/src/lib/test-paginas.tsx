@@ -3,6 +3,15 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { render } from "@testing-library/react";
 import { criarQueryClientDeTeste } from "@/lib/test-utils";
+import { chaveSessao } from "@/lib/query/chaves";
+import { queryClientRaiz } from "@/lib/query/query-client-raiz";
+import type { Sessao } from "@/lib/sessao";
+
+// A sessão semeada por `renderPagina({ sessao })` mora no singleton queryClientRaiz;
+// limpar a cada teste impede que ela vaze para o teste seguinte.
+afterEach(() => {
+  queryClientRaiz.clear();
+});
 
 export const SESSAO_OWNER = {
   usuario: { id: "user-1", nome: "Dona Owner", email: "owner@teste.com" },
@@ -42,11 +51,14 @@ interface OpcoesRender {
   rota?: string;
   caminho?: string;
   outras?: [string, ReactElement][];
+  /** Semeia GET /api/auth/sessao no queryClientRaiz (useSessao lê de lá). */
+  sessao?: Sessao | null;
 }
 
 // Página dentro de um router de memória (Link/Navigate/useParams funcionam) e de um
 // QueryClient isolado e sem retry.
-export function renderPagina(ui: ReactElement, { rota = "/", caminho = "/", outras = [] }: OpcoesRender = {}) {
+export function renderPagina(ui: ReactElement, { rota = "/", caminho = "/", outras = [], sessao }: OpcoesRender = {}) {
+  if (sessao !== undefined) queryClientRaiz.setQueryData(chaveSessao(), sessao);
   const queryClient = criarQueryClientDeTeste();
   const resultado = render(
     <QueryClientProvider client={queryClient}>

@@ -3,11 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 // Fluxos críticos cobertos aqui: docs/testes/estrategia-tdd.md
 //
 // Fase 4 da migração (docs/arquitetura/migracao-nestjs.md): o mesmo conjunto de specs
-// roda contra dois fronts. "next" (padrão até a parte 4b terminar) sobe a API Nest e o
-// Next em :3000; "web" (E2E_ALVO=web) sobe a API Nest e o front React/Vite em :5173
+// roda contra dois fronts. "next" (E2E_ALVO=next) sobe a API Nest e o
+// Next em :3000; "web" (padrão) sobe a API Nest e o front React/Vite em :5173
 // (build + preview), que encaminha /api para a API pelo proxy do Vite. A parte 4b
-// inverte o padrão e apaga o ramo "next" junto com o Next.
-const alvo = process.env.E2E_ALVO === "web" ? "web" : "next"; // a Task 4.24 inverte: E2E_ALVO === "next" ? "next" : "web"
+// apaga o ramo "next" junto com o Next.
+const alvo = process.env.E2E_ALVO === "next" ? "next" : "web";
 const reaproveitar = !process.env.CI;
 
 const api = {

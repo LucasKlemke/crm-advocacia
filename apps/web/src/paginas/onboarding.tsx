@@ -1,20 +1,12 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Scale } from "lucide-react";
-import { lerSessaoDoServidor } from "@/lib/auth/sessao-servidor";
 import { NovoEscritorioForm } from "@/components/shell/novo-escritorio-form";
+import { useTituloPagina } from "@/hooks/use-titulo-pagina";
 
-export const metadata: Metadata = {
-  title: "Criar escritório",
-};
-
-// Alcançável pelo cadastro sem convite pendente — exige apenas sessão válida.
-// Criar um escritório adicional a partir do shell autenticado usa o dialog do
-// switcher (ver EscritorioSwitcher), não esta página.
-export default async function OnboardingPage() {
-  if (!(await lerSessaoDoServidor())) {
-    redirect("/login");
-  }
+// Alcançável pelo cadastro sem convite pendente. Fica sob
+// <RotaProtegida exigirEscritorio={false}>: exige sessão, mas não escritório. Criar
+// um escritório adicional pelo shell usa o dialog do switcher, não esta página.
+export function PaginaOnboarding() {
+  useTituloPagina("Criar escritório");
 
   return (
     <div className="flex min-h-screen flex-col justify-center bg-background px-4 py-8">

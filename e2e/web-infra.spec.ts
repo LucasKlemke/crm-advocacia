@@ -9,7 +9,7 @@ test("rota protegida sem sessão leva ao login guardando o destino", async ({ pa
 });
 
 test("o front alcança a API pela mesma origem", async ({ request }) => {
-  test.skip(process.env.E2E_ALVO !== "web", "O proxy /api → :3001 é o do Vite; o Next tem rewrites próprios.");
+  test.skip(process.env.E2E_ALVO === "next", "O proxy /api → :3001 é o do Vite; o Next tem rewrites próprios.");
 
   const resposta = await request.get("/api/saude");
 

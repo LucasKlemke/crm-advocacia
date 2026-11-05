@@ -14,9 +14,6 @@ function navegarPara(rota: string) {
 // Rota React Router → página do Next que ela ainda espera. A parte B remove cada linha
 // ao portar a página correspondente.
 const ROTAS_EM_MIGRACAO: [string, string][] = [
-  ["/login", "src/app/(auth)/login/page.tsx"],
-  ["/cadastro", "src/app/(auth)/cadastro/page.tsx"],
-  ["/onboarding", "src/app/(onboarding)/onboarding/page.tsx"],
   ["/", "src/app/(dashboard)/page.tsx"],
   ["/clientes", "src/app/(dashboard)/clientes/page.tsx"],
   ["/casos", "src/app/(dashboard)/casos/page.tsx"],
@@ -77,7 +74,7 @@ describe("árvore de rotas", () => {
 
     navegarPara("/clientes");
 
-    expect(await screen.findByText("src/app/(auth)/login/page.tsx")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bem-vindo(a) de volta" })).toBeInTheDocument();
   });
 
   it("rota inexistente mostra a página não encontrada", async () => {

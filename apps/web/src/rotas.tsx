@@ -3,7 +3,10 @@ import { LayoutRaiz } from "@/paginas/layout-raiz";
 import { RotaProtegida } from "@/paginas/rota-protegida";
 import { PaginaEmMigracao } from "@/paginas/pagina-em-migracao";
 import { PaginaNaoEncontrada } from "@/paginas/pagina-nao-encontrada";
-import { LayoutAuth } from "@/paginas/auth/layout-auth";
+import { LayoutAuth } from "@/paginas/layouts/layout-auth";
+import { PaginaLogin } from "@/paginas/login";
+import { PaginaCadastro } from "@/paginas/cadastro";
+import { PaginaOnboarding } from "@/paginas/onboarding";
 import { LayoutDashboard } from "@/paginas/dashboard/layout-dashboard";
 import { LayoutConfiguracoes } from "@/paginas/dashboard/configuracoes/layout-configuracoes";
 
@@ -20,15 +23,15 @@ export const rotas: RouteObject[] = [
       {
         element: <LayoutAuth />,
         children: [
-          { path: "login", element: emMigracao("src/app/(auth)/login/page.tsx") },
-          { path: "cadastro", element: emMigracao("src/app/(auth)/cadastro/page.tsx") },
+          { path: "login", element: <PaginaLogin /> },
+          { path: "cadastro", element: <PaginaCadastro /> },
         ],
       },
       // (onboarding) — exige sessão, ainda sem escritório
       {
         element: <RotaProtegida exigirEscritorio={false} />,
         children: [
-          { path: "onboarding", element: emMigracao("src/app/(onboarding)/onboarding/page.tsx") },
+          { path: "onboarding", element: <PaginaOnboarding /> },
         ],
       },
       // (dashboard) — sessão + escritório ativo

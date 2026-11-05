@@ -1,24 +1,24 @@
-"use client";
-
 import { useState, type FormEvent } from "react";
-import { entrar } from "@/lib/sessao";
-import Link from "next/link";
+import { Link } from "react-router";
 import { LogIn, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { InputGroupPasswordInput } from "@/components/ui/input-group-password";
+import { entrar } from "@/lib/sessao";
+import { useTituloPagina } from "@/hooks/use-titulo-pagina";
 
 // Só aceita path relativo interno ("/rota"), nunca URL absoluta/protocol-relative
-// ("//host" ou "https://host") — evita open redirect via callbackUrl manipulado.
-function destinoSeguro(callbackUrl: string | null): string {
+// ("//host" ou "https://host"); evita open redirect via callbackUrl manipulado.
+export function destinoSeguro(callbackUrl: string | null): string {
   if (!callbackUrl || !callbackUrl.startsWith("/") || callbackUrl.startsWith("//")) {
     return "/";
   }
   return callbackUrl;
 }
 
-export default function LoginPage() {
+export function PaginaLogin() {
+  useTituloPagina("Entrar");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -30,17 +30,13 @@ export default function LoginPage() {
     const formData = new FormData(event.currentTarget);
 
     try {
-      const logou = await entrar(String(formData.get("email") ?? ""), String(formData.get("senha") ?? ""));
-
-      if (!logou) {
+      const ok = await entrar(String(formData.get("email") ?? ""), String(formData.get("senha") ?? ""));
+      if (!ok) {
         setErro("E-mail ou senha inválidos.");
         return;
       }
-
-      // Navegação forçada (não router.push): o Router Cache do Next pode ter uma
-      // entrada de "/" com o redirect para /login pré-fetchada enquanto ainda
-      // deslogado (via o Link da marca no layout de auth) — só um reload garante que
-      // o middleware releia a sessão recém-criada em vez de reusar esse cache stale.
+      // Navegação dura de propósito: o reload descarta qualquer cache em memória de uma
+      // sessão anterior e a SPA relê /api/auth/sessao do zero.
       const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
       window.location.href = destinoSeguro(callbackUrl);
     } catch {
@@ -63,13 +59,7 @@ export default function LoginPage() {
             <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
               <Mail />
             </InputGroupAddon>
-            <InputGroupInput
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
+            <InputGroupInput id="email" name="email" type="email" autoComplete="email" required />
           </InputGroup>
         </div>
         <div className="flex flex-col gap-2">
@@ -78,12 +68,7 @@ export default function LoginPage() {
             <InputGroupAddon className="mr-2 self-stretch border-r border-border pr-3 pl-5">
               <Lock />
             </InputGroupAddon>
-            <InputGroupPasswordInput
-              id="senha"
-              name="senha"
-              autoComplete="current-password"
-              required
-            />
+            <InputGroupPasswordInput id="senha" name="senha" autoComplete="current-password" required />
           </InputGroup>
         </div>
         {erro ? (
@@ -98,7 +83,7 @@ export default function LoginPage() {
       </form>
       <p className="text-center text-sm text-muted-foreground">
         Ainda não tem conta?{" "}
-        <Link href="/cadastro" className="font-medium text-foreground underline-offset-4 hover:underline">
+        <Link to="/cadastro" className="font-medium text-foreground underline-offset-4 hover:underline">
           Cadastre-se
         </Link>
       </p>
