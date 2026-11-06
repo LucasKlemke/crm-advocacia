@@ -9,17 +9,23 @@ locals {
     nonsensitive(var.new_relic_license_key != "") ? ["NEW_RELIC_LICENSE_KEY"] : [],
   )
 
+  # NEW_RELIC_*: mesma configuração por env do deploy Supabase (docs/deploy/deploy.md), sem
+  # newrelic.js; o agente só carrega quando NEW_RELIC_LICENSE_KEY existe (instrumentacao.ts).
   ambiente_api = {
-    NODE_ENV              = "production"
-    PORT                  = tostring(local.porta_api)
-    AWS_REGION            = var.regiao
-    AWS_S3_BUCKET         = aws_s3_bucket.documentos.bucket
-    AWS_S3_PREFIX         = local.s3_prefixo
-    UAZAPI_SERVER_URL     = var.uazapi_server_url
-    NEW_RELIC_APP_NAME    = var.new_relic_app_name
-    API_PUBLIC_URL        = local.api_public_url
-    WEB_ORIGINS           = join(",", var.web_origins)
-    TEMPO_REAL_HABILITADO = "true"
+    NODE_ENV                                         = "production"
+    PORT                                             = tostring(local.porta_api)
+    AWS_REGION                                       = var.regiao
+    AWS_S3_BUCKET                                    = aws_s3_bucket.documentos.bucket
+    AWS_S3_PREFIX                                    = local.s3_prefixo
+    UAZAPI_SERVER_URL                                = var.uazapi_server_url
+    NEW_RELIC_APP_NAME                               = var.new_relic_app_name
+    NEW_RELIC_NO_CONFIG_FILE                         = "true"
+    NEW_RELIC_LOG                                    = "stdout"
+    NEW_RELIC_DISTRIBUTED_TRACING_ENABLED            = "true"
+    NEW_RELIC_APPLICATION_LOGGING_FORWARDING_ENABLED = "true"
+    API_PUBLIC_URL                                   = local.api_public_url
+    WEB_ORIGINS                                      = join(",", var.web_origins)
+    TEMPO_REAL_HABILITADO                            = "true"
   }
 }
 

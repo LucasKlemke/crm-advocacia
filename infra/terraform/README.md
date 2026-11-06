@@ -80,7 +80,9 @@ No GitHub Actions, os valores sensíveis chegam como `TF_VAR_uazapi_admin_token`
 ## Variáveis de ambiente da API
 
 - `environment`: `NODE_ENV=production`, `PORT=3001`, `AWS_REGION`, `AWS_S3_BUCKET`,
-  `AWS_S3_PREFIX=documentos`, `UAZAPI_SERVER_URL`, `NEW_RELIC_APP_NAME`, `API_PUBLIC_URL` (URL do
+  `AWS_S3_PREFIX=documentos`, `UAZAPI_SERVER_URL`, `NEW_RELIC_APP_NAME`, `NEW_RELIC_NO_CONFIG_FILE=true`,
+  `NEW_RELIC_LOG=stdout`, `NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true`,
+  `NEW_RELIC_APPLICATION_LOGGING_FORWARDING_ENABLED=true`, `API_PUBLIC_URL` (URL do
   CloudFront), `WEB_ORIGINS` (`web_origins` unidas por vírgula), `TEMPO_REAL_HABILITADO=true`.
 - `secrets` (chaves do JSON `crm-pac/api`, via `valueFrom = "<arn>:<CHAVE>::"`): `AUTH_SECRET`,
   `DATABASE_URL`, `DIRECT_URL`, `UAZAPI_WEBHOOK_SECRET`, `UAZAPI_ADMIN_TOKEN`, `NEW_RELIC_LICENSE_KEY`.
