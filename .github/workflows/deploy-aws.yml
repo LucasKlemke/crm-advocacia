@@ -53,8 +53,12 @@ jobs:
     # Runner x64 + QEMU para gerar a imagem linux/arm64: funciona em qualquer plano/visibilidade de
     # repositório (o runner ubuntu-24.04-arm seria mais rápido, mas depende da disponibilidade de
     # runners ARM hospedados para o repositório). O cache GHA do buildx amortiza o custo do QEMU.
+    # Alternativa mais rápida: `runs-on: ubuntu-24.04-arm` e remover o passo setup-qemu-action.
+    # Re-executar este workflow num SHA antigo reimplanta aquela imagem (funciona como rollback);
+    # as migrations são idempotentes (prisma migrate deploy) e seguem expand/contract.
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # O primeiro deploy (RDS + CloudFront + build sob QEMU sem cache) pode passar de 1 h.
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: infra/terraform
@@ -66,6 +70,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: deploy-aws-${{ github.run_id }}
+          # Sessão de 2 h (max_session_duration da role em infra/bootstrap) cobre o primeiro deploy.
+          role-duration-seconds: 7200
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -98,11 +104,15 @@ jobs:
       - name: imagem já publicada?
         id: imagem
         run: |
-          if aws ecr describe-images --repository-name "${{ steps.ecr.outputs.repo }}" \
-              --image-ids imageTag="${GITHUB_SHA}" >/dev/null 2>&1; then
+          # Só ImageNotFoundException significa "construir"; qualquer outro erro falha o passo.
+          if erro="$(aws ecr describe-images --repository-name "${{ steps.ecr.outputs.repo }}" \
+              --image-ids imageTag="${GITHUB_SHA}" 2>&1 >/dev/null)"; then
             echo "existe=true" >> "$GITHUB_OUTPUT"
-          else
+          elif grep -q 'ImageNotFoundException' <<<"$erro"; then
             echo "existe=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Falha ao consultar a imagem no ECR: $erro"
+            exit 1
           fi
 
       - uses: aws-actions/amazon-ecr-login@v2
@@ -129,14 +139,17 @@ jobs:
           cache-to: type=gha,mode=max,scope=api-arm64
 
       # Registra só a task definition nova (e o mínimo para a task de migration rodar no primeiro
-      # deploy: cluster, SG da task com saída liberada, regra de entrada do RDS e rotas das subnets
-      # públicas; o RDS e o secret já entram como dependências da task definition). O serviço
-      # continua na revisão antiga até a migration terminar com sucesso.
+      # deploy: cluster, permissões da execution role (pull do ECR, logs, leitura do secret), SG da
+      # task com saída liberada, regra de entrada do RDS e rotas das subnets públicas; a role, o RDS
+      # e o secret já entram como dependências da task definition). O serviço continua na revisão
+      # antiga até a migration terminar com sucesso.
       - name: terraform apply (task definition)
         run: >-
           terraform apply -auto-approve
           -target=aws_ecs_task_definition.api
           -target=aws_ecs_cluster.principal
+          -target=aws_iam_role_policy_attachment.execucao_ecs
+          -target=aws_iam_role_policy.execucao_segredo
           -target=aws_security_group.task
           -target=aws_vpc_security_group_egress_rule.task_saida
           -target=aws_vpc_security_group_ingress_rule.rds_da_task
@@ -145,9 +158,7 @@ jobs:
       - name: dados da task definition
         id: td
         run: |
-          familia="$(terraform output -raw task_definition_family)"
-          arn="$(aws ecs describe-task-definition --task-definition "$familia" \
-            --query 'taskDefinition.taskDefinitionArn' --output text)"
+          arn="$(terraform output -raw task_definition_arn)"
           imagem="$(aws ecs describe-task-definition --task-definition "$arn" \
             --query "taskDefinition.containerDefinitions[?name=='api'].image | [0]" --output text)"
           if [ "${imagem##*:}" != "$GITHUB_SHA" ]; then
@@ -211,9 +222,19 @@ jobs:
         run: |
           cluster="$(terraform output -raw ecs_cluster)"
           servico="$(terraform output -raw ecs_service)"
+          # Revisão que o apply completo deixou no serviço (lida DEPOIS do apply), com a imagem
+          # deste commit: é ela que o rollout precisa ter alcançado.
+          arn="$(terraform output -raw task_definition_arn)"
+          imagem="$(aws ecs describe-task-definition --task-definition "$arn" \
+            --query "taskDefinition.containerDefinitions[?name=='api'].image | [0]" --output text)"
+          if [ "${imagem##*:}" != "$GITHUB_SHA" ]; then
+            echo "::error::A revisão aplicada $arn usa a imagem $imagem, não a tag $GITHUB_SHA."
+            exit 1
+          fi
           {
             echo "cluster=$cluster"
             echo "servico=$servico"
+            echo "arn=$arn"
             echo "api_url=$(terraform output -raw api_url)"
           } >> "$GITHUB_OUTPUT"
           aws ecs wait services-stable --cluster "$cluster" --services "$servico"
@@ -225,7 +246,7 @@ jobs:
           bash scripts/deploy/verificar-rollout.sh
           "${{ steps.servico.outputs.cluster }}"
           "${{ steps.servico.outputs.servico }}"
-          "${{ steps.td.outputs.arn }}"
+          "${{ steps.servico.outputs.arn }}"
 
       - name: smoke test
         working-directory: .
@@ -239,6 +260,7 @@ jobs:
             echo "### Deploy AWS"
             echo
             echo "- Imagem: \`${{ steps.ecr.outputs.url }}:${{ github.sha }}\`"
-            echo "- Task definition: \`${{ steps.td.outputs.arn }}\`"
+            echo "- Task definition (migration): \`${{ steps.td.outputs.arn }}\`"
+            echo "- Task definition (serviço): \`${{ steps.servico.outputs.arn }}\`"
             echo "- API: ${{ steps.servico.outputs.api_url }}"
           } >> "$GITHUB_STEP_SUMMARY"

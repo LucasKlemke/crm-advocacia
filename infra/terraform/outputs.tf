@@ -23,6 +23,11 @@ output "task_definition_family" {
   value       = aws_ecs_task_definition.api.family
 }
 
+output "task_definition_arn" {
+  description = "ARN da revisão aplicada da task definition (o deploy-aws.yml confere o rollout contra ela)."
+  value       = aws_ecs_task_definition.api.arn
+}
+
 output "subnets_publicas" {
   description = "Subnets públicas (network configuration do run-task de migration)."
   value       = aws_subnet.publica[*].id

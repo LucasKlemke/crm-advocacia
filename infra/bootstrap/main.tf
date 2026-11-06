@@ -93,7 +93,7 @@ resource "aws_iam_role" "deploy" {
   name                 = "${var.prefixo}-github-deploy"
   description          = "Assumida pelo GitHub Actions via OIDC para terraform plan/apply e push no ECR."
   assume_role_policy   = data.aws_iam_policy_document.confianca_github.json
-  max_session_duration = 3600
+  max_session_duration = 7200 # deploy-aws.yml pede sessão de 2 h (primeiro deploy é longo)
 }
 
 # Simplificação consciente para conta pessoal de disciplina (ver README.md):

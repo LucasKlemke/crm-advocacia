@@ -8,7 +8,7 @@ existir qualquer estado remoto:
 |---|---|
 | Bucket S3 `crm-pac-tfstate-<account_id>` | Estado remoto do `infra/terraform` (versionado, SSE-S3, block public access, `prevent_destroy`). O lock usa o próprio S3 (`use_lockfile = true`), sem DynamoDB. |
 | OIDC provider `token.actions.githubusercontent.com` | Permite ao GitHub Actions trocar o token do workflow por credencial temporária da AWS, sem chave de acesso guardada no GitHub. |
-| Role `crm-pac-github-deploy` | Assumida pelos workflows (`infra-plan.yml`, `deploy-aws.yml`); sessão de no máximo 1 h. |
+| Role `crm-pac-github-deploy` | Assumida pelos workflows (`infra-plan.yml`, `deploy-aws.yml`); sessão de no máximo 2 h (o primeiro deploy pode passar de 1 h). |
 
 ## Como aplicar
 

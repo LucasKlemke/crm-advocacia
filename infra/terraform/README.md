@@ -74,7 +74,7 @@ No GitHub Actions, os valores sensíveis chegam como `TF_VAR_uazapi_admin_token`
 ## Outputs
 
 `api_url` (`https://<distribuição>.cloudfront.net`), `ecr_repository_url`, `ecs_cluster`, `ecs_service`,
-`task_definition_family`, `subnets_publicas`, `sg_task`, `log_group` — usados pelo `deploy-aws.yml`
+`task_definition_family`, `task_definition_arn`, `subnets_publicas`, `sg_task`, `log_group` — usados pelo `deploy-aws.yml`
 (push da imagem, `run-task` da migration, espera do serviço e smoke test).
 
 ## Variáveis de ambiente da API
