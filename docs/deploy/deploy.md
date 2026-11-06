@@ -228,7 +228,7 @@ export const config: VercelConfig = {
 ## Rollback
 
 - **Aplicação (Supabase)**: `vercel rollback` ou "Instant Rollback" no painel. Volta **web e api juntos**; não afeta o deploy acadêmico.
-- **Aplicação (acadêmico)**: a SPA volta pelo Instant Rollback do Project `pac`; a API volta re-executando o `deploy-aws.yml` de um commit anterior, e o circuit breaker do ECS já volta sozinho se a task nova não ficar saudável. Os dois lados são independentes: confira se a SPA antiga é compatível com a API do momento.
+- **Aplicação (acadêmico)**: a SPA volta pelo Instant Rollback do Project `pac`; a API volta com **"Re-run all jobs"** no run antigo do `deploy-aws.yml` daquele commit (o `workflow_dispatch` só roda na `main`, no commit mais recente; o re-run reaplica também o Terraform daquele SHA, então a infra pode voltar junto) ou com um `git revert` na `main`, e o circuit breaker do ECS já volta sozinho se a task nova não ficar saudável. Os dois lados são independentes: confira se a SPA antiga é compatível com a API do momento.
 - **Banco**: migrations não têm rollback automático (Prisma não gera "down"). Toda mudança de schema segue **expand/contract**: a migration do PR só acrescenta (coluna nullable, tabela nova), e a remoção do que ficou obsoleto entra num PR posterior. Nos dois deploys a migration roda **antes** de a versão nova entrar no ar, enquanto a anterior ainda atende, e voltar o app nunca volta o schema: a migration precisa servir às duas versões. Reverter um schema de fato exige uma migration corretiva nova, aplicada da mesma forma — ver a política completa em [../database/migrations-prisma.md](../database/migrations-prisma.md).
 
 ## Observabilidade pós-deploy

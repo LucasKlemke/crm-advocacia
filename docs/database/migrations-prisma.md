@@ -56,7 +56,7 @@ Em produção/staging, usar **`prisma migrate deploy`** (`npm run prisma:deploy 
 
 ## Regra expand/contract (obrigatória)
 
-Nos dois deploys a migration é aplicada **antes** de a versão nova do app entrar no ar, enquanto a versão anterior ainda atende requisições (no AWS, a task antiga segue servindo até o rollout do ECS terminar; na Vercel, o deployment anterior serve até o build novo ser promovido). E um rollback (Instant Rollback da Vercel, circuit breaker do ECS ou re-executar o deploy num SHA antigo) volta o app, **nunca o schema**. Logo, toda migration precisa ser compatível ao mesmo tempo com o código novo e com o código anterior:
+Nos dois deploys a migration é aplicada **antes** de a versão nova do app entrar no ar, enquanto a versão anterior ainda atende requisições (no AWS, a task antiga segue servindo até o rollout do ECS terminar; na Vercel, o deployment anterior serve até o build novo ser promovido). E um rollback (Instant Rollback da Vercel, circuit breaker do ECS, "Re-run all jobs" no run antigo do `deploy-aws.yml` ou `git revert` na `main`) volta o app, **nunca o schema**. Logo, toda migration precisa ser compatível ao mesmo tempo com o código novo e com o código anterior:
 
 1. **Expand** (PR da funcionalidade): só acrescentar — tabela nova, coluna anulável ou com `DEFAULT`, índice novo, valor novo de enum (que o código antigo nunca lê nem grava). Nada de `DROP`, `RENAME` ou `NOT NULL` sem default em coluna existente.
 2. **Migrar dados**, se preciso, na própria migration (SQL idempotente) ou num passo posterior; o código novo tolera linhas ainda no formato antigo.

@@ -44,9 +44,11 @@ desenvolvimento). Siga na ordem; cada item aponta a seção com o detalhe.
       `api_url` do resumo do job ([Primeiro deploy](#3-primeiro-deploy)).
 - [ ] 6. Conferir no console (Billing → Budgets) o orçamento `crm-pac-mensal` e que o e-mail de
       alerta chega (remetente AWS Budgets; olhe o spam) ([Orçamento](#orçamento-e-custos)).
-- [ ] 7. Vercel, Project `crm-advocacia-pac`: Root Directory `apps/web`, trocar o placeholder de
-      `apps/web/vercel.json` pelo domínio do CloudFront (commit), definir `VITE_WS_URL` e remover as
-      variáveis antigas da API ([Vercel](#4-vercel-project-crm-advocacia-pac)).
+- [ ] 7. Vercel, Project `crm-advocacia-pac`: trocar o Root Directory para `apps/web` **antes** do
+      merge desta mudança na `main` (senão o `pac` builda o `vercel.json` de Services da raiz e quebra);
+      depois do primeiro deploy AWS, commitar o domínio do CloudFront no lugar do placeholder de
+      `apps/web/vercel.json`, definir `VITE_WS_URL` e remover as variáveis antigas da API
+      ([Vercel](#4-vercel-project-crm-advocacia-pac)).
 - [ ] 8. Criar as instâncias de WhatsApp do deploy acadêmico (não compartilhar instâncias com o deploy
       Supabase) ou reconfigurar as existentes com "Sincronizar instâncias"
       ([Webhooks](#5-webhooks-das-instâncias-uazapi)).
@@ -138,8 +140,11 @@ ou Actions → Deploy AWS (API) → Run workflow (branch `main`; fora da `main` 
 O primeiro deploy pode passar de 1 h (o job tem 90 min e a sessão da role, 2 h). O resumo do job mostra
 a `api_url` (`https://dxxxxxxxx.cloudfront.net`); ela também sai de `terraform output api_url`.
 
-Rollback: re-executar o workflow num SHA anterior reimplanta aquela imagem (o schema não volta; por isso
-expand/contract). Falha de migration no passo 4 interrompe o deploy com o serviço intacto na revisão
+Rollback: o `workflow_dispatch` só roda na `main` (sempre no commit mais recente), então não serve para
+voltar versão. Há dois caminhos: (a) em Actions, abrir o run **antigo** do commit desejado e usar
+**"Re-run all jobs"**, que reimplanta a imagem daquele SHA mas também reaplica o Terraform e o workflow
+daquele commit (a infra pode voltar junto); ou (b) fazer `git revert` na `main` (via PR), que gera um
+deploy novo com o código anterior e a infra atual. Em ambos o schema não volta (por isso expand/contract). Falha de migration no passo 4 interrompe o deploy com o serviço intacto na revisão
 anterior; o link do log no CloudWatch aparece no erro do job.
 
 Em PRs que tocam `infra/**` ou `apps/api/**`, o **Infra (terraform plan)** mostra no resumo o que seria
@@ -148,7 +153,16 @@ aplicado, usando a imagem em execução. Ele nunca roda `apply`.
 ## 4. Vercel, Project `crm-advocacia-pac`
 
 O Project passa a publicar **só a SPA**. A config vem de `apps/web/vercel.json` (o `vercel.json` da raiz,
-com Vercel Services, continua sendo o do Project Supabase):
+com Vercel Services, continua sendo o do Project Supabase).
+
+Ordem obrigatória:
+
+- O Root Directory muda **antes** do merge na `main` desta mudança. Com Root Directory `.`, o `pac`
+  builda o `vercel.json` de Services da raiz sem as variáveis da API e o deploy quebra.
+- Até o commit que troca `TROQUE_PELO_DOMINIO_DO_CLOUDFRONT` pelo domínio real chegar à `main`, todo
+  `/api/*` do `pac` responde erro (DNS inválido): a SPA abre, mas login e dados não funcionam.
+- Sequência: Root Directory `apps/web` → primeiro deploy AWS (seção 3) → anotar a `api_url` → commit do
+  domínio em `apps/web/vercel.json` + `VITE_WS_URL` → redeploy da Vercel.
 
 1. Settings → Build and Deployment: **Root Directory `apps/web`** (com "Include files outside the root
    directory" ligado, padrão, porque o install roda `npm ci` na raiz do monorepo), Framework Preset
@@ -259,10 +273,10 @@ Estimativa ligado 24 h por dia em `us-east-1` (preços sob demanda públicos; co
 | ECR | até 10 imagens (~200 MB cada) | < 1 |
 | S3 documentos | poucos GB | < 1 |
 | CloudFront | tráfego de disciplina (dentro do nível gratuito) | 0 |
-| **Total** | | **~ 58** (≈ US$ 2 por dia) |
+| **Total** | | **~ 60** (≈ US$ 2 por dia) |
 
-O total passa do alvo de US$ 50 do desenho e do alerta de US$ 30: o alerta de 80% dispara por volta do
-12º dia de um mês inteiro ligado. Créditos de conta nova/nível gratuito podem cobrir o RDS e parte do
+O total (~US$ 60/mês) passa do alvo de US$ 50 do desenho e do limite de US$ 30 do orçamento: com tudo
+ligado o mês inteiro, os alertas disparam por volta da metade do mês. Créditos de conta nova/nível gratuito podem cobrir o RDS e parte do
 resto. Para economizar entre apresentações: `aws ecs update-service ... --desired-count 0` e
 `aws rds stop-db-instance --db-instance-identifier crm-pac-db` (o RDS religa sozinho após 7 dias); ALB e IPs do
 ALB continuam cobrando. O mais barato é destruir e recriar perto da avaliação (o deploy refaz tudo em

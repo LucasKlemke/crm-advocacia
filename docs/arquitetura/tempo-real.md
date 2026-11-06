@@ -38,7 +38,7 @@ qualquer origem de mudança chega a todas as abas abertas do escritório.
 | Sincronização sem usuário | `campanhaService.sincronizarPeloSistema` | O `escritorioId` vem da própria campanha; instância excluída (`soft_deleted_at`) ou de outro escritório é ignorada. Só grava (e loga com `origem = 'sistema'`, `usuario_id` nulo) se algo mudou. |
 | Barramento | `dominio/lib/tempo-real/eventos-campanha.ts` | Ouvintes indexados por `escritorioId` (RN19). Eventos: `campanha.atualizada` (com `CampanhaDTO`, nunca o token) e `campanha.removida` (só o id). Publicado depois do commit. |
 | Ticket | `tempo-real/tempo-real.controller.ts`, `sessao-jwt.ts` | `GET /api/tempo-real/ticket` (TenantGuard, `Cache-Control: no-store`) devolve `{ ticket }`: JWT HS256 com `aud: "crm-ws"`, `sub`, `escritorioId`, `jti`, validade 60 s. Não serve como sessão. |
-| Servidor WS | `tempo-real/servidor-ws.ts`, anexado no `main.ts` | `ws` no `upgrade` do `http.Server` do Nest, caminho `/api/ws?ticket=...`. Confere `Origin` (`WEB_ORIGINS` ou a própria origem), consome o `jti` (uso único), resolve o tenant no banco como o TenantGuard e assina o escritório **do ticket**: um usuário membro de dois escritórios só recebe eventos daquele do ticket. |
+| Servidor WS | `tempo-real/servidor-ws.ts`, anexado no `main.ts` | `ws` no `upgrade` do `http.Server` do Nest, caminho `/api/ws?ticket=...`. Confere `Origin` (`WEB_ORIGINS` ou a própria origem), consome o `jti` (uso único), resolve o tenant no banco como o TenantGuard e assina o escritório **do ticket**: um usuário membro de dois escritórios só recebe eventos daquele do ticket. Máximo de 5 conexões por usuário (a 6ª derruba a mais antiga com 4429). **Revalidação periódica**: a cada 4 ciclos de ping (`CICLOS_REVALIDACAO`, ~100 s) o tenant da conexão é resolvido de novo no banco; membro removido/desativado ou escritório inacessível → fecha com 4401; erro transitório (banco fora) mantém o socket, loga e tenta no ciclo seguinte. |
 | Cliente | `apps/web`: hook `useTempoRealCampanhas` | Montado uma vez no layout autenticado (uma conexão por aba). Pede ticket, conecta em `${VITE_WS_URL}/api/ws?ticket=` (ou na mesma origem sem `VITE_WS_URL`), atualiza o cache do TanStack Query e mostra "Ao vivo" / "Atualização manual" no detalhe da campanha. |
 
 ## Contrato do WebSocket
@@ -53,15 +53,16 @@ Servidor → cliente (JSON); o cliente não envia nada além de `pong`:
 
 | Fechamento | Quando | Cliente |
 |---|---|---|
-| `4401` | ticket ausente, inválido, expirado, reusado, ou sem acesso ao escritório | pede ticket novo e reconecta |
-| `4403` | `Origin` fora de `WEB_ORIGINS` e diferente da própria API | (configuração errada) |
-| `4429` | o usuário abriu a 6ª conexão: a mais antiga é fechada | **não** reconecta |
+| `4401` | ticket ausente, inválido, expirado, reusado, ou sem acesso ao escritório; também membro removido detectado na revalidação (~100 s) | pede ticket novo e reconecta. Se o acesso foi revogado, o pedido de ticket falha e o cliente segue no backoff (até 30 s) sem nunca voltar a "Ao vivo" |
+| `4403` | `Origin` fora de `WEB_ORIGINS` e diferente da própria API | **para** (`FECHAMENTOS_DEFINITIVOS`): "Atualização manual" |
+| `4429` | o usuário abriu a 6ª conexão: a mais antiga é fechada | **para** (`FECHAMENTOS_DEFINITIVOS`; reconectar derrubaria outra aba): "Atualização manual" |
 | `1011` | erro interno ao resolver o tenant | reconecta |
 | `1001` | servidor desligando (deploy) | reconecta |
 
 Ping do servidor a cada 25000 ms; quem não respondeu ao ping anterior é derrubado. Reconexão do cliente
 com backoff exponencial de 1 s até 30 s, **sempre com ticket novo** (uso único). Ticket que responde
-404 (tempo real desligado) → o cliente não tenta de novo e fica em "Atualização manual". Mensagens por
+404 (tempo real desligado) ou sessão expirada no pedido do ticket → o cliente não tenta de novo e fica em
+"Atualização manual" (`apps/web/src/lib/tempo-real.ts`). Mensagens por
 destinatário da campanha são reconsultadas com throttle de 3000 ms.
 
 ## Configuração por ambiente
@@ -75,7 +76,8 @@ destinatário da campanha são reconsultadas com throttle de 3000 ms.
 | `TEMPO_REAL_POLLING_MS` | `15000` | `15000` | irrelevante |
 | `VITE_WS_URL` (web) | vazio (proxy do Vite) | `wss://<distribuição>.cloudfront.net` | vazio |
 
-No dev local, o proxy `/api` do Vite precisa repassar o upgrade do WebSocket para a API em :3001.
+No dev local e no `vite preview`, o proxy `/api` do Vite tem `ws: true` (`apps/web/vite.config.ts`) e
+repassa o upgrade do WebSocket para a API em :3001, na mesma origem.
 
 ## Limites conhecidos
 
