@@ -18,20 +18,20 @@ Por quê: os tokens são o único lugar onde tema claro/escuro e a identidade vi
 
 ## Onde os tokens são definidos
 
-- `src/app/globals.css` — variáveis CSS do tema (`--background`, `--foreground`, `--primary`, `--muted`, `--destructive`, `--border`, `--input`, `--ring`, etc.), com um bloco para light e outro para dark (seletor `.dark`), no padrão gerado pelo shadcn/ui.
-- `tailwind.config.ts` — mapeia essas variáveis CSS para as classes utilitárias (`colors.primary = 'hsl(var(--primary))'`, etc.), é isso que habilita `bg-primary`, `text-primary-foreground` e equivalentes.
-- Qualquer cor nova do domínio (ex. cores de status do kanban: "Prospecção", "Em Andamento") deve virar token novo em `globals.css` + `tailwind.config.ts` (ex. `--status-prospeccao`), nunca uma classe Tailwind literal aplicada direto no componente do card.
+- `apps/web/src/globals.css` — variáveis CSS do tema (`--background`, `--foreground`, `--primary`, `--muted`, `--destructive`, `--border`, `--input`, `--ring`, etc.), com um bloco para light e outro para dark (seletor `.dark`), no padrão gerado pelo shadcn/ui.
+- O bloco `@theme inline` do mesmo `globals.css` (Tailwind v4, sem `tailwind.config.ts`) — mapeia essas variáveis CSS para as classes utilitárias (`--color-primary: var(--primary)`, etc.), é isso que habilita `bg-primary`, `text-primary-foreground` e equivalentes.
+- Qualquer cor nova do domínio (ex. cores de status do kanban: "Prospecção", "Em Andamento") deve virar token novo em `globals.css` (variável + entrada no `@theme inline`) (ex. `--status-prospeccao`), nunca uma classe Tailwind literal aplicada direto no componente do card.
 
 ## Instalação de componentes shadcn/ui
 
 - Componentes de UI base são adicionados via CLI: `npx shadcn@latest add <componente>` (ex. `button`, `dialog`, `form`, `table`, `badge`) — nunca copiados manualmente de exemplos externos.
-- Componentes instalados vivem em `src/components/ui/` (ver [estrutura-codigo.md](estrutura-codigo.md)) e são tratados como "gerados": evitar editar o arquivo em si além de ajustes mínimos necessários para os tokens do projeto. Customização de comportamento/aparência é feita **por composição** (props, `className` com tokens, wrapper em `components/shared/`), não reescrevendo o componente gerado — isso mantém a possibilidade de reinstalar/atualizar via CLI no futuro sem perder customização.
+- Componentes instalados vivem em `apps/web/src/components/ui/` (ver [estrutura-codigo.md](estrutura-codigo.md)) e são tratados como "gerados": evitar editar o arquivo em si além de ajustes mínimos necessários para os tokens do projeto. Customização de comportamento/aparência é feita **por composição** (props, `className` com tokens, wrapper em `components/shared/`), não reescrevendo o componente gerado — isso mantém a possibilidade de reinstalar/atualizar via CLI no futuro sem perder customização.
 
 ## Checklist de revisão (PR)
 
 Antes de aprovar qualquer mudança de UI:
 
-- [ ] Nenhuma classe de cor literal (`bg-*-500`, `text-*-700`, hex direto) fora de `globals.css`/`tailwind.config.ts`.
+- [ ] Nenhuma classe de cor literal (`bg-*-500`, `text-*-700`, hex direto) fora de `globals.css`.
 - [ ] Componente novo de UI base veio do shadcn (`components/ui/`) via CLI, não escrito à mão do zero, quando existe equivalente na biblioteca.
 - [ ] Testado visualmente (ou revisado) em light e dark, já que os tokens mudam de valor entre os dois.
 - [ ] Espaçamento e tipografia usam a escala padrão do Tailwind (`p-4`, `text-sm`, `gap-2`), sem valores arbitrários (`p-[13px]`) exceto necessidade comprovada.

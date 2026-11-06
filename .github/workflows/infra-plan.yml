@@ -1,0 +1,125 @@
+name: Infra (terraform plan)
+
+# Mostra no resumo do PR o que o deploy-aws.yml aplicaria. NUNCA roda apply.
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "infra/**"
+      - "apps/api/**"
+      - ".github/workflows/infra-plan.yml"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: infra-plan-${{ github.ref }}
+  cancel-in-progress: true
+
+# Usa a role somente leitura `crm-pac-github-plan` (AWS_PLAN_ROLE_ARN), nunca a de deploy.
+# Nada de `environment:` nos jobs: a trust policy dela (infra/bootstrap) só aceita o `sub`
+# `repo:<owner>/<repo>:pull_request`; com environment o `sub` mudaria.
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_VAR_regiao: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_VAR_web_origins: ${{ vars.WEB_ORIGINS_JSON }}
+  TF_VAR_uazapi_server_url: ${{ vars.UAZAPI_SERVER_URL }}
+  TF_VAR_uazapi_admin_token: ${{ secrets.TF_VAR_UAZAPI_ADMIN_TOKEN }}
+  TF_VAR_new_relic_license_key: ${{ secrets.TF_VAR_NEW_RELIC_LICENSE_KEY }}
+  TF_VAR_budget_email: ${{ secrets.TF_VAR_BUDGET_EMAIL }}
+
+jobs:
+  # Sem AWS_PLAN_ROLE_ARN (AWS ainda não configurada) ou em PR de fork (sem OIDC/segredos),
+  # o plan é pulado e o check fica verde. `vars` é aceito no `if` de job; `secrets` não.
+  pulado:
+    name: terraform plan (pulado)
+    if: ${{ vars.AWS_PLAN_ROLE_ARN == '' || github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          {
+            echo "### terraform plan pulado"
+            echo
+            echo "Variável de repositório \`AWS_PLAN_ROLE_ARN\` ausente ou PR vindo de fork."
+            echo "Configure a AWS conforme docs/deploy/aws-terraform.md para habilitar o plan."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  plan:
+    name: terraform plan
+    if: ${{ vars.AWS_PLAN_ROLE_ARN != '' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: infra-plan-${{ github.run_id }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.x
+          terraform_wrapper: false
+
+      - name: terraform init
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          -backend-config="region=${{ env.AWS_REGION }}"
+
+      # O plan usa a imagem que está rodando hoje: assim a única diferença na task definition é o
+      # que o PR muda na infra, não a troca de imagem (que só o deploy faz). Sem serviço: "inicial".
+      - name: tag da imagem em execução
+        id: tag
+        run: |
+          tag=""
+          cluster="$(terraform output -raw ecs_cluster 2>/dev/null || true)"
+          servico="$(terraform output -raw ecs_service 2>/dev/null || true)"
+          if [ -n "$cluster" ] && [ -n "$servico" ]; then
+            taskdef="$(aws ecs describe-services --cluster "$cluster" --services "$servico" \
+              --query 'services[0].taskDefinition' --output text 2>/dev/null || true)"
+            if [ -n "$taskdef" ] && [ "$taskdef" != "None" ]; then
+              imagem="$(aws ecs describe-task-definition --task-definition "$taskdef" \
+                --query "taskDefinition.containerDefinitions[?name=='api'].image | [0]" --output text)"
+              tag="${imagem##*:}"
+            fi
+          fi
+          echo "tag=${tag:-inicial}" >> "$GITHUB_OUTPUT"
+          echo "image_tag usada no plan: ${tag:-inicial}"
+
+      # -lock=false: a role de plan só lê o bucket do estado (não grava o .tflock).
+      - name: terraform plan
+        run: |
+          set -o pipefail
+          terraform plan -no-color -lock=false -var "image_tag=${{ steps.tag.outputs.tag }}" -out=tfplan \
+            | tee plan.txt
+
+      - name: resumo do plan
+        if: ${{ always() && steps.tag.outcome == 'success' }}
+        run: |
+          {
+            echo "### terraform plan (image_tag=${{ steps.tag.outputs.tag }})"
+            echo
+            if [ -f plan.txt ]; then
+              grep -E '^(Plan:|No changes\.|Error:)' plan.txt || true
+              echo
+              echo "<details><summary>saída completa</summary>"
+              echo
+              echo '```'
+              # O resumo do job aceita até 1 MiB; corta planos muito grandes.
+              head -c 60000 plan.txt
+              echo
+              echo '```'
+              echo "</details>"
+            else
+              echo "Plan não gerou saída."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

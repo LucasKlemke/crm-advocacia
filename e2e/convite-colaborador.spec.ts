@@ -7,7 +7,7 @@ test.describe("Convite de colaborador", () => {
     page: import("@playwright/test").Page,
     nome: string,
     email: string,
-    nomeEscritorio: string
+    nomeEscritorio: string,
   ) {
     await page.goto("/cadastro");
     await page.getByLabel("Seu nome").fill(nome);
@@ -22,13 +22,21 @@ test.describe("Convite de colaborador", () => {
     await expect(page).toHaveURL("/");
   }
 
-  test("convida um e-mail sem cadastro prévio e ele aparece em pendentes", async ({ page }) => {
+  test("convida um e-mail sem cadastro prévio e ele aparece em pendentes", async ({
+    page,
+  }) => {
     const ownerEmail = `e2e-owner-${Date.now()}@teste.com`;
     const convidadoEmail = `e2e-convidado-${Date.now()}@teste.com`;
 
-    await cadastrarECriarEscritorio(page, "Advogada Titular", ownerEmail, "Escritório Convite E2E");
+    await cadastrarECriarEscritorio(
+      page,
+      "Advogada Titular",
+      ownerEmail,
+      "Escritório Convite E2E",
+    );
 
     await page.goto("/configuracoes/membros");
+    await page.getByRole("button", { name: "Novo Membro" }).click();
     await page.getByLabel("E-mail do colaborador").fill(convidadoEmail);
     await page.getByRole("button", { name: /^convidar$/i }).click();
 
@@ -45,10 +53,11 @@ test.describe("Convite de colaborador", () => {
       page,
       "Advogada Titular Dois",
       ownerEmail,
-      "Escritório Convite E2E 2"
+      "Escritório Convite E2E 2",
     );
 
     await page.goto("/configuracoes/membros");
+    await page.getByRole("button", { name: "Novo Membro" }).click();
     await page.getByLabel("E-mail do colaborador").fill(convidadoEmail);
     await page.getByRole("button", { name: /^convidar$/i }).click();
     await expect(page.getByText(convidadoEmail)).toBeVisible();
@@ -65,7 +74,9 @@ test.describe("Convite de colaborador", () => {
     await expect(page).toHaveURL("/");
   });
 
-  test("colaborador padrao não vê ações de gestão de usuários", async ({ page }) => {
+  test("colaborador padrao não vê ações de gestão de usuários", async ({
+    page,
+  }) => {
     const ownerEmail = `e2e-owner3-${Date.now()}@teste.com`;
     const colaboradorEmail = `e2e-colaborador3-${Date.now()}@teste.com`;
 
@@ -73,10 +84,11 @@ test.describe("Convite de colaborador", () => {
       page,
       "Advogada Titular Três",
       ownerEmail,
-      "Escritório Convite E2E 3"
+      "Escritório Convite E2E 3",
     );
 
     await page.goto("/configuracoes/membros");
+    await page.getByRole("button", { name: "Novo Membro" }).click();
     await page.getByLabel("E-mail do colaborador").fill(colaboradorEmail);
     await page.getByRole("button", { name: /^convidar$/i }).click();
     await expect(page.getByText(colaboradorEmail)).toBeVisible();
@@ -91,7 +103,15 @@ test.describe("Convite de colaborador", () => {
     await expect(page).toHaveURL("/");
 
     await page.goto("/configuracoes/membros");
-    await expect(page.getByLabel("E-mail do colaborador")).not.toBeVisible();
-    await expect(page.getByRole("button", { name: /remover/i })).not.toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Novo Membro" }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /remover/i }),
+    ).not.toBeVisible();
+
+    // Papel padrao não monta o formulário de nova campanha (ação de gestão).
+    await page.goto("/campanhas/nova");
+    await expect(page).toHaveURL("/campanhas");
   });
 });

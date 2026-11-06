@@ -9,32 +9,35 @@
 
 ## Arquitetura
 
-- [arquitetura/visao-geral.md](arquitetura/visao-geral.md) — C4 (contexto/containers/componentes), camadas do backend (Auth Middleware → Tenant Context → Controller → Service → Repository), módulos funcionais, decisões de stack e isolamento de tenant. Consulte antes de decidir onde uma nova peça de lógica deve morar.
+- [arquitetura/visao-geral.md](arquitetura/visao-geral.md) — C4 (contexto/containers/componentes), camadas do backend (TenantGuard → Tenant Context → Controller → Service → Repository), módulos funcionais, decisões de stack e isolamento de tenant. Consulte antes de decidir onde uma nova peça de lógica deve morar.
+- [arquitetura/tempo-real.md](arquitetura/tempo-real.md) — progresso de campanhas em tempo real: webhook assinado da UAZAPI → agendador (debounce + polling) → sincronização pelo sistema → barramento por escritório → WebSocket `/api/ws` com ticket; contrato de eventos e códigos de fechamento, configuração por ambiente e limites (1 task, memória; como trocar por `LISTEN/NOTIFY`).
+- [arquitetura/migracao-nestjs.md](arquitetura/migracao-nestjs.md) — migração do Next.js para React + NestJS (concluída): estratégia strangler, fases, autenticação própria (cookie `crm_sessao`), convenções da API e decisões da consolidação (alias `@dominio`, tsup, Vercel Services).
 
 ## Banco de dados
 
 - [database/docker-setup.md](database/docker-setup.md) — como subir o PostgreSQL local via Docker Compose, variáveis de ambiente, comandos do dia a dia.
 - [database/schema.md](database/schema.md) — as 22 tabelas do modelo de dados multi-tenant, relacionamentos e notas de implementação Prisma.
-- [database/migrations-prisma.md](database/migrations-prisma.md) — fluxo obrigatório de migrations (`migrate dev`/`migrate deploy`), como reverter, nomenclatura, seeds, auditoria do histórico de schema. Consulte sempre que for alterar `schema.prisma`.
+- [database/migrations-prisma.md](database/migrations-prisma.md) — fluxo obrigatório de migrations (`migrate dev`/`migrate deploy`), como reverter, nomenclatura, seeds, auditoria do histórico de schema, onde cada deploy migra e a regra expand/contract (a migration roda antes do rollout, com a versão anterior ainda no ar). Consulte sempre que for alterar `schema.prisma`.
 
-## App (Next.js)
+## App (monorepo: API Nest, web React, compartilhado)
 
-- [app/estrutura-codigo.md](app/estrutura-codigo.md) — layout de pastas, convenção de nomes por entidade/camada, uso do TanStack Query, regra de fronteira UI → API → Service → Repository.
+- [app/estrutura-codigo.md](app/estrutura-codigo.md) — layout de pastas do monorepo (`apps/api`, `apps/web`, `packages/compartilhado`), aliases, convenção de nomes por entidade/camada, uso do TanStack Query, regra de fronteira entre pacotes (UI → API → Service → Repository).
 - [app/design-system.md](app/design-system.md) — Tailwind + shadcn/ui, regra de sempre usar tokens de tema (nunca cor literal), onde configurar tokens, instalação de componentes via CLI.
 - [app/modularizacao.md](app/modularizacao.md) — hierarquia de componentes, quando extrair componente/hook/função reutilizável, tipagem compartilhada.
 
 ## Testes
 
-- [testes/estrategia-tdd.md](testes/estrategia-tdd.md) — ferramentas (Jest + Testing Library + Playwright), processo TDD obrigatório, metas de cobertura (piso institucional 75% backend / 25% frontend, cobrado na prova de autoria, mais metas internas por camada que garantem esse piso) com gate de CI, fluxos críticos cobertos por E2E.
+- [testes/estrategia-tdd.md](testes/estrategia-tdd.md) — ferramentas (Jest + `@swc/jest`, supertest, Testing Library e Playwright contra o build de produção), processo TDD obrigatório, metas de cobertura (piso institucional 75% backend / 25% frontend, cobrado na prova de autoria, mais metas internas por camada que garantem esse piso) com gate de CI, fluxos críticos cobertos por E2E.
 
 ## Qualidade
 
-- [qualidade/analise-estatica.md](qualidade/analise-estatica.md) — SonarCloud: o que é verificado (bugs, code smells, security hotspots, duplicação, cobertura importada do Jest), configuração, Quality Gate como check obrigatório de PR.
-- [qualidade/observabilidade.md](qualidade/observabilidade.md) — New Relic: o que é monitorado na app e na Lambda de notificações, logs estruturados, alertas e dashboards.
+- [qualidade/analise-estatica.md](qualidade/analise-estatica.md) — SonarCloud: o que é verificado (bugs, code smells, security hotspots, duplicação, cobertura importada do Jest), configuração, setup do SonarCloud, proteção de branch e Quality Gate como check obrigatório de PR.
+- [qualidade/observabilidade.md](qualidade/observabilidade.md) — New Relic: o que é monitorado na API e na Lambda de notificações, logs estruturados, alertas e dashboards.
 
 ## Deploy
 
-- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica em RDS+S3, produção real em Supabase), por que dois deploys Vercel a partir do mesmo repositório, o S3Client compatível com múltiplos provedores, variáveis de ambiente por Project, pipeline de deploy, rollback.
+- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica na AWS com a SPA na Vercel, produção real em Supabase com Vercel Services), por que dois deploys a partir do mesmo repositório, topologia de cada um, passo a passo do Project Supabase (variáveis, `TEMPO_REAL_HABILITADO=false`, spike de go/no-go, plano B), o S3Client compatível com múltiplos provedores, pipeline de deploy, rollback.
+- [deploy/aws-terraform.md](deploy/aws-terraform.md) — passo a passo do deploy acadêmico na AWS: checklist do que só o dono da conta faz, bootstrap (estado remoto + OIDC), variáveis/secrets do GitHub, primeiro deploy pelo `deploy-aws.yml`, Project Vercel `pac` (`apps/web/vercel.json`, `VITE_WS_URL`), webhooks das instâncias, migração opcional de dados, custos estimados, `terraform destroy`. Código em `infra/` (READMEs de `infra/bootstrap` e `infra/terraform`).
 
 ## Git
 
@@ -48,5 +51,5 @@
 3. Toda tarefa que **muda o schema** → `database/schema.md` (o que muda) + `database/migrations-prisma.md` (como aplicar).
 4. Toda tarefa de **UI** → `app/design-system.md` (tokens) + `app/modularizacao.md` (reuso).
 5. Toda tarefa de **código de produção** → não é considerada concluída sem o teste correspondente (`testes/estrategia-tdd.md`) e um commit no padrão (`git/commits-e-branches.md`).
-6. Toda tarefa de **deploy ou infraestrutura** → `deploy/deploy.md`; mudanças que afetam monitoramento → também `qualidade/observabilidade.md`.
+6. Toda tarefa de **deploy ou infraestrutura** → `deploy/deploy.md` (e `deploy/aws-terraform.md` + `infra/` para a AWS); mudanças que afetam monitoramento → também `qualidade/observabilidade.md`.
 7. Antes de cada orientação/entrega → conferir se a Wiki do GitHub precisa de atualização (`git/wiki-github.md`).

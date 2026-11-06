@@ -14,30 +14,31 @@ Sistemas externos:
 
 | Container | Tecnologia | Responsabilidade |
 |---|---|---|
-| Aplicação Web | Next.js / Tailwind CSS | Interface do usuário, incluindo telas de cadastro de escritório e gestão de usuários |
-| API Routes | Next.js (Route Handlers) | Backend embutido: HTTP → contexto de tenant → regras de negócio → Prisma |
+| Aplicação Web (SPA) | React 19 + Vite + React Router v7, Tailwind CSS (`apps/web`) | Interface do usuário: telas de cadastro de escritório, gestão de usuários, clientes, kanban, agenda, campanhas |
+| API | NestJS 12 (`apps/api`) | Backend HTTP: sessão → contexto de tenant → regras de negócio → Prisma |
+| Código compartilhado | `@crm/compartilhado` | DTOs, schemas Zod e enums usados pelos dois lados da fronteira HTTP |
 | Agendador de Notificações | AWS Lambda + EventBridge Scheduler | Consulta prazos de todos os escritórios e dispara WhatsApp/e-mail nos intervalos definidos, isolando por tenant |
-| Banco de Dados | PostgreSQL (Amazon RDS) | Persistência relacional multi-tenant (isolamento lógico por `escritorio_id`) |
-| Armazenamento de Arquivos | Amazon S3 | Documentos anexados a casos, particionados por escritório (prefixo `escritorio_id/` no path do objeto) |
+| Banco de Dados | PostgreSQL (Amazon RDS ou Supabase) | Persistência relacional multi-tenant (isolamento lógico por `escritorio_id`) |
+| Armazenamento de Arquivos | Amazon S3 ou Supabase Storage (S3-compatível) | Documentos anexados a casos, particionados por escritório (prefixo `escritorio_id/` no path do objeto) |
 
-Fluxo: Web → API Routes (REST/JSON) → Prisma (TCP) → Postgres; API Routes → AWS SDK → S3; Lambda → consulta Postgres (todos os tenants) → aciona Uazapi/SMTP por tenant.
+Fluxo: Browser → mesma origem (Vercel; proxy do Vite em dev) → `/api/*` → API Nest (REST/JSON) → Prisma (TCP) → Postgres; API → AWS SDK → S3; Lambda → consulta Postgres (todos os tenants) → aciona Uazapi/SMTP por tenant.
 
-## Componentes internos das API Routes
+## Componentes internos da API
 
-Pipeline de toda requisição autenticada: **Auth Middleware → Tenant Context → Controller → Service → Repository** (persistência) ou **Service → Cliente Externo** (integração).
+Pipeline de toda requisição autenticada: **TenantGuard → Tenant Context → Controller → Service → Repository** (persistência) ou **Service → Cliente Externo** (integração).
 
 | Componente | Tecnologia | Papel |
 |---|---|---|
-| Auth Middleware | NextAuth.js | Valida JWT; extrai `usuarioId`, `escritorioId` e `role` da sessão |
-| Tenant Context | Middleware/helper interno | Injeta `escritorioId` em todo Service/Repository chamado na requisição; nenhuma query roda sem esse contexto |
-| Controllers | Route Handlers | Recebem HTTP, delegam para Services. Novos: `EscritorioController` (cadastro/dados do tenant), `UsuarioController` (convite, gestão de membros, perfil) |
+| Auth (TenantGuard) | Nest guard + `jose` | Valida o cookie `crm_sessao` (JWT HS256); extrai `usuarioId` e `escritorioId`; o `role` é relido do banco a cada requisição |
+| Tenant Context | `@Tenant()` + `TenantContext` | Injeta o contexto resolvido pelo guard em todo Service chamado na requisição; nenhuma query roda sem ele |
+| Controllers | Controllers NestJS | Recebem HTTP, validam com `ValidacaoZodPipe` (schemas compartilhados), delegam para Services e traduzem erros com `ErrosHttpFilter`. Novos: `EscritorioController` (cadastro/dados do tenant), `UsuarioController` (convite, gestão de membros, perfil) |
 | Services | TypeScript | Regras de negócio, incluindo validação de isolamento de tenant e controle de papéis (`owner` > `admin` > `padrao`, ver `permissoes.ts`) |
 | Repositories | Prisma ORM | Único ponto de acesso ao banco; **todo método aceita/exige `escritorioId`** e filtra por ele |
-| Clientes Externos | HTTP Clients | `UazapiClient` (WhatsApp, credenciais por escritório), `S3Client` (documentos), `EmailClient` (SMTP) |
+| Clientes Externos | HTTP Clients | `UazapiClient` (WhatsApp, credenciais por escritório), `S3Client` (documentos); `EmailClient` (SMTP) previsto, ainda não implementado |
 
 ### Isolamento de tenant (defesa em profundidade)
 
-1. **Nível de sessão**: JWT carrega `escritorioId`; toda rota autenticada resolve o tenant a partir da sessão, nunca de um parâmetro vindo do cliente.
+1. **Nível de sessão**: o cookie de sessão (JWT assinado pela API) carrega `escritorioId`, e o papel é sempre relido do banco; toda rota autenticada resolve o tenant a partir da sessão, nunca de um parâmetro vindo do cliente.
 2. **Nível de Service**: cada Service recebe o `escritorioId` do contexto e o repassa ao Repository — nunca confia em `escritorio_id` enviado no corpo da requisição.
 3. **Nível de Repository/banco**: toda query Prisma inclui `where: { escritorio_id }` (diretamente ou via relação); índices compostos com `escritorio_id` garantem performance mesmo com muitos tenants.
 4. **Auditoria**: tentativas de acesso a recurso de outro `escritorio_id` são logadas e retornam 404 (não 403, para não confirmar existência do recurso a um tenant não autorizado).
@@ -47,7 +48,7 @@ Pipeline de toda requisição autenticada: **Auth Middleware → Tenant Context 
 Cada módulo segue o padrão de camadas acima, com regras de negócio concentradas no Service e acesso a dados isolado no Repository.
 
 ### Autenticação e Tenants (novo/expandido)
-- `AuthMiddleware` (valida JWT em rotas protegidas), `AuthService`/`authorize.ts` (login, resolve o escritório ativo inicial — membership mais antiga).
+- `TenantGuard`/`UsuarioGuard` (validam o cookie `crm_sessao` em rotas protegidas), módulo `sessao` (login, logout, escritório ativo, cadastro) e `authorize.ts` (login, resolve o escritório ativo inicial — membership mais antiga).
 - `EscritorioController` / `EscritorioService` — cria escritório (onboarding ou "criar outro" pelo switcher), lê/atualiza dados do escritório ativo.
 - `UsuarioController` / `UsuarioService` — cadastro de usuário (consumindo convites pendentes automaticamente), edição de perfil, troca de senha.
 - `MembroController` / `MembroService` — lista escritórios do usuário, troca o escritório ativo da sessão (sempre revalidando a membership no banco), gestão de membros (papel, remoção) respeitando a hierarquia e a proteção do último `owner`.
@@ -88,13 +89,14 @@ Cada módulo segue o padrão de camadas acima, com regras de negócio concentrad
 
 | Decisão | Por quê |
 |---|---|
-| Next.js (App Router) para front + back | Um único projeto, reduz complexidade de infra; SSR/SSG/Client Components dão performance no dashboard e kanban |
+| React + Vite (SPA) no front | Telas são todas autenticadas (sem necessidade de SEO/SSR); build estático simples e rápido; TanStack Query cuida de cache e sincronização |
+| NestJS como backend separado | Camadas explícitas (guard → controller → service), injeção por token testável com `overrideProvider`, e o domínio fica independente do framework web — a migração do Next preservou services/repositories sem reescrever regra de negócio ([migracao-nestjs.md](migracao-nestjs.md)) |
+| Sessão própria em cookie httpOnly | JWT HS256 emitido pela API (`jose`), sem dependência de biblioteca de auth de terceiros; `role` sempre relido do banco para refletir rebaixamento/remoção na hora (RN19) |
+| Monorepo com `@crm/compartilhado` | Os mesmos schemas Zod validam o formulário e a requisição; DTOs tipam os dois lados sem o web depender do Prisma |
+| Vercel Services, dois Projects | Web e API no mesmo deployment e na mesma origem (sem CORS, rollback atômico); um Project usa RDS+S3 (avaliação acadêmica), outro Supabase (produção real) — mesma `main`, env vars diferentes, ver [../deploy/deploy.md](../deploy/deploy.md) |
 | TanStack Query | Cache automático e sincronização em background do kanban/dashboard sem reload manual |
-| Next.js API Routes como backend | Evita servidor separado; adequado ao volume de uso esperado por tenant |
-| NextAuth.js com sessão multi-tenant | JWT carrega `escritorioId` + `role`, permitindo resolver o contexto de tenant sem consulta extra ao banco a cada requisição |
 | Uazapi | Envio via WhatsApp sem exigir aprovação de conta business oficial; escopo é só envio (não bidirecional); cada escritório conecta seu próprio número |
 | PostgreSQL + Prisma | Modelo fortemente relacional (escritório → cliente → caso → prazo/anotação/documento); Prisma dá tipagem, migrations versionadas e evita SQL Injection; isolamento lógico multi-tenant via `escritorio_id` + índices compostos |
-| Vercel, dois Projects | Deploy gerenciado de Next.js com SSL automático; um Project usa RDS+S3 (avaliação acadêmica, sem Supabase), outro usa Supabase (produção real) — mesma `main`, variáveis de ambiente diferentes, ver [../deploy/deploy.md](../deploy/deploy.md) |
 | S3 + URL assinada | Armazenamento de documentos com acesso restrito ao usuário autenticado do escritório dono do arquivo; client S3 aceita endpoint customizável para funcionar também contra Supabase Storage |
 | Lambda + EventBridge | Notificações de prazo rodam em background para todos os escritórios, sem depender de nenhuma UI aberta (RN14) |
 

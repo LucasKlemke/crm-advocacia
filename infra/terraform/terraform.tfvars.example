@@ -1,0 +1,23 @@
+# Copie para terraform.tfvars (não versionado) para rodar localmente.
+# No GitHub Actions os sensíveis vêm de secrets TF_VAR_* e image_tag de -var image_tag=<sha>.
+
+regiao  = "us-east-1"
+prefixo = "crm-pac"
+
+image_tag = "COLOQUE_O_SHA_DA_IMAGEM"
+
+web_origins = ["https://crm-advocacia-pac.vercel.app"]
+
+uazapi_server_url  = "https://SEU_SUBDOMINIO.uazapi.com"
+uazapi_admin_token = "COLOQUE_O_ADMIN_TOKEN"
+
+# Vazio desliga o New Relic.
+new_relic_license_key = ""
+new_relic_app_name    = "crm-advocacia-pac"
+
+budget_email     = "voce@exemplo.com"
+budget_limit_usd = 30
+
+db_instance_class = "db.t4g.micro"
+task_cpu          = 512
+task_memory       = 1024

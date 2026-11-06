@@ -1,101 +1,111 @@
-# Estrutura de Código — Next.js
+# Estrutura de Código — Monorepo (API NestJS + Web React + Compartilhado)
 
-Mapeia as camadas definidas em [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md) (Auth Middleware → Tenant Context → Controller → Service → Repository) para pastas e arquivos concretos do projeto Next.js (App Router). Ver também [design-system.md](design-system.md) e [modularizacao.md](modularizacao.md) para as regras de UI.
+Mapeia as camadas definidas em [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md) (TenantGuard → Tenant Context → Controller → Service → Repository) para pacotes, pastas e arquivos concretos. Ver também [design-system.md](design-system.md) e [modularizacao.md](modularizacao.md) para as regras de UI, e [../arquitetura/migracao-nestjs.md](../arquitetura/migracao-nestjs.md) para o histórico da migração a partir do Next.js.
 
-## Layout de pastas
+## Pacotes
 
 ```
-src/
-├── app/                          # App Router — páginas e route handlers
-│   ├── (auth)/                   # rotas públicas: login, cadastro (nome/e-mail/senha)
-│   │   ├── login/page.tsx
-│   │   └── cadastro/page.tsx
-│   ├── (onboarding)/
-│   │   └── onboarding/page.tsx   # cria o primeiro escritório (ou mais um, pelo switcher)
-│   ├── (dashboard)/              # rotas autenticadas, com escritório ativo obrigatório
-│   │   ├── layout.tsx            # shell: SidebarProvider + AppSidebar + EscritorioSwitcher
-│   │   ├── page.tsx
-│   │   ├── clientes/page.tsx
-│   │   ├── casos/page.tsx          # kanban
-│   │   ├── prazos/page.tsx
-│   │   ├── mensagens/page.tsx
-│   │   ├── perfil/page.tsx       # dados do próprio usuário + senha
-│   │   └── configuracoes/
-│   │       ├── layout.tsx        # nav lateral própria (sem aninhar outro SidebarProvider)
-│   │       ├── page.tsx          # redireciona para /configuracoes/escritorio
-│   │       ├── escritorio/page.tsx
-│   │       └── usuarios/page.tsx # membros + convites
-│   └── api/                      # Controllers — Route Handlers
-│       ├── cadastro/route.ts
-│       ├── escritorios/route.ts
-│       ├── escritorios/atual/route.ts
-│       ├── sessao/escritorio-ativo/route.ts
-│       ├── membros/route.ts
-│       ├── membros/[id]/route.ts
-│       ├── convites/route.ts
-│       ├── convites/[id]/route.ts
-│       ├── perfil/route.ts
-│       ├── perfil/senha/route.ts
-│       └── ...
-├── services/                     # regras de negócio (RN01–RN19)
-│   ├── usuario.service.ts        # cadastro, perfil, senha
-│   ├── escritorio.service.ts     # criar/ler/atualizar o tenant
-│   ├── membro.service.ts         # troca de escritório ativo, gestão de membros
-│   ├── convite.service.ts        # convidar, listar pendentes, cancelar
-│   └── ...
-├── repositories/                 # único ponto de acesso ao Prisma
-│   ├── usuario.repository.ts
-│   ├── escritorio.repository.ts
-│   ├── membro.repository.ts
-│   ├── convite.repository.ts
-│   └── ...
-├── lib/
-│   ├── auth/
-│   │   ├── config.ts             # NextAuth.js — providers, callbacks jwt/session
-│   │   ├── authorize.ts          # credenciais → resolve escritório ativo inicial
-│   │   ├── escritorio-ativo.ts   # resolverEscritorioAtivo (sempre valida no banco)
-│   │   ├── permissoes.ts         # hierarquia de papéis, puro/sem I/O
-│   │   └── tenant-context.ts     # getTenantContext() — RN19
-│   ├── external/                 # UazapiClient, S3Client, EmailClient
-│   ├── prisma.ts                 # instância única do PrismaClient
-│   └── utils/                    # funções puras compartilhadas (ver modularizacao.md)
-├── hooks/                        # hooks de TanStack Query (client-side)
-├── components/
-│   ├── ui/                       # componentes shadcn/ui (gerados via CLI)
-│   ├── shell/                    # AppSidebar, NavUsuario, EscritorioSwitcher
-│   ├── perfil/                   # PerfilForm, SenhaForm
-│   ├── configuracoes/            # EscritorioForm, MembrosTable, ConviteForm, ConvitesTable
-│   └── shared/                   # composições reutilizáveis entre módulos
-└── types/                        # tipos compartilhados front/back
+apps/
+├── api/                          # @crm/api — NestJS 12 (ESM)
+│   ├── prisma/                   # schema.prisma + migrations/ (histórico auditável)
+│   ├── prisma.config.ts
+│   ├── tsup.config.ts            # build de produção → dist/main.mjs + dist/instrumentacao.mjs
+│   ├── jest.config.cjs / jest.setup.ts
+│   ├── scripts/migrar-no-deploy.mjs
+│   ├── test/                     # utilitários de teste (criarAppDeTeste, sessão simulada)
+│   └── src/
+│       ├── main.ts               # bootstrap: carrega .env local → Nest → listen
+│       ├── instrumentacao.ts     # agente New Relic; carregado por `--import`, não importado pelo main
+│       ├── criar-app.ts          # prefixo /api, parsers (só JSON e texto do webhook), filtro global — usado também nos testes
+│       ├── app.module.ts
+│       ├── comum/                # TenantGuard/UsuarioGuard, ErrosHttpFilter, ValidacaoZodPipe, cookie de sessão
+│       ├── config/               # carregarEnvLocal
+│       ├── <modulo>/             # um por grupo de rota: clientes, casos, status, campanhas, sessao, ...
+│       │   ├── <modulo>.module.ts
+│       │   ├── <modulo>.controller.ts (+ .test.ts com supertest)
+│       │   └── tokens.ts         # tokens de injeção dos services do domínio
+│       └── dominio/              # regras de negócio — independentes do Nest
+│           ├── services/         # <entidade>.service.ts (+ .test.ts, repository mockado)
+│           ├── repositories/     # <entidade>.repository.ts (+ .test.ts contra Postgres real)
+│           └── lib/
+│               ├── api/          # tradutores de erro, serializadores, payloads e schemas Zod só da API
+│               ├── auth/         # sessão (jose), escritório ativo, resolver de tenant
+│               ├── external/     # UazapiClient, S3Client
+│               ├── documentos/   # zip, URLs públicas
+│               ├── utils/        # utilitários só do back (diff, período de evento)
+│               └── prisma.ts     # instância única do PrismaClient
+└── web/                          # @crm/web — React 19 + Vite + React Router v7
+    └── src/
+        ├── main.tsx              # monta <App /> (StrictMode)
+        ├── app.tsx               # providers + router
+        ├── rotas.tsx             # árvore de rotas (públicas, onboarding, dashboard, configurações)
+        ├── compat/               # camada de compatibilidade herdada do Next (next-navigation, next-link, next-image)
+        ├── paginas/              # uma tela por arquivo (clientes.tsx, casos.tsx, ...) + subpastas (campanhas/, configuracoes/, layouts/, `_components/` da tela)
+        ├── components/
+        │   ├── ui/               # shadcn/ui (gerados via CLI)
+        │   ├── shell/            # app-sidebar, nav-usuario, escritorio-switcher
+        │   ├── shared/           # componentes reutilizáveis entre telas
+        │   ├── providers/        # QueryProvider
+        │   └── <modulo>/         # componentes de feature (clientes, casos, dashboard, configuracoes, perfil, auth)
+        ├── hooks/                # use-<entidade>.ts — TanStack Query
+        └── lib/
+            ├── api-client.ts     # apiFetch + ApiError
+            ├── sessao.ts         # entrar/sair/sessão no browser
+            ├── query/            # chaves.ts (query keys), opcoes-padrao.ts, query-client-raiz.ts
+            ├── utils/            # utilitários só do front (datas, agenda, CSV, formatação)
+            ├── utils.ts          # cn()
+            └── test-utils*.tsx / test-paginas.tsx   # renderComQuery, renderComRotas, renderPagina
+packages/
+└── compartilhado/                # @crm/compartilhado — só TypeScript-fonte, sem build
+    └── src/
+        ├── enums.ts              # espelho dos enums do Prisma usados na fronteira HTTP
+        ├── tipos/                # DTOs trafegados entre api e web
+        ├── schemas/              # schemas Zod (formulário no web, pipe na API)
+        ├── utils/                # CPF, telefone, e-mail, cores/ícones de status, campanhas
+        └── auth/permissoes.ts    # hierarquia de papéis (owner > admin > padrao)
+e2e/                              # Playwright — um spec por fluxo crítico
 ```
+
+## Imports e aliases
+
+| Onde | Alias | Aponta para |
+|---|---|---|
+| `apps/api` | `@dominio/*` | `apps/api/src/dominio/*` |
+| `apps/web` | `@/*` | `apps/web/src/*` |
+| `apps/api`, `apps/web` | `@crm/compartilhado/<caminho>` | `packages/compartilhado/src/<caminho>.ts` (via `exports`) |
+
+Dentro de `apps/api/src` (camada Nest) e dentro do compartilhado, imports entre arquivos do mesmo pacote são relativos. O alias `@dominio/` marca explicitamente o acesso da camada Nest ao domínio. Os aliases são resolvidos pelo `tsc`, pelo Jest (`moduleNameMapper`) e pelo tsup/Vite; o artefato de produção da API é um bundle e nunca resolve alias em runtime.
 
 ## Convenção de nomes por entidade
 
-Cada entidade do domínio (ver [../database/schema.md](../database/schema.md)) mantém nomes de arquivo espelhando a camada, para achar qualquer peça de um módulo sem precisar procurar:
-
 | Camada | Padrão de arquivo | Exemplo |
 |---|---|---|
-| Controller (Route Handler) | `app/api/<entidade>/route.ts` | `app/api/clientes/route.ts` |
-| Service | `services/<entidade>.service.ts` | `services/cliente.service.ts` |
-| Repository | `repositories/<entidade>.repository.ts` | `repositories/cliente.repository.ts` |
-| Hook de dados (client) | `hooks/use-<entidade>.ts` | `hooks/use-clientes.ts` |
-
-Um Controller nunca importa Repository diretamente — sempre passa pelo Service correspondente.
+| Controller (Nest) | `apps/api/src/<modulo>/<modulo>.controller.ts` | `apps/api/src/clientes/clientes.controller.ts` |
+| Service | `apps/api/src/dominio/services/<entidade>.service.ts` | `cliente.service.ts` |
+| Repository | `apps/api/src/dominio/repositories/<entidade>.repository.ts` | `cliente.repository.ts` |
+| Schema Zod (web + API) | `packages/compartilhado/src/schemas/<entidade>.ts` | `schemas/cliente.ts` |
+| Schema Zod só da API | `apps/api/src/dominio/lib/api/schemas-<entidade>.ts` | `schemas-escritorio.ts` |
+| DTO | `packages/compartilhado/src/tipos/<entidade>.ts` | `tipos/cliente.ts` |
+| Hook de dados (web) | `apps/web/src/hooks/use-<entidade>.ts` | `use-clientes.ts` |
 
 ## Tenant Context na prática
 
-Toda função de Service que lê/escreve dados recebe `escritorioId` como primeiro parâmetro (ou dentro de um objeto de contexto), nunca o busca sozinha de uma fonte não confiável. O helper em `lib/auth/` expõe uma função (ex. `getTenantContext()`) usada no início de cada Route Handler para extrair `usuarioId`, `escritorioId` e `role` da sessão do NextAuth.js antes de chamar o Service — ver a seção de isolamento de tenant em [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade).
+Toda rota de tenant declara `@UseGuards(TenantGuard)` e recebe `@Tenant() ctx: TenantContext`. O guard lê o cookie `crm_sessao`, valida o JWT e resolve a membership no banco (o `role` nunca vem do token). O controller repassa `ctx` ao Service como primeiro parâmetro, e o Service nunca busca o tenant sozinho nem confia em `escritorioId` vindo do corpo da requisição. Rotas que só exigem usuário autenticado (sem escritório) usam `UsuarioGuard` + `@UsuarioId()`. Ver [../arquitetura/visao-geral.md](../arquitetura/visao-geral.md#isolamento-de-tenant-defesa-em-profundidade).
 
-## TanStack Query no client
+Services e repositories do domínio são objetos (não classes) e entram no Nest por token: `{ provide: CLIENTE_SERVICE, useValue: clienteService }` + `@Inject(CLIENTE_SERVICE)`, com os tokens no `tokens.ts` do próprio módulo. Isso dispensa `emitDecoratorMetadata`, que o build com esbuild não gera, e permite `overrideProvider` nos testes.
 
-> **Estado atual:** implantado a partir do módulo de clientes. `components/providers/query-provider.tsx` monta o `QueryClient` (dentro de `useState`, para não vazar cache entre requisições) no layout do dashboard; `lib/api-client.ts` expõe `apiFetch` e o erro tipado `ApiError` (com `status` e `detalhes` por campo); `hooks/use-clientes.ts` e `hooks/use-comentarios.ts` são os primeiros hooks no padrão abaixo. Os módulos anteriores (membros, convites, perfil) ainda usam `fetch` inline + `router.refresh()` e devem migrar quando forem tocados.
->
-> Em testes de componente, use `renderComQuery` de `lib/test-utils.tsx`: ele envolve a árvore num `QueryClientProvider` próprio, com `retry: false`, para uma falha simulada aparecer de imediato.
+Erros de domínio viram HTTP no controller: `@UseFilters(new ErrosHttpFilter([tradutorDoModulo]))`; o filtro global de `criar-app.ts` cobre o restante (erro inesperado → 500 genérico).
 
-- Hooks de query/mutation ficam em `src/hooks/`, um arquivo por entidade (`use-clientes.ts`, `use-casos.ts`), nunca `useQuery`/`useMutation` chamado solto dentro de um componente de página.
-- Query keys seguem o padrão `[entidade, ...filtros]`, ex.: `['clientes', { busca, ativo }]`, `['casos', 'kanban']` — consistente entre todos os hooks para permitir invalidação previsível (`queryClient.invalidateQueries({ queryKey: ['clientes'] })` após uma mutation).
-- Um hook nunca chama `fetch` para uma URL montada manualmente em mais de um lugar — usar uma função cliente HTTP compartilhada (`lib/api-client.ts`) para centralizar base URL, headers e tratamento de erro.
+## TanStack Query no web
 
-## Regra de fronteira (não negociável)
+- Hooks de query/mutation ficam em `apps/web/src/hooks/`, um arquivo por entidade, nunca `useQuery`/`useMutation` solto numa página.
+- Query keys vêm de fábricas centralizadas em `lib/query/chaves.ts`, com uma raiz por entidade (`RAIZ_CASOS`, `RAIZ_DASHBOARD`...), de modo que uma escrita invalida tudo da entidade pela raiz.
+- Toda chamada HTTP passa por `apiFetch` (`lib/api-client.ts`), que centraliza base URL relativa (`/api`), credenciais e o erro tipado `ApiError`; sessão expirada (401) redireciona ao login.
+- Em testes de componente, `renderComQuery` (`lib/test-utils.tsx`) envolve a árvore num `QueryClientProvider` sem retry; para páginas com rotas, `renderComRotas` (`lib/test-utils-rotas.tsx`) e `renderPagina`/`mockApi` (`lib/test-paginas.tsx`).
 
-Um componente de página/UI **nunca** importa `services/*`, `repositories/*` ou `@prisma/client` diretamente. O único caminho de um componente até o banco é: componente → hook (`hooks/*`) → `fetch` para `app/api/*` → Controller → Service → Repository. Isso vale mesmo em Server Components — se precisar de dados no servidor, o Server Component chama o Service diretamente (sem HTTP), mas ainda assim nunca o Repository, para manter a regra de negócio centralizada em uma única camada.
+## Regra de fronteira (não negociável — verificada pelo ESLint)
+
+- `apps/web` nunca importa `@prisma/client` nem código da API. O único caminho de uma tela até o banco é: componente → hook → `apiFetch` → `/api/*` → Controller → Service → Repository.
+- `packages/compartilhado` não importa nenhum app, nem Prisma, Nest ou React. Só TypeScript puro + Zod.
+- Controllers nunca importam Repositories, sempre passam pelo Service.
+- Código novo usado pelos dois lados vai para o compartilhado. Usado por um lado só, fica no app dele.

@@ -1,0 +1,188 @@
+import { DndContext } from "@dnd-kit/core";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { CasoCard } from "./caso-card";
+import type { CasoDTO } from "@crm/compartilhado/tipos/caso";
+
+jest.mock("@/components/shared/avatar-iniciais", () => ({
+  AvatarIniciais: ({ nome, avatarUrl }: { nome: string; avatarUrl?: string | null }) => (
+    <div data-testid={`avatar-${nome}`} data-avatar-url={avatarUrl ?? ""} />
+  ),
+}));
+
+function casoFake(over: Partial<CasoDTO> = {}): CasoDTO {
+  return {
+    id: "caso-1",
+    escritorioId: "esc-1",
+    clienteId: "cli-1",
+    statusId: "status-1",
+    responsavelMembroId: null,
+    tipoProcessoId: "tipo-processo-1",
+    numeroProcesso: null,
+    descricao: null,
+    valor: "1500.00",
+    arquivado: false,
+    createdAt: "2026-08-01T12:00:00.000Z",
+    updatedAt: "2026-08-02T12:00:00.000Z",
+    cliente: {
+      id: "cli-1",
+      nome: "Maria Silva",
+      cpf: "52998224725",
+      email: null,
+      telefone: null,
+      endereco: null,
+      softDeletedAt: null,
+      createdAt: "2026-08-01T12:00:00.000Z",
+      updatedAt: "2026-08-01T12:00:00.000Z",
+    },
+    status: {
+      id: "status-1",
+      escritorioId: "esc-1",
+      tipoStatusId: "tipo-1",
+      nome: "Em análise",
+      icone: "Search",
+      cor: "#f59e0b",
+      descricao: null,
+      ordem: 1,
+      createdAt: "2026-08-01T12:00:00.000Z",
+      updatedAt: "2026-08-01T12:00:00.000Z",
+    },
+    tipoProcesso: {
+      id: "tipo-processo-1",
+      escritorioId: "esc-1",
+      nome: "Ação de cobrança",
+      icone: "Briefcase",
+      cor: "#6366f1",
+      descricao: null,
+      ordem: 1,
+      createdAt: "2026-08-01T12:00:00.000Z",
+      updatedAt: "2026-08-01T12:00:00.000Z",
+    },
+    responsavel: null,
+    ...over,
+  };
+}
+
+function renderCard(caso: CasoDTO, onClick = jest.fn()) {
+  return render(
+    <DndContext>
+      <CasoCard caso={caso} onClick={onClick} />
+    </DndContext>
+  );
+}
+
+describe("CasoCard", () => {
+  it("mostra título, cliente, valor e data de atualização", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByText("Ação de cobrança")).toBeInTheDocument();
+    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.getByText("R$ 1.500,00")).toBeInTheDocument();
+  });
+
+  it("mostra o CPF do cliente formatado", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByText("529.982.247-25")).toBeInTheDocument();
+  });
+
+  it("mostra o número do processo quando informado", () => {
+    renderCard(casoFake({ numeroProcesso: "0001234-56.2026.8.24.0001" }));
+
+    expect(screen.getByText("0001234-56.2026.8.24.0001")).toBeInTheDocument();
+  });
+
+  it("prefixa o número do processo com \"nº\"", () => {
+    renderCard(casoFake({ numeroProcesso: "0001234-56.2026.8.24.0001" }));
+
+    expect(screen.getByText("nº")).toBeInTheDocument();
+  });
+
+  it("não mostra o prefixo \"nº\" quando o processo não tem número", () => {
+    renderCard(casoFake());
+
+    expect(screen.queryByText("nº")).not.toBeInTheDocument();
+  });
+
+  it("mostra um ícone ao lado do nome do cliente", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByTestId("icone-cliente")).toBeInTheDocument();
+  });
+
+  it("mostra um aviso no lugar do número quando o processo não tem número", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByText("Sem número")).toBeInTheDocument();
+  });
+
+  it("mostra as contagens de documentos e comentários", () => {
+    renderCard(casoFake({ totalDocumentos: 3, totalComentarios: 5 }));
+
+    expect(screen.getByLabelText("3 documentos")).toBeInTheDocument();
+    expect(screen.getByLabelText("5 comentários")).toBeInTheDocument();
+  });
+
+  it("mostra zero nas contagens quando elas não vêm da API", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByLabelText("0 documentos")).toBeInTheDocument();
+    expect(screen.getByLabelText("0 comentários")).toBeInTheDocument();
+  });
+
+  it("mostra 'Sem responsável' quando não há responsável", () => {
+    renderCard(casoFake());
+
+    expect(screen.getByText("Sem responsável")).toBeInTheDocument();
+  });
+
+  it("mostra o avatar do responsável quando há um", () => {
+    renderCard(
+      casoFake({
+        responsavelMembroId: "membro-1",
+        responsavel: {
+          id: "membro-1",
+          usuario: { id: "user-1", nome: "Ana Advogada", email: "ana@ex.com", avatarUrl: null },
+        },
+      })
+    );
+
+    expect(screen.getByTestId("avatar-Ana Advogada")).toBeInTheDocument();
+  });
+
+  it("repassa o avatarUrl do responsável pro AvatarIniciais", () => {
+    renderCard(
+      casoFake({
+        responsavelMembroId: "membro-1",
+        responsavel: {
+          id: "membro-1",
+          usuario: {
+            id: "user-1",
+            nome: "Ana Advogada",
+            email: "ana@ex.com",
+            avatarUrl: "https://bucket.s3.amazonaws.com/signed-get",
+          },
+        },
+      })
+    );
+
+    expect(screen.getByTestId("avatar-Ana Advogada")).toHaveAttribute(
+      "data-avatar-url",
+      "https://bucket.s3.amazonaws.com/signed-get"
+    );
+  });
+
+  it("chama onClick ao clicar no card", () => {
+    const onClick = jest.fn();
+    renderCard(casoFake(), onClick);
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir processo Ação de cobrança" }));
+
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it("não mostra o valor quando ele é nulo", () => {
+    renderCard(casoFake({ valor: null }));
+
+    expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
+  });
+});

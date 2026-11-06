@@ -1,0 +1,9 @@
+/* Fontes do app: Inter (texto) e Geist Mono (código),
+   servidas pelo próprio bundle via @fontsource-variable — sem request ao Google.
+   Fora de @layer de propósito: o globals.css declara --font-sans dentro de @theme (camada
+   "theme" do Tailwind), e CSS sem camada vence qualquer camada — por isso
+   a declaração mora aqui, fora de qualquer camada. */
+:root {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, monospace;
+}

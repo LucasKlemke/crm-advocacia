@@ -91,7 +91,7 @@ Cadastro dos clientes do escritório.
 
 Não há coluna `ativo` nem `observacoes`: a desativação é o próprio `soft_deleted_at` (uma única fonte de verdade, reversível por "Restaurar"), e as anotações livres viraram um CRUD de comentários na tabela `comentario`.
 
-CPF, telefone e e-mail são validados no `ClienteService` antes de qualquer escrita (dígitos verificadores do CPF, celular brasileiro completo, forma do e-mail). As rotas repetem a checagem no schema zod para que o erro volte por campo em `detalhes` e o formulário destaque o input certo — os dois lados usam os mesmos validadores de `src/lib/utils/`.
+CPF, telefone e e-mail são validados no `ClienteService` antes de qualquer escrita (dígitos verificadores do CPF, celular brasileiro completo, forma do e-mail). As rotas repetem a checagem no schema zod para que o erro volte por campo em `detalhes` e o formulário destaque o input certo — os dois lados usam os mesmos validadores de `packages/compartilhado/src/utils/`.
 
 O CPF de um cliente desativado continua reservado pela constraint. O Service detecta esse caso e devolve um erro específico orientando restaurar o cadastro, em vez de um erro cru de constraint.
 
@@ -125,9 +125,10 @@ Tabela transversal que responde, para qualquer operação de escrita do sistema:
 |---|---|---|
 | id | uuid | PK |
 | escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
-| usuario_id | uuid | FK → `usuario`, `onDelete: Restrict` — **quem fez** |
+| usuario_id | uuid? | FK → `usuario`, `onDelete: Restrict` — **quem fez**; nulo só quando `origem = 'sistema'` (CHECK `log_autor_coerente` no banco: `origem = 'sistema' OR usuario_id IS NOT NULL`) |
+| origem | enum `origem_log` | `usuario` (padrão) ou `sistema` — escrita feita pelo próprio sistema (sem autor), via `logService.registrarSistema` |
 | acao | enum | `criar` \| `atualizar` \| `excluir` \| `restaurar` |
-| entidade | enum | `cliente` \| `comentario` \| `caso` \| `status` (cresce com o domínio) |
+| entidade | enum `EntidadeLog` | `cliente` \| `comentario` \| `caso` \| `status` \| `tipo_processo` \| `membro` \| `documento` \| `instancia_whatsapp` \| `campanha` \| `evento` (espelha `EntidadeLog` em `apps/api/prisma/schema.prisma`; cresce por migration a cada entidade nova) |
 | entidade_id | uuid | Id do registro afetado |
 | resumo | varchar(255) | Texto legível, ex.: "Cliente Maria Silva desativado" |
 | dados | jsonb | Diff dos campos alterados: `{ campo: { antes, depois } }` |

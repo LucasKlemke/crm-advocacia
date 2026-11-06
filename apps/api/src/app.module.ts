@@ -1,0 +1,45 @@
+import { Module } from "@nestjs/common";
+import { SaudeController } from "./saude/saude.controller";
+import { TenantModule } from "./comum/tenant/tenant.module";
+import { StatusModule } from "./status/status.module";
+import { TiposProcessoModule } from "./tipos-processo/tipos-processo.module";
+import { ClientesModule } from "./clientes/clientes.module";
+import { CasosModule } from "./casos/casos.module";
+import { ComentariosModule } from "./comentarios/comentarios.module";
+import { PerfilModule } from "./perfil/perfil.module";
+import { EscritoriosModule } from "./escritorios/escritorios.module";
+import { MembrosModule } from "./membros/membros.module";
+import { ConvitesModule } from "./convites/convites.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
+import { EventosModule } from "./eventos/eventos.module";
+import { DocumentosModule } from "./documentos/documentos.module";
+import { InstanciasModule } from "./instancias/instancias.module";
+import { CampanhasModule } from "./campanhas/campanhas.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
+import { TempoRealModule } from "./tempo-real/tempo-real.module";
+import { SessaoModule } from "./sessao/sessao.module";
+
+@Module({
+  imports: [
+    TenantModule,
+    StatusModule,
+    TiposProcessoModule,
+    ClientesModule,
+    CasosModule,
+    ComentariosModule,
+    PerfilModule,
+    EscritoriosModule,
+    MembrosModule,
+    ConvitesModule,
+    DashboardModule,
+    EventosModule,
+    DocumentosModule,
+    InstanciasModule,
+    CampanhasModule,
+    WebhooksModule,
+    TempoRealModule,
+    SessaoModule,
+  ],
+  controllers: [SaudeController],
+})
+export class AppModule {}
