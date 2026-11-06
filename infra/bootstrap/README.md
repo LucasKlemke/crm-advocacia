@@ -59,3 +59,16 @@ Alternativa de menor privilégio (recomendada em conta compartilhada ou de produ
    ECR, ELB, CloudFront, RDS, S3, Secrets Manager, CloudWatch Logs, Budgets, IAM restrito a
    `arn:aws:iam::<conta>:role/crm-pac-*` com `iam:PassRole` condicionado a `ecs-tasks.amazonaws.com`).
 3. Opcional: GitHub Environments com aprovação manual e `sub` = `repo:<owner>/<repo>:environment:<nome>`.
+
+
+## Conta que já tem o provider OIDC do GitHub
+
+Cada conta AWS aceita um único provider `token.actions.githubusercontent.com`. Se ele já existir, o
+`apply` falha com `EntityAlreadyExists`; importe-o antes:
+
+```bash
+terraform import aws_iam_openid_connect_provider.github arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com
+```
+
+Os workflows não podem usar `environment:` do GitHub: isso muda o `sub` do token para
+`repo:<owner>/<repo>:environment:<nome>`, e a trust policy desta role deixa de aceitá-lo.

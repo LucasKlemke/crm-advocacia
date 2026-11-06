@@ -99,6 +99,11 @@ No GitHub Actions, os valores sensíveis chegam como `TF_VAR_uazapi_admin_token`
   apply completo. Migrations devem ser expand/contract.
 - **Primeiro push no ECR**: o repositório precisa existir antes do build; rode
   `terraform apply -target=aws_ecr_repository.api -var image_tag=bootstrap` (ou o workflow faz isso).
+  Mesmo com `-target`, todas as variáveis obrigatórias precisam estar definidas (`terraform.tfvars`
+  local ou `TF_VAR_*`).
+- **SSL do banco**: a `DATABASE_URL` usa `sslmode=require`, que o engine Rust do Prisma 6 aceita sem
+  validar o certificado. Se a API passar a usar `@prisma/adapter-pg`, será preciso o bundle de CA do RDS
+  (`sslrootcert`), porque o `pg` trata `require` como `verify-full`.
 - **Sem NAT Gateway**: a task fica em subnet pública com IP público; o SG só aceita entrada do ALB.
 - **ALB protegido em duas camadas**: SG aceita só a prefix list `com.amazonaws.global.cloudfront.origin-facing`
   e o listener responde 403 a qualquer request sem `X-Origem-CloudFront` correto.

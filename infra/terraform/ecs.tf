@@ -2,14 +2,12 @@ locals {
   api_public_url = "https://${aws_cloudfront_distribution.api.domain_name}"
 
   # Chaves do secret JSON `crm-pac/api` injetadas como variáveis de ambiente.
-  chaves_segredo = [
-    "AUTH_SECRET",
-    "DATABASE_URL",
-    "DIRECT_URL",
-    "UAZAPI_WEBHOOK_SECRET",
-    "UAZAPI_ADMIN_TOKEN",
-    "NEW_RELIC_LICENSE_KEY",
-  ]
+  # NEW_RELIC_LICENSE_KEY só entra quando informada: sem licença, a variável fica ausente
+  # (a instrumentação já trata ausência como "sem New Relic") e evitamos injetar valor vazio.
+  chaves_segredo = concat(
+    ["AUTH_SECRET", "DATABASE_URL", "DIRECT_URL", "UAZAPI_WEBHOOK_SECRET", "UAZAPI_ADMIN_TOKEN"],
+    nonsensitive(var.new_relic_license_key != "") ? ["NEW_RELIC_LICENSE_KEY"] : [],
+  )
 
   ambiente_api = {
     NODE_ENV              = "production"
