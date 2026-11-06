@@ -54,3 +54,15 @@ yarn-error.log*
 /apps/api/.env
 /apps/api/.env.local
 newrelic_agent.log
+
+# terraform (infra/) — .terraform.lock.hcl FICA versionado
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+*.tfplan
+tfplan
+backend.hcl
+crash.log
+crash.*.log
