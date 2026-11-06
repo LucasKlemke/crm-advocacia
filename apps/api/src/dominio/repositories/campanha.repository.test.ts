@@ -157,44 +157,6 @@ describe("campanhaRepository", () => {
       return campanha.id;
     }
 
-    it("listarIdsPorInstancia devolve só as campanhas da instância nos status pedidos", async () => {
-      const outraInstancia = await instanciaWhatsappRepository.create({
-        nome: `Outra ${Date.now()}`,
-        uazapiInstanceId: `instance-outra-${Date.now()}`,
-        uazapiToken: "token",
-        escritorio: { connect: { id: escritorioId } },
-      });
-      const agendada = await criarComStatus("Ag", "agendada");
-      const enviando = await criarComStatus("En", "enviando");
-      const pausada = await criarComStatus("Pa", "pausada");
-      await criarComStatus("Co", "concluida");
-      await criarComStatus("Ex", "excluindo");
-      await criarComStatus("DeOutra", "enviando", outraInstancia.id);
-
-      const ids = await campanhaRepository.listarIdsPorInstancia(instanciaId, [
-        "agendada",
-        "enviando",
-        "pausada",
-      ]);
-
-      expect(ids.sort()).toEqual([agendada, enviando, pausada].sort());
-    });
-
-    it("listarIdsPorInstancia não devolve nada quando a instância está soft-deleted", async () => {
-      const excluida = await instanciaWhatsappRepository.create({
-        nome: `Excluída webhook ${Date.now()}`,
-        uazapiInstanceId: `instance-excluida-webhook-${Date.now()}`,
-        uazapiToken: "token",
-        softDeletedAt: new Date(),
-        escritorio: { connect: { id: escritorioId } },
-      });
-      await criarComStatus("WEnviando", "enviando", excluida.id);
-
-      const ids = await campanhaRepository.listarIdsPorInstancia(excluida.id, ["agendada", "enviando", "pausada"]);
-
-      expect(ids).toEqual([]);
-    });
-
     it("listarIdsParaWebhook soma as ativas às encerradas atualizadas desde o corte, só da instância", async () => {
       const instancia = await instanciaWhatsappRepository.create({
         nome: `Webhook ${Date.now()}`,

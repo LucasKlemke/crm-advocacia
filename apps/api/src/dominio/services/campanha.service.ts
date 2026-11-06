@@ -280,6 +280,13 @@ function compararSincronizacao(
 // (alguém pode retomar pela UAZAPI), mas não para o polling, que só vigia o que anda sozinho.
 const STATUS_ATIVOS: StatusCampanha[] = ["agendada", "enviando", "pausada"];
 const STATUS_POLLING: StatusCampanha[] = ["agendada", "enviando"];
+// Confirmações de entrega/leitura seguem chegando por webhook depois que o envio termina:
+// a campanha concluída continua sendo sincronizada pelo webhook por 24 h desde a última mudança.
+const STATUS_ENCERRADOS: StatusCampanha[] = ["concluida"];
+export const JANELA_ENCERRADAS_WEBHOOK_MS = 24 * 60 * 60 * 1000;
+
+// De onde veio uma sincronização sem usuário (tempo real).
+export type OrigemSincronizacao = "webhook" | "polling";
 
 // Chamado só depois que a transação resolveu: um evento de uma escrita desfeita mostraria
 // na tela um estado que o banco não tem.
@@ -518,7 +525,10 @@ export const campanhaService = {
   // Mesma sincronização, disparada pelo sistema (webhook/polling do tempo real) — sem
   // sessão, então o escritório vem da própria linha da campanha e o log sai com origem
   // "sistema". Devolve se algo mudou. Erro da UAZAPI sobe: quem chama decide como logar.
-  async sincronizarPeloSistema(campanhaId: string): Promise<boolean> {
+  // Vinda do webhook, publica também `campanha.mensagens` mesmo sem mudança nos contadores:
+  // o aviso costuma ser um messages_update (entregue/lida) que só aparece no status por
+  // destinatário, consultado ao vivo na UAZAPI pela tela do detalhe.
+  async sincronizarPeloSistema(campanhaId: string, origem: OrigemSincronizacao): Promise<boolean> {
     const campanha = await campanhaRepository.findById(campanhaId);
     if (!campanha?.instanciaWhatsappId) return false;
 
@@ -539,18 +549,30 @@ export const campanhaService = {
     if (!remota) return false;
 
     const mudancas = compararSincronizacao(campanha, remota);
-    if (!mudancas) return false;
+    if (mudancas) {
+      await gravarSincronizacao(campanha, mudancas, (registro, tx) =>
+        logService.registrarSistema(campanha.escritorioId, registro, tx)
+      );
+    }
 
-    await gravarSincronizacao(campanha, mudancas, (registro, tx) =>
-      logService.registrarSistema(campanha.escritorioId, registro, tx)
-    );
-    return true;
+    if (origem === "webhook") {
+      eventosCampanha.publicar({
+        tipo: "campanha.mensagens",
+        escritorioId: campanha.escritorioId,
+        campanhaId: campanha.id,
+      });
+    }
+    return mudancas !== null;
   },
 
   // Ids para o webhook: uma notificação da instância pode afetar qualquer campanha dela
-  // que ainda não terminou.
-  async idsAtivosDaInstancia(instanciaId: string): Promise<string[]> {
-    return campanhaRepository.listarIdsPorInstancia(instanciaId, STATUS_ATIVOS);
+  // que ainda não terminou — e as concluídas recentes, que seguem recebendo confirmações.
+  async idsParaWebhookDaInstancia(instanciaId: string): Promise<string[]> {
+    return campanhaRepository.listarIdsParaWebhook(instanciaId, {
+      ativos: STATUS_ATIVOS,
+      encerrados: STATUS_ENCERRADOS,
+      atualizadasDesde: new Date(Date.now() - JANELA_ENCERRADAS_WEBHOOK_MS),
+    });
   },
 
   async idsParaPolling(): Promise<string[]> {
