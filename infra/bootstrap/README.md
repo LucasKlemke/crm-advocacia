@@ -84,3 +84,10 @@ terraform import aws_iam_openid_connect_provider.github arn:aws:iam::<ACCOUNT_ID
 
 Os workflows não podem usar `environment:` do GitHub: isso muda o `sub` do token para
 `repo:<owner>/<repo>:environment:<nome>`, e a trust policy das roles deixa de aceitá-lo.
+
+## O que a role de plan consegue ler
+
+A `crm-pac-github-plan` lê o estado do Terraform, e o estado guarda em texto os valores do secret
+`crm-pac/api` (inclusive `DATABASE_URL`). Na prática, quem consegue abrir PR **a partir de uma branch do
+próprio repositório** consegue ler esses valores. PRs de fork não recebem token OIDC nem rodam o plan.
+Só dê permissão de push a quem já poderia ver os segredos de produção.

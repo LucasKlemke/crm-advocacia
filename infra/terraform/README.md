@@ -88,8 +88,8 @@ No GitHub Actions, os valores sensíveis chegam como `TF_VAR_uazapi_admin_token`
   `DATABASE_URL`, `DIRECT_URL`, `UAZAPI_WEBHOOK_SECRET`, `UAZAPI_ADMIN_TOKEN`, `NEW_RELIC_LICENSE_KEY`.
 - Não há `AWS_ACCESS_KEY_ID`: o SDK usa a credencial da task role.
 - `DATABASE_URL` e `DIRECT_URL` são a mesma URL (`?sslmode=require`; sem pooler na frente do RDS).
-- `NEW_RELIC_LICENSE_KEY` sempre existe no secret; com a variável vazia ela é injetada como string vazia e
-  a API trata isso como "New Relic desligado".
+- `NEW_RELIC_LICENSE_KEY` sempre existe no secret, mas só é injetada na task quando a variável não está
+  vazia; sem ela a API sobe sem New Relic.
 
 ## Decisões e limitações (ambiente de disciplina)
 
