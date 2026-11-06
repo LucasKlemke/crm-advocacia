@@ -45,7 +45,7 @@ O Project `crm-advocacia-supabase` usa **Vercel Services** (`vercel.json` na rai
 | Service | Raiz | Framework | Build | Executa como |
 |---|---|---|---|---|
 | `web` | `apps/web` | Vite | `npm run build` → `dist/` | Estático na CDN, com fallback de SPA para `index.html` |
-| `api` | `apps/api` | NestJS | `npm run vercel-build` → `dist/main.js` (tsup) | Uma Vercel Function em Fluid Compute (`entrypoint: dist/main.js`) |
+| `api` | `apps/api` | NestJS | `npm run vercel-build` → `dist/main.js` (tsup) | Uma Vercel Function em Fluid Compute (`entrypoint: vercel-entry.mjs`, shim versionado que importa `dist/main.js`: a CLI exige o entrypoint antes do build) |
 
 Rotas públicas (ordem importa): `/api/*` vai para `api`, que recebe o path original e usa o prefixo global `api` do Nest, e todo o resto vai para `web`. Consequências:
 

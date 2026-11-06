@@ -12,7 +12,7 @@
     "api": {
       "root": "apps/api",
       "framework": "nestjs",
-      "entrypoint": "dist/main.js",
+      "entrypoint": "vercel-entry.mjs",
       "installCommand": "cd ../.. && npm ci",
       "buildCommand": "npm run vercel-build"
     }
