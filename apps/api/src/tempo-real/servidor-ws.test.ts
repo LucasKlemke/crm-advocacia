@@ -280,7 +280,7 @@ describe("servidor WebSocket /api/ws", () => {
     });
 
     it("ping periódico: quem não responde ao pong é encerrado, quem responde fica", async () => {
-      await subir({ intervaloPingMs: 40 });
+      await subir({ intervaloPingMs: 200 });
       const vivo = await conectarComTicket("user-a", "esc-A");
       const mudo = await conectarComTicket("user-b", "esc-B", { autoPong: false });
 
@@ -305,13 +305,29 @@ describe("servidor WebSocket /api/ws", () => {
   });
 
   describe("revalidação periódica do vínculo (RN19)", () => {
+    // Intervalos folgados (200 ms) e espera por condição, nunca por tempo fixo: um engasgo
+    // do event loop no CI não pode derrubar o socket pelo batimento nem perder um ciclo.
+    async function esperarAte(condicao: () => boolean, limiteMs = 4000): Promise<void> {
+      const fim = Date.now() + limiteMs;
+      while (!condicao()) {
+        if (Date.now() > fim) throw new Error("condição não atingida a tempo");
+        await new Promise((r) => setTimeout(r, 10));
+      }
+    }
+
+    function contarPings(cliente: Cliente): () => number {
+      let pings = 0;
+      cliente.ws.on("ping", () => (pings += 1));
+      return () => pings;
+    }
+
     it("membership removida → socket fechado com 4401 no ciclo de revalidação", async () => {
       const membros: Record<string, string[]> = { "user-a": ["esc-A"] };
       const resolverTenant = jest.fn(async (sessao: SessaoMinima): Promise<TenantContext> => {
         if (!(membros[sessao.usuarioId!] ?? []).includes(sessao.escritorioId!)) throw new AcessoNegadoError();
         return { usuarioId: sessao.usuarioId!, escritorioId: sessao.escritorioId!, role: "owner" };
       });
-      await subir({ resolverTenant, intervaloPingMs: 20 });
+      await subir({ resolverTenant, intervaloPingMs: 200, ciclosRevalidacao: 1 });
       const cliente = await conectarComTicket("user-a", "esc-A");
       resolverTenant.mockClear();
 
@@ -321,18 +337,19 @@ describe("servidor WebSocket /api/ws", () => {
       expect(resolverTenant).toHaveBeenCalledWith({ usuarioId: "user-a", escritorioId: "esc-A" });
     });
 
-    it("revalida só a cada 4 ciclos de ping, com o usuário e o escritório do socket", async () => {
+    it("revalida a cada N ciclos de ping da própria conexão, com o usuário e o escritório do socket", async () => {
       const resolverTenant = resolverPorMembros({ "user-a": ["esc-B"] });
-      const inicio = Date.now();
-      await subir({ resolverTenant, intervaloPingMs: 40 });
+      await subir({ resolverTenant, intervaloPingMs: 200, ciclosRevalidacao: 3 });
       const cliente = await conectarComTicket("user-a", "esc-B");
+      const pings = contarPings(cliente);
       resolverTenant.mockClear();
-      const ate = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, inicio + ms - Date.now())));
 
-      // Ciclos em 40, 80, 120 ms não revalidam (timers só atrasam, nunca adiantam); o 4º (160 ms) sim.
-      await ate(140);
+      await esperarAte(() => pings() >= 2);
       expect(resolverTenant).not.toHaveBeenCalled();
-      await ate(240);
+
+      // A revalidação sai no mesmo tick do 3º ping.
+      await esperarAte(() => pings() >= 3);
+      expect(resolverTenant).toHaveBeenCalledTimes(1);
       expect(resolverTenant).toHaveBeenCalledWith({ usuarioId: "user-a", escritorioId: "esc-B" });
       expect(cliente.ws.readyState).toBe(WebSocket.OPEN);
     });
@@ -340,20 +357,32 @@ describe("servidor WebSocket /api/ws", () => {
     it("erro transitório do banco mantém o socket, loga e tenta de novo no próximo ciclo", async () => {
       const erroSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
       const resolverTenant = resolverPorMembros({ "user-a": ["esc-A"] });
-      await subir({ resolverTenant, intervaloPingMs: 20 });
+      await subir({ resolverTenant, intervaloPingMs: 200, ciclosRevalidacao: 1 });
       const cliente = await conectarComTicket("user-a", "esc-A");
       resolverTenant.mockClear();
       resolverTenant.mockRejectedValueOnce(new Error("banco fora"));
 
-      // Primeira revalidação (~80 ms) falha; a segunda (~160 ms) passa.
-      await new Promise((r) => setTimeout(r, 200));
+      await esperarAte(() => resolverTenant.mock.calls.length >= 2);
 
-      expect(resolverTenant.mock.calls.length).toBeGreaterThanOrEqual(2);
       expect(erroSpy).toHaveBeenCalledWith(
         expect.stringContaining("[tempo-real]"),
         expect.objectContaining({ usuarioId: "user-a", escritorioId: "esc-A" }),
         expect.any(Error)
       );
+      expect(cliente.ws.readyState).toBe(WebSocket.OPEN);
+    });
+
+    it("não sobrepõe revalidações: com a consulta pendente, os ciclos seguintes não chamam de novo", async () => {
+      const resolverTenant = resolverPorMembros({ "user-a": ["esc-A"] });
+      await subir({ resolverTenant, intervaloPingMs: 200, ciclosRevalidacao: 1 });
+      const cliente = await conectarComTicket("user-a", "esc-A");
+      const pings = contarPings(cliente);
+      resolverTenant.mockClear();
+      resolverTenant.mockImplementation(() => new Promise<TenantContext>(() => undefined));
+
+      await esperarAte(() => pings() >= 3);
+
+      expect(resolverTenant).toHaveBeenCalledTimes(1);
       expect(cliente.ws.readyState).toBe(WebSocket.OPEN);
     });
   });

@@ -42,6 +42,7 @@ export interface OpcoesServidorWs {
   // Injetáveis para teste; em produção valem os padrões.
   resolverTenant?: (sessao: SessaoMinima) => Promise<TenantContext>;
   intervaloPingMs?: number;
+  ciclosRevalidacao?: number;
 }
 
 export interface ServidorWs {
@@ -54,6 +55,8 @@ interface Conexao {
   escritorioId: string;
   vivo: boolean;
   revalidando: boolean;
+  // Ciclos de ping desde que a conexão entrou: a revalidação conta por conexão.
+  ciclos: number;
   cancelar: () => void;
 }
 
@@ -137,6 +140,7 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
       escritorioId: ctx.escritorioId,
       vivo: true,
       revalidando: false,
+      ciclos: 0,
       cancelar: eventosCampanha.assinar(ctx.escritorioId, (evento) => enviar(socket, paraCliente(evento))),
     };
     socket.on("pong", () => {
@@ -215,7 +219,7 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
   // Membership sumiu → 4401 (o cliente pede ticket novo e falha na emissão). Erro
   // transitório (banco fora) mantém o socket: loga e tenta no próximo ciclo.
   async function revalidar(conexao: Conexao): Promise<void> {
-    if (conexao.revalidando) return;
+    if (conexao.revalidando || conexao.socket.readyState !== conexao.socket.OPEN) return;
     conexao.revalidando = true;
     const ids = { usuarioId: conexao.usuarioId, escritorioId: conexao.escritorioId };
     try {
@@ -232,10 +236,8 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
     }
   }
 
-  let ciclo = 0;
+  const ciclosRevalidacao = opcoes.ciclosRevalidacao ?? CICLOS_REVALIDACAO;
   const batimento = setInterval(() => {
-    ciclo += 1;
-    const revalidarAgora = ciclo % CICLOS_REVALIDACAO === 0;
     for (const lista of conexoesPorUsuario.values()) {
       for (const conexao of lista) {
         if (!conexao.vivo) {
@@ -244,7 +246,8 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
         }
         conexao.vivo = false;
         conexao.socket.ping();
-        if (revalidarAgora) void revalidar(conexao);
+        conexao.ciclos += 1;
+        if (conexao.ciclos % ciclosRevalidacao === 0) void revalidar(conexao);
       }
     }
   }, opcoes.intervaloPingMs ?? INTERVALO_PING_MS);
