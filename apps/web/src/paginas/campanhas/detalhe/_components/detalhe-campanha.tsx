@@ -9,6 +9,8 @@ import {
   useMensagensCampanha,
   useSincronizarCampanha,
 } from "@/hooks/use-campanhas";
+import { useEstadoTempoReal } from "@/hooks/use-tempo-real-campanhas";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -67,6 +69,21 @@ function CelulaStatus({
         </span>
       ) : null}
     </div>
+  );
+}
+
+// O progresso chega sozinho pelo WebSocket do shell; sem ele (conectando, desligado no
+// servidor, aba excedente) quem quer número novo usa o Sincronizar.
+function IndicadorTempoReal() {
+  const aoVivo = useEstadoTempoReal() === "conectado";
+  return (
+    <span aria-live="polite" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span
+        aria-hidden="true"
+        className={cn("size-2 rounded-full", aoVivo ? "bg-brand" : "bg-muted-foreground/50")}
+      />
+      {aoVivo ? "Ao vivo" : "Atualização manual"}
+    </span>
   );
 }
 
@@ -149,6 +166,7 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <IndicadorTempoReal />
             <StatusBadgeCampanha status={campanha.status} />
             {/* Sincronizar é leitura de estado: liberado também para o papel padrão. */}
             <Button

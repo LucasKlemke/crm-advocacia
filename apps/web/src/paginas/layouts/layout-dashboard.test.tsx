@@ -8,6 +8,11 @@ import { criarQueryClientDeTeste } from "@/lib/test-utils";
 import { mockApi, SESSAO_OWNER } from "@/lib/test-paginas";
 import { LayoutDashboard } from "./layout-dashboard";
 
+const useTempoRealMock = jest.fn();
+jest.mock("@/hooks/use-tempo-real-campanhas", () => ({
+  useTempoRealCampanhas: () => useTempoRealMock(),
+}));
+
 jest.mock("@/components/ui/sidebar", () => ({
   SidebarProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarInset: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -62,6 +67,14 @@ describe("LayoutDashboard", () => {
       "Dona Owner owner@teste.com"
     );
     expect(screen.getByTestId("header-data")).not.toBeEmptyDOMElement();
+  });
+
+  // Uma conexão por aba, aberta pelo shell: as páginas só leem o cache e o estado.
+  it("abre a conexão de tempo real das campanhas", () => {
+    mockApi({ "/api/escritorios": { escritorios: [] } });
+    renderLayout();
+
+    expect(useTempoRealMock).toHaveBeenCalled();
   });
 
   it("alimenta o switcher com GET /api/escritorios e o escritório ativo da sessão", async () => {

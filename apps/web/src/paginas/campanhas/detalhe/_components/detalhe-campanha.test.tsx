@@ -17,6 +17,11 @@ jest.mock("@/hooks/use-campanhas", () => ({
   useSincronizarCampanha: () => ({ mutateAsync: mutateSincronizar, isPending: false }),
 }));
 
+const estadoTempoRealMock = jest.fn();
+jest.mock("@/hooks/use-tempo-real-campanhas", () => ({
+  useEstadoTempoReal: () => estadoTempoRealMock(),
+}));
+
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
 function campanhaFake(over: Partial<CampanhaDTO> = {}): CampanhaDTO {
@@ -90,6 +95,7 @@ function mockCampanha(over: Partial<CampanhaDTO> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  estadoTempoRealMock.mockReturnValue("conectado");
   mockCampanha();
   mockMensagens();
   mutateSincronizar.mockResolvedValue({ campanha: { id: "campanha-1" } });
@@ -272,4 +278,28 @@ describe("DetalheCampanha — pausar e retomar", () => {
 
     expect(screen.queryByRole("button", { name: /pausar/i })).not.toBeInTheDocument();
   });
+});
+
+// O progresso chega pelo WebSocket aberto no shell; a tela só diz se ele está valendo.
+describe("DetalheCampanha — indicador de tempo real", () => {
+  it("mostra 'Ao vivo' quando conectado, anunciado de forma educada", () => {
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    const indicador = screen.getByText("Ao vivo");
+    expect(indicador.closest("[aria-live]")).toHaveAttribute("aria-live", "polite");
+    expect(screen.queryByText("Atualização manual")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /sincronizar/i })).toBeInTheDocument();
+  });
+
+  it.each(["conectando", "indisponivel"])(
+    "mostra 'Atualização manual' quando %s, mantendo o Sincronizar",
+    (estado) => {
+      estadoTempoRealMock.mockReturnValue(estado);
+      renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+      expect(screen.getByText("Atualização manual")).toBeInTheDocument();
+      expect(screen.queryByText("Ao vivo")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /sincronizar/i })).toBeInTheDocument();
+    }
+  );
 });

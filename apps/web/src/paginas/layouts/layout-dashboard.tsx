@@ -8,6 +8,7 @@ import { HeaderData } from "@/components/shell/header-data";
 import { formatarDataExtensa } from "@/lib/utils/data";
 import { useMeusEscritorios } from "@/hooks/use-escritorios";
 import { useSessaoDoEscritorio, type SessaoDoEscritorio } from "@/hooks/use-sessao-do-escritorio";
+import { useTempoRealCampanhas } from "@/hooks/use-tempo-real-campanhas";
 
 // Shell das telas autenticadas. O Toaster é global (Provedores, Task 4.8): não renderizar outro aqui.
 // Fica sob <RotaProtegida>, que já redirecionou quem não
@@ -18,6 +19,10 @@ import { useSessaoDoEscritorio, type SessaoDoEscritorio } from "@/hooks/use-sess
 // descartando o cache do escritório anterior. A lista do switcher também é dado da sessão atual.
 export function LayoutDashboard() {
   const sessao = useSessaoDoEscritorio();
+  // Uma conexão de tempo real por aba, presa ao client do escritório ativo: trocar de
+  // tenant remonta o shell (key do QueryProvider), fecha o socket e abre outro com ticket
+  // novo do escritório novo (RN19). Sair desmonta o shell e fecha o socket.
+  useTempoRealCampanhas();
 
   return <Shell sessao={sessao} />;
 }

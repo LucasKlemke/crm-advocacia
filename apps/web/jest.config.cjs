@@ -18,6 +18,8 @@ module.exports = {
     ],
   },
   moduleNameMapper: {
+    // `import.meta.env` não compila em CommonJS: o leitor de env do Vite vira um stub.
+    "^@/lib/env-ws$": "<rootDir>/test/env-ws.ts",
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@crm/compartilhado/(.*)$": "<rootDir>/../../packages/compartilhado/src/$1",
   },
@@ -26,6 +28,8 @@ module.exports = {
     "!src/**/*.test.{ts,tsx}",
     "!src/main.tsx",
     "!src/lib/test-utils*.tsx",
+    "!src/lib/env-ws.ts",
+    "!src/vite-env.d.ts",
     // Primitivas geradas pelo shadcn CLI (docs/app/design-system.md) — cobertas pelos
     // componentes que as compõem.
     "!src/components/ui/**",
