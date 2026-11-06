@@ -31,6 +31,7 @@ import {
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { rotuloInstancia } from "../../_components/rotulo-instancia";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
+import { ProgressoCampanha } from "./progresso-campanha";
 import { StatusBadgeMensagem } from "./status-badge-mensagem";
 
 export interface DetalheCampanhaProps {
@@ -203,6 +204,12 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
           </div>
         </div>
       </div>
+
+      <ProgressoCampanha
+        enviadas={campanha.logSucesso}
+        falhas={campanha.logFalha}
+        total={campanha.totalDestinatarios}
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Metrica rotulo="Na fila" valor={campanha.logTotal} />
