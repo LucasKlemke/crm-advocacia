@@ -5,7 +5,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://TROQUE_PELO_DOMINIO_DO_CLOUDFRONT.cloudfront.net/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://d2nyv62ohrzgdt.cloudfront.net/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
