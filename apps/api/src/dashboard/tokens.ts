@@ -1,0 +1,1 @@
+export const DASHBOARD_SERVICE = Symbol("DASHBOARD_SERVICE");

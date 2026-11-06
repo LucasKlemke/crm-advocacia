@@ -35,7 +35,7 @@ O Prisma lê a connection string de `DATABASE_URL`. Para o compose acima:
 DATABASE_URL="postgresql://crm_user:crm_password@localhost:5432/crm_advocacia?schema=public"
 ```
 
-Manter um `.env.example` versionado com esse valor placeholder e `.env` real no `.gitignore` — nunca commitar credenciais reais, mesmo as de desenvolvimento local.
+O arquivo vive em `apps/api/.env` (ou `apps/api/.env.local`, que tem prioridade), lido pelo `main.ts` da API e pelo `prisma.config.ts`. Manter `apps/api/.env.example` versionado com esse valor placeholder e o `.env` real no `.gitignore` — nunca commitar credenciais reais, mesmo as de desenvolvimento local.
 
 ## Comandos do dia a dia
 
@@ -51,9 +51,9 @@ Manter um `.env.example` versionado com esse valor placeholder e `.env` real no 
 
 ## Depois de subir o container
 
-1. Confirmar que `DATABASE_URL` no `.env` bate com as credenciais do `docker-compose.yml`.
-2. Aplicar as migrations existentes: `npx prisma migrate deploy` (ambiente já com histórico) ou `npx prisma migrate dev` (durante desenvolvimento, também gera client e aplica seed) — ver [migrations-prisma.md](migrations-prisma.md).
-3. Opcional: `npx prisma studio` para inspecionar o banco visualmente durante o desenvolvimento.
+1. Confirmar que `DATABASE_URL` em `apps/api/.env` bate com as credenciais do `docker-compose.yml`.
+2. Aplicar as migrations existentes: `npm run prisma:deploy -w @crm/api` (ambiente já com histórico) ou `npm run prisma:migrate` (raiz; `prisma migrate dev` em `apps/api`, durante desenvolvimento, também gera o client) — ver [migrations-prisma.md](migrations-prisma.md).
+3. Opcional: `npx prisma studio` (dentro de `apps/api`, onde fica o `prisma.config.ts`) para inspecionar o banco visualmente durante o desenvolvimento.
 
 ## Resetar o ambiente local do zero
 
@@ -62,7 +62,7 @@ Quando o schema local ficar inconsistente ou for necessário recomeçar:
 ```bash
 docker compose down -v
 docker compose up -d
-npx prisma migrate dev
+npm run prisma:migrate
 ```
 
-Isso recria o container, reaplica todas as migrations versionadas em `prisma/migrations/` na ordem e roda o seed (se configurado) — nunca é necessário editar dados manualmente para "consertar" o banco local.
+Isso recria o container, reaplica todas as migrations versionadas em `apps/api/prisma/migrations/` na ordem (e o seed, se existir) — nunca é necessário editar dados manualmente para "consertar" o banco local.

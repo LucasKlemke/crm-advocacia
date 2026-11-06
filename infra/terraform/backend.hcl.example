@@ -1,0 +1,4 @@
+# Copie para backend.hcl (não versionado) e rode: terraform init -backend-config=backend.hcl
+# bucket = output `bucket_estado` do infra/bootstrap.
+bucket = "crm-pac-tfstate-123456789012"
+region = "us-east-1"

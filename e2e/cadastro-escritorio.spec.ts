@@ -3,7 +3,9 @@ import { test, expect } from "@playwright/test";
 // Fluxo crítico: cadastro de usuário (nome/e-mail/senha), login e onboarding do
 // primeiro escritório (RN01/RN02).
 test.describe("Cadastro de usuário, onboarding e login", () => {
-  test("cadastra um novo usuário, loga automaticamente e cai no onboarding", async ({ page }) => {
+  test("cadastra um novo usuário, loga automaticamente e cai no onboarding", async ({
+    page,
+  }) => {
     const email = `e2e-cadastro-${Date.now()}@teste.com`;
 
     await page.goto("/cadastro");
@@ -30,13 +32,17 @@ test.describe("Cadastro de usuário, onboarding e login", () => {
     await page.getByRole("button", { name: /cadastrar/i }).click();
     await expect(page).toHaveURL("/onboarding");
 
-    await page.getByLabel("Nome do escritório").fill("Escritório E2E Onboarding");
+    await page
+      .getByLabel("Nome do escritório")
+      .fill("Escritório E2E Onboarding");
     await page.getByRole("button", { name: /criar escritório/i }).click();
 
     await expect(page).toHaveURL("/");
   });
 
-  test("permite login com as credenciais recém-cadastradas", async ({ page }) => {
+  test("permite login com as credenciais recém-cadastradas", async ({
+    page,
+  }) => {
     const email = `e2e-login-${Date.now()}@teste.com`;
 
     await page.goto("/cadastro");
@@ -72,6 +78,6 @@ test.describe("Cadastro de usuário, onboarding e login", () => {
   test("bloqueia acesso à home sem sessão (RN01)", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page).toHaveURL("/login");
+    await expect(page).toHaveURL("/login?callbackUrl=%2F");
   });
 });

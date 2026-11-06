@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Sobe um túnel ngrok pra porta do Next dev (padrão 3000) em background, guardando o PID
+# Sobe um túnel ngrok pra porta da API Nest (padrão 3001), que atende /api/webhooks/uazapi em background, guardando o PID
 # em .ngrok.pid pra ngrok-stop.sh conseguir derrubar depois. Uso: npm run ngrok:start [porta]
 set -euo pipefail
 
 PID_FILE=".ngrok.pid"
 LOG_FILE=".ngrok.log"
-PORT="${1:-3000}"
+PORT="${1:-3001}"
 
 if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   echo "ngrok já está rodando (PID $(cat "$PID_FILE"))."

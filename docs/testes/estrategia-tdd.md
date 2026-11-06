@@ -6,11 +6,11 @@ O projeto é **test-driven**: para qualquer regra de negócio nova ou alterada (
 
 | Camada | Ferramenta | Cobre |
 |---|---|---|
-| Services (regras de negócio) | Jest | Toda lógica de `src/services/*` isolada, com Repository mockado |
-| Controllers / route handlers | Jest | Request → resposta HTTP, com Service mockado; validação de status code e shape de erro |
+| Services (regras de negócio) | Jest + `@swc/jest` | Toda lógica de `apps/api/src/dominio/services/*` isolada, com Repository mockado |
+| Controllers (Nest) | Jest + supertest (`criarAppDeTeste`, `overrideProvider`) | Request → resposta HTTP, com Service substituído; validação de status code e shape de erro |
 | Repositories | Jest + banco de teste (Postgres via Docker, ver [../database/docker-setup.md](../database/docker-setup.md)) | Queries Prisma reais contra um schema de teste, sem mock do banco |
-| Componentes React | Jest + Testing Library | Comportamento observável pelo usuário (render, interação, estado), não detalhe de implementação |
-| Fluxos ponta a ponta | **Playwright** | Caminho feliz + alternativos dos fluxos críticos, navegador real |
+| Componentes e hooks React (`apps/web`) | Jest (jsdom) + Testing Library | Comportamento observável pelo usuário (render, interação, estado), não detalhe de implementação |
+| Fluxos ponta a ponta | **Playwright** | Caminho feliz + alternativos dos fluxos críticos, navegador real, contra o build de produção |
 
 ## Fluxos críticos cobertos por Playwright
 
@@ -28,19 +28,20 @@ O projeto está na linha de **Web Apps** do Portfólio (Católica SC), a única 
 
 Esse piso institucional é medido em dois grupos amplos — **backend** e **frontend** — não por camada individual. O projeto usa metas internas mais altas por camada, que **somadas sempre ficam acima do piso**, então bater a meta interna garante automaticamente o piso institucional; a meta interna nunca deve ser relaxada para baixo do que o piso exige.
 
-| Grupo (piso institucional) | Camadas incluídas | Meta interna do projeto | Meta institucional (piso) |
+| Grupo (piso institucional) | Pacotes/camadas incluídos | Meta interna do projeto | Meta institucional (piso) |
 |---|---|---|---|
-| **Backend** | `src/services/**`, `src/repositories/**`, `app/api/**` (Controllers), `src/lib/external/**` | Services ~90%, Repositories/Controllers ~70–80% — média ponderada do grupo sempre ≥ 75% | **75%** |
-| **Frontend** | `src/components/**`, `src/hooks/**`, componentes de feature em `app/**/_components/**` | Cobertura de comportamento via Testing Library em todo componente com lógica; componentes puramente apresentacionais isentos, mas isso não pode derrubar a média do grupo abaixo de **25%** | **25%** |
+| **Backend** | `apps/api/src/dominio/services/**`, `apps/api/src/dominio/repositories/**`, controllers (`apps/api/src/**/*.controller.ts`), `apps/api/src/comum/**`, `apps/api/src/dominio/lib/**` e `packages/compartilhado/src/**` | Services e `dominio/lib/auth` 90%, Repositories e Controllers 70%, `comum` 80%, global da API 75% (branches 70%), compartilhado 90% (branches 85%) | **75%** |
+| **Frontend** | `apps/web/src/**` (exceto `components/ui/**` — gerado pelo shadcn — e `main.tsx`) | global ≥ 25% (linhas, funções, branches, statements) | **25%** |
+
+Cada pacote tem o próprio `jest.config.cjs` com `coverageThreshold` (metas internas por camada). Como o Jest mede por arquivo/glob e não por grupo, `scripts/verificar-piso-cobertura.mjs` soma as linhas de `apps/api` + `packages/compartilhado` (backend) e de `apps/web` (frontend) a partir dos `coverage-summary.json` e falha abaixo de 75%/25%. `npm run test:coverage` (raiz) roda os três pacotes e depois o script. É o gate do CI e o número apresentado na prova de autoria. Os três `coverage/lcov.info` alimentam o SonarCloud ([../qualidade/analise-estatica.md](../qualidade/analise-estatica.md)).
 
 Consequência de ficar abaixo da meta interna: build falha no CI (gate de PR). Consequência de ficar abaixo do piso institucional especificamente na prova de autoria: reprovação no critério de cobertura, com uma correção e segunda tentativa antes de reprovar na disciplina.
 
-Configurado em `jest.config` via `coverageThreshold` com dois grupos de glob (`backend` e `frontend`, agrupando os diretórios da tabela acima) além dos limites mais granulares por camada dentro de `backend`. `npm test -- --coverage` roda no CI e falha o pipeline abaixo de qualquer um dos limites configurados. O relatório `coverage/lcov.info` gerado por esse comando também alimenta o SonarCloud — ver [../qualidade/analise-estatica.md](../qualidade/analise-estatica.md) — e deve ser o mesmo número apresentado na prova de autoria.
-
 ## Onde os testes vivem
 
-- Unit/integração: colocation — `cliente.service.test.ts` ao lado de `cliente.service.ts`, `ClienteFormModal.test.tsx` ao lado do componente.
-- E2E: pasta `e2e/` na raiz do projeto, um arquivo por fluxo crítico (`e2e/cadastro-escritorio.spec.ts`, `e2e/kanban.spec.ts`).
+- Unit/integração: colocation em cada pacote — `apps/api/src/dominio/services/cliente.service.test.ts` ao lado do service, `apps/api/src/clientes/clientes.controller.test.ts` (supertest) ao lado do controller, `apps/web/src/components/clientes/cliente-form.test.tsx` ao lado do componente, `packages/compartilhado/src/schemas/cliente.test.ts` ao lado do schema.
+- E2E: pasta `e2e/` na raiz do projeto, um arquivo por fluxo crítico (`e2e/cadastro-escritorio.spec.ts`, `e2e/casos.spec.ts`, `e2e/clientes.spec.ts`, ...).
+- Ambiente: os testes de Repository usam Postgres real (`docker compose up -d` + migrations aplicadas; `DATABASE_URL` vem de `apps/api/.env` ou do ambiente, como no CI). O setup do Jest da API (`apps/api/jest.setup.ts`) fixa `AWS_S3_PREFIX="development"` e não carrega `.env`, para a suíte não depender de segredos nem da máquina.
 
 ## Processo TDD no dia a dia
 
@@ -53,6 +54,10 @@ Configurado em `jest.config` via `coverageThreshold` com dois grupos de glob (`b
 
 ## CI
 
-- `npm test -- --coverage` (Jest, unit/integração) é gate obrigatório em todo PR, com os thresholds acima.
-- Playwright roda como job separado (mais lento, precisa do banco de teste + app buildada) e também é gate obrigatório antes de merge em `main`.
-- Nenhuma das duas suítes pode ser pulada com flag de skip/only esquecida — checagem de lint/CI cobre isso.
+Workflow `.github/workflows/ci.yml` (PRs e pushes em `dev`/`main`), com quatro jobs que viram checks obrigatórios de branch ([../qualidade/analise-estatica.md](../qualidade/analise-estatica.md)):
+
+- `lint e typecheck`: `npm run lint` e `npm run typecheck`.
+- `testes com cobertura`: Postgres como service container, `prisma migrate deploy`, `npm run test:coverage` (thresholds por camada + piso institucional); publica os três `lcov.info`.
+- `e2e (build de produção)`: Postgres de serviço, `npm run build` e `npx playwright test` contra `apps/api/dist` (API :3001, iniciada por `npm run start -w @crm/api`) e `vite preview` do web (:4173), com `reuseExistingServer: false` e falha cedo se o build não existir. Também é gate obrigatório antes de merge.
+- `SonarCloud`: baixa os `lcov.info` e roda o scan.
+- Nenhuma suíte pode ser pulada com flag de skip/only esquecida — o ESLint (`jest/no-focused-tests`, `jest/no-disabled-tests`) cobre isso.

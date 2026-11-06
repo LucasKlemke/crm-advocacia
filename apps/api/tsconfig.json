@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "noEmit": true,
+    "types": ["node", "jest"],
+    "paths": {
+      "@dominio/*": ["./src/dominio/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "jest.setup.ts", "tsup.config.ts", "prisma.config.ts"]
+}
