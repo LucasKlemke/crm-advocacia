@@ -195,6 +195,61 @@ describe("campanhaRepository", () => {
       expect(ids).toEqual([]);
     });
 
+    it("listarIdsParaWebhook soma as ativas às encerradas atualizadas desde o corte, só da instância", async () => {
+      const instancia = await instanciaWhatsappRepository.create({
+        nome: `Webhook ${Date.now()}`,
+        uazapiInstanceId: `instance-webhook-${Date.now()}`,
+        uazapiToken: "token",
+        escritorio: { connect: { id: escritorioId } },
+      });
+      const outraInstancia = await instanciaWhatsappRepository.create({
+        nome: `Webhook outra ${Date.now()}`,
+        uazapiInstanceId: `instance-webhook-outra-${Date.now()}`,
+        uazapiToken: "token",
+        escritorio: { connect: { id: escritorioId } },
+      });
+      const enviando = await criarComStatus("WhEn", "enviando", instancia.id);
+      const pausada = await criarComStatus("WhPa", "pausada", instancia.id);
+      const concluidaRecente = await criarComStatus("WhCoRec", "concluida", instancia.id);
+      const concluidaAntiga = await criarComStatus("WhCoAnt", "concluida", instancia.id);
+      await criarComStatus("WhEx", "excluindo", instancia.id);
+      await criarComStatus("WhCoOutra", "concluida", outraInstancia.id);
+      const corte = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      // @updatedAt aceita valor explícito: simula a campanha encerrada há mais de 24 h.
+      await prisma.campanha.update({
+        where: { id: concluidaAntiga },
+        data: { updatedAt: new Date(corte.getTime() - 60_000) },
+      });
+
+      const ids = await campanhaRepository.listarIdsParaWebhook(instancia.id, {
+        ativos: ["agendada", "enviando", "pausada"],
+        encerrados: ["concluida"],
+        atualizadasDesde: corte,
+      });
+
+      expect(ids.sort()).toEqual([enviando, pausada, concluidaRecente].sort());
+    });
+
+    it("listarIdsParaWebhook não devolve nada quando a instância está soft-deleted", async () => {
+      const excluida = await instanciaWhatsappRepository.create({
+        nome: `Excluída webhook2 ${Date.now()}`,
+        uazapiInstanceId: `instance-excluida-webhook2-${Date.now()}`,
+        uazapiToken: "token",
+        softDeletedAt: new Date(),
+        escritorio: { connect: { id: escritorioId } },
+      });
+      await criarComStatus("W2En", "enviando", excluida.id);
+      await criarComStatus("W2Co", "concluida", excluida.id);
+
+      const ids = await campanhaRepository.listarIdsParaWebhook(excluida.id, {
+        ativos: ["agendada", "enviando", "pausada"],
+        encerrados: ["concluida"],
+        atualizadasDesde: new Date(Date.now() - 60_000),
+      });
+
+      expect(ids).toEqual([]);
+    });
+
     it("listarIdsComInstanciaAtiva ignora instância soft-deleted e campanha sem instância", async () => {
       const excluida = await instanciaWhatsappRepository.create({
         nome: `Excluída ${Date.now()}`,

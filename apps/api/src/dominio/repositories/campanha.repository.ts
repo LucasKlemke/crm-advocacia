@@ -62,6 +62,28 @@ export const campanhaRepository = {
     return campanhas.map((campanha) => campanha.id);
   },
 
+  // Campanhas que um webhook da instância pode ter afetado: as ainda ativas e as já
+  // encerradas que mudaram desde `atualizadasDesde` — confirmações de entrega/leitura
+  // continuam chegando depois que o envio termina. Mesmo filtro de instância viva (RN30).
+  async listarIdsParaWebhook(
+    instanciaId: string,
+    filtro: { ativos: StatusCampanha[]; encerrados: StatusCampanha[]; atualizadasDesde: Date },
+    db: Db = prisma
+  ): Promise<string[]> {
+    const campanhas = await db.campanha.findMany({
+      where: {
+        instanciaWhatsappId: instanciaId,
+        instancia: { is: { softDeletedAt: null } },
+        OR: [
+          { status: { in: filtro.ativos } },
+          { status: { in: filtro.encerrados }, updatedAt: { gte: filtro.atualizadasDesde } },
+        ],
+      },
+      select: { id: true },
+    });
+    return campanhas.map((campanha) => campanha.id);
+  },
+
   // `is` exige a instância vinculada: campanha sem instância (FK zerada) fica de fora,
   // assim como a de instância soft-deleted — não há o que sincronizar por elas.
   async listarIdsComInstanciaAtiva(status: StatusCampanha[], db: Db = prisma): Promise<string[]> {
