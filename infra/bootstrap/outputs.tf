@@ -4,6 +4,11 @@ output "bucket_estado" {
 }
 
 output "role_deploy_arn" {
-  description = "ARN da role assumida pelo GitHub Actions (variável AWS_DEPLOY_ROLE_ARN do GitHub)."
+  description = "ARN da role de deploy (só refs/heads/main; variável AWS_DEPLOY_ROLE_ARN do GitHub)."
   value       = aws_iam_role.deploy.arn
+}
+
+output "role_plan_arn" {
+  description = "ARN da role somente leitura do terraform plan em PRs (variável AWS_PLAN_ROLE_ARN do GitHub)."
+  value       = aws_iam_role.plan.arn
 }

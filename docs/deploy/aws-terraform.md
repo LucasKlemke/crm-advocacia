@@ -37,7 +37,7 @@ desenvolvimento). Siga na ordem; cada item aponta a seção com o detalhe.
       `terraform.tfstate` dele ([Bootstrap](#1-bootstrap-estado-remoto-e-oidc)).
 - [ ] 3. Criar `infra/terraform/backend.hcl` a partir do `.example` (só para rodar o Terraform
       localmente; o CI passa o bucket por `TF_STATE_BUCKET`).
-- [ ] 4. Cadastrar no GitHub as variáveis `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `TF_STATE_BUCKET`,
+- [ ] 4. Cadastrar no GitHub as variáveis `AWS_DEPLOY_ROLE_ARN`, `AWS_PLAN_ROLE_ARN`, `AWS_REGION`, `TF_STATE_BUCKET`,
       `WEB_ORIGINS_JSON`, `UAZAPI_SERVER_URL` e os secrets `TF_VAR_UAZAPI_ADMIN_TOKEN`,
       `TF_VAR_NEW_RELIC_LICENSE_KEY`, `TF_VAR_BUDGET_EMAIL` ([GitHub](#2-variáveis-e-secrets-do-github)).
 - [ ] 5. Deploy Supabase, **antes** do merge desta mudança na `main`: definir
@@ -78,8 +78,11 @@ desenvolvimento). Siga na ordem; cada item aponta a seção com o detalhe.
 ## 1. Bootstrap (estado remoto e OIDC)
 
 Aplicado **uma vez**, com a credencial local; o estado dele fica **local** (é ele que cria o bucket do
-estado remoto). Cria o bucket `crm-pac-tfstate-<conta>`, o provider OIDC do GitHub e a role
-`crm-pac-github-deploy` (trust restrita a `refs/heads/main` e `pull_request` deste repositório).
+estado remoto). Cria o bucket `crm-pac-tfstate-<conta>`, o provider OIDC do GitHub e duas roles:
+`crm-pac-github-deploy` (`AdministratorAccess`, trust só em `refs/heads/main` deste repositório, usada
+pelo `deploy-aws.yml`) e `crm-pac-github-plan` (`ReadOnlyAccess` + leitura do bucket de estado e dos
+secrets `crm-pac/*`, trust só em `pull_request` deste repositório, usada pelo `infra-plan.yml`). Assim um
+PR nunca recebe credencial de escrita na conta.
 
 ```sh
 cd infra/bootstrap
@@ -87,6 +90,7 @@ terraform init
 terraform apply      # num fork: -var repositorio_github=<owner>/<repo>
 terraform output bucket_estado     # -> TF_STATE_BUCKET e backend.hcl
 terraform output role_deploy_arn   # -> AWS_DEPLOY_ROLE_ARN
+terraform output role_plan_arn     # -> AWS_PLAN_ROLE_ARN
 ```
 
 Guarde uma cópia de `infra/bootstrap/terraform.tfstate` fora do repositório (está no `.gitignore`). Se a
@@ -109,7 +113,8 @@ Settings → Secrets and variables → Actions. Nomes exatos usados por `deploy-
 
 | Tipo | Nome | Valor |
 |---|---|---|
-| Variável | `AWS_DEPLOY_ROLE_ARN` | output `role_deploy_arn` do bootstrap. Sem ela, os dois workflows são pulados (ficam verdes). |
+| Variável | `AWS_DEPLOY_ROLE_ARN` | output `role_deploy_arn` do bootstrap (role de deploy, só `main`). Sem ela, o `deploy-aws.yml` é pulado (fica verde). |
+| Variável | `AWS_PLAN_ROLE_ARN` | output `role_plan_arn` do bootstrap (role somente leitura, só PRs). Sem ela, o `infra-plan.yml` é pulado (fica verde). |
 | Variável | `AWS_REGION` | `us-east-1` (opcional; é o padrão) |
 | Variável | `TF_STATE_BUCKET` | output `bucket_estado` do bootstrap |
 | Variável | `WEB_ORIGINS_JSON` | lista JSON das origens da SPA, ex.: `["https://crm-advocacia-pac.vercel.app"]` (vira `web_origins`: CORS do S3 e `WEB_ORIGINS` da API) |
@@ -300,7 +305,7 @@ terraform destroy      # pede as mesmas variáveis do apply (terraform.tfvars lo
 Depois, por último, o bootstrap: remova o `prevent_destroy` do bucket de estado em
 `infra/bootstrap/main.tf`, esvazie o bucket (todas as versões) e rode `terraform destroy` em
 `infra/bootstrap` (o estado local guardado no passo 2 do checklist). Apague também as variáveis/secrets do
-GitHub (sem `AWS_DEPLOY_ROLE_ARN`, os workflows voltam a ser pulados) e devolva o Project `pac` da Vercel
+GitHub (sem `AWS_DEPLOY_ROLE_ARN` e `AWS_PLAN_ROLE_ARN`, os workflows voltam a ser pulados) e devolva o Project `pac` da Vercel
 para o modelo desejado.
 
 ## Problemas comuns
@@ -308,6 +313,7 @@ para o modelo desejado.
 | Sintoma | Causa provável |
 |---|---|
 | Workflow "deploy (pulado)" | `AWS_DEPLOY_ROLE_ARN` não cadastrada ou execução fora da `main` |
+| Workflow "terraform plan (pulado)" | `AWS_PLAN_ROLE_ARN` não cadastrada ou PR vindo de fork |
 | `Not authorized to perform sts:AssumeRoleWithWebIdentity` | `repositorio_github` do bootstrap diferente do repo, ou job com `environment:` |
 | `EntityAlreadyExists` no bootstrap | provider OIDC já existe na conta: importe (README do bootstrap) |
 | Migration falhou (exitCode≠0) | ver o link do CloudWatch no erro; o serviço segue na revisão anterior |

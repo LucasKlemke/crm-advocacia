@@ -60,7 +60,17 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
+# Uma trust policy por role: cada uma aceita um único `sub` deste repositório.
+locals {
+  sub_github = {
+    deploy = "repo:${var.repositorio_github}:ref:refs/heads/main"
+    plan   = "repo:${var.repositorio_github}:pull_request"
+  }
+}
+
 data "aws_iam_policy_document" "confianca_github" {
+  for_each = local.sub_github
+
   statement {
     sid     = "GitHubActionsOIDC"
     effect  = "Allow"
@@ -77,22 +87,19 @@ data "aws_iam_policy_document" "confianca_github" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Só a branch main (deploy/apply) e pull requests (plan) deste repositório.
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.repositorio_github}:ref:refs/heads/main",
-        "repo:${var.repositorio_github}:pull_request",
-      ]
+      values   = [each.value]
     }
   }
 }
 
+# Deploy (deploy-aws.yml): só a branch main assume; aplica o terraform e publica no ECR.
 resource "aws_iam_role" "deploy" {
   name                 = "${var.prefixo}-github-deploy"
-  description          = "Assumida pelo GitHub Actions via OIDC para terraform plan/apply e push no ECR."
-  assume_role_policy   = data.aws_iam_policy_document.confianca_github.json
+  description          = "Assumida pelo GitHub Actions (só refs/heads/main) via OIDC para terraform apply e push no ECR."
+  assume_role_policy   = data.aws_iam_policy_document.confianca_github["deploy"].json
   max_session_duration = 7200 # deploy-aws.yml pede sessão de 2 h (primeiro deploy é longo)
 }
 
@@ -101,4 +108,48 @@ resource "aws_iam_role" "deploy" {
 resource "aws_iam_role_policy_attachment" "deploy_admin" {
   role       = aws_iam_role.deploy.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# Plan (infra-plan.yml): qualquer PR deste repositório assume, então só lê. Um PR malicioso
+# que altere o workflow não consegue escrever nada na conta com esta role.
+resource "aws_iam_role" "plan" {
+  name                 = "${var.prefixo}-github-plan"
+  description          = "Assumida pelo GitHub Actions (só pull_request) via OIDC para terraform plan, somente leitura."
+  assume_role_policy   = data.aws_iam_policy_document.confianca_github["plan"].json
+  max_session_duration = 3600
+}
+
+resource "aws_iam_role_policy_attachment" "plan_leitura" {
+  role       = aws_iam_role.plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+# O que o plan precisa além do ReadOnlyAccess:
+# - estado remoto: o infra-plan.yml roda `plan -lock=false`, então só lê (sem PutObject do .tflock);
+# - refresh do aws_secretsmanager_secret_version lê o valor do secret (GetSecretValue não faz parte
+#   do ReadOnlyAccess). Os demais recursos do infra/terraform são lidos com Describe/Get/List.
+data "aws_iam_policy_document" "plan_extra" {
+  statement {
+    sid       = "ListarEstado"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.estado.arn]
+  }
+
+  statement {
+    sid       = "LerEstado"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.estado.arn}/*"]
+  }
+
+  statement {
+    sid       = "LerSegredosDoAmbiente"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = ["arn:aws:secretsmanager:*:${data.aws_caller_identity.atual.account_id}:secret:${var.prefixo}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "plan_extra" {
+  name   = "estado-e-segredos"
+  role   = aws_iam_role.plan.id
+  policy = data.aws_iam_policy_document.plan_extra.json
 }

@@ -18,8 +18,9 @@ concurrency:
   group: infra-plan-${{ github.ref }}
   cancel-in-progress: true
 
-# Nada de `environment:` nos jobs: a trust policy da role (infra/bootstrap) só aceita o `sub`
-# `repo:<owner>/<repo>:pull_request` (e `ref:refs/heads/main`); com environment o `sub` mudaria.
+# Usa a role somente leitura `crm-pac-github-plan` (AWS_PLAN_ROLE_ARN), nunca a de deploy.
+# Nada de `environment:` nos jobs: a trust policy dela (infra/bootstrap) só aceita o `sub`
+# `repo:<owner>/<repo>:pull_request`; com environment o `sub` mudaria.
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
@@ -32,24 +33,24 @@ env:
   TF_VAR_budget_email: ${{ secrets.TF_VAR_BUDGET_EMAIL }}
 
 jobs:
-  # Sem AWS_DEPLOY_ROLE_ARN (AWS ainda não configurada) ou em PR de fork (sem OIDC/segredos),
+  # Sem AWS_PLAN_ROLE_ARN (AWS ainda não configurada) ou em PR de fork (sem OIDC/segredos),
   # o plan é pulado e o check fica verde. `vars` é aceito no `if` de job; `secrets` não.
   pulado:
     name: terraform plan (pulado)
-    if: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' || github.event.pull_request.head.repo.full_name != github.repository }}
+    if: ${{ vars.AWS_PLAN_ROLE_ARN == '' || github.event.pull_request.head.repo.full_name != github.repository }}
     runs-on: ubuntu-latest
     steps:
       - run: |
           {
             echo "### terraform plan pulado"
             echo
-            echo "Variável de repositório \`AWS_DEPLOY_ROLE_ARN\` ausente ou PR vindo de fork."
+            echo "Variável de repositório \`AWS_PLAN_ROLE_ARN\` ausente ou PR vindo de fork."
             echo "Configure a AWS conforme docs/deploy/aws-terraform.md para habilitar o plan."
           } >> "$GITHUB_STEP_SUMMARY"
 
   plan:
     name: terraform plan
-    if: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' && github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ vars.AWS_PLAN_ROLE_ARN != '' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,7 +60,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: infra-plan-${{ github.run_id }}
 
@@ -94,6 +95,7 @@ jobs:
           echo "tag=${tag:-inicial}" >> "$GITHUB_OUTPUT"
           echo "image_tag usada no plan: ${tag:-inicial}"
 
+      # -lock=false: a role de plan só lê o bucket do estado (não grava o .tflock).
       - name: terraform plan
         run: |
           set -o pipefail
