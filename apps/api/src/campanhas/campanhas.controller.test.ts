@@ -28,6 +28,37 @@ const CORPO_VALIDO = {
   linhas: [{ Nome: "Ana", numero: "5511999999999" }],
 };
 
+// Entidade como o service devolve (Dates, instância reduzida); a resposta HTTP é ela
+// passada por serializarCampanha — o mesmo DTO que o evento de tempo real carrega.
+const CAMPANHA = {
+  id: "campanha-1",
+  escritorioId: "esc-1",
+  instanciaWhatsappId: "instancia-1",
+  criadoPorId: "user-1",
+  nome: "Campanha de teste",
+  mensagemTemplate: "Olá {{nome}}",
+  mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [] } },
+  colunaNumero: "numero",
+  arquivoCsvNome: null,
+  delayMin: 3,
+  delayMax: 6,
+  agendadaPara: null,
+  status: "enviando",
+  uazapiFolderId: "folder-1",
+  totalDestinatarios: 1,
+  logTotal: 1,
+  logSucesso: 0,
+  logFalha: 0,
+  logEntregue: 0,
+  logLido: 0,
+  logReproduzido: 0,
+  sincronizadoEm: new Date("2026-01-01T00:05:00.000Z"),
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:05:00.000Z"),
+  instancia: { id: "instancia-1", nome: "Atendimento", status: "connected", softDeletedAt: null },
+};
+const DTO = JSON.parse(JSON.stringify(CAMPANHA));
+
 const service = {
   listar: jest.fn(),
   criar: jest.fn(),
@@ -62,10 +93,20 @@ describe("GET /api/campanhas", () => {
   });
 
   it("lista as campanhas do escritório da sessão", async () => {
-    service.listar.mockResolvedValue([{ id: "campanha-1" }]);
+    service.listar.mockResolvedValue([CAMPANHA]);
 
-    await request(await subir()).get("/api/campanhas").expect(200, { campanhas: [{ id: "campanha-1" }] });
+    await request(await subir()).get("/api/campanhas").expect(200, { campanhas: [DTO] });
     expect(service.listar).toHaveBeenCalledWith(CTX_OWNER);
+  });
+
+  // A resposta passa por serializarCampanha: campos explícitos, nunca a entidade crua.
+  it("nunca devolve o uazapiToken, mesmo se a instância vier inteira do service", async () => {
+    service.listar.mockResolvedValue([
+      { ...CAMPANHA, instancia: { ...CAMPANHA.instancia, uazapiToken: "token-secreto" } },
+    ]);
+
+    const res = await request(await subir()).get("/api/campanhas").expect(200, { campanhas: [DTO] });
+    expect(JSON.stringify(res.body)).not.toContain("token-secreto");
   });
 
   it("responde 500 genérico quando o service quebra por motivo inesperado", async () => {
@@ -78,16 +119,16 @@ describe("GET /api/campanhas", () => {
 
 describe("POST /api/campanhas", () => {
   it("cria a campanha e responde 201", async () => {
-    service.criar.mockResolvedValue({ id: "campanha-1" });
+    service.criar.mockResolvedValue(CAMPANHA);
 
     await request(await subir()).post("/api/campanhas").send(CORPO_VALIDO).expect(201, {
-      campanha: { id: "campanha-1" },
+      campanha: DTO,
     });
     expect(service.criar).toHaveBeenCalledWith(CTX_OWNER, CORPO_VALIDO);
   });
 
   it("converte agendadaPara de ISO para Date antes de chamar o service", async () => {
-    service.criar.mockResolvedValue({ id: "campanha-1" });
+    service.criar.mockResolvedValue(CAMPANHA);
     // Relativo ao agora: o schema recusa agendamento no passado.
     const daquiADuasHoras = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
@@ -103,7 +144,7 @@ describe("POST /api/campanhas", () => {
   });
 
   it("não repassa agendadaPara quando o corpo não traz agendamento", async () => {
-    service.criar.mockResolvedValue({ id: "campanha-1" });
+    service.criar.mockResolvedValue(CAMPANHA);
 
     await request(await subir()).post("/api/campanhas").send(CORPO_VALIDO).expect(201);
 
@@ -153,7 +194,7 @@ describe("POST /api/campanhas", () => {
 
   // Depende da Task 2.41: o CSV inteiro trafega no corpo.
   it("aceita a planilha no teto de 5000 destinatários", async () => {
-    service.criar.mockResolvedValue({ id: "campanha-1" });
+    service.criar.mockResolvedValue(CAMPANHA);
     const linhas = Array.from({ length: 5000 }, (_, i) => ({
       Nome: `Destinatário número ${i}`,
       numero: "5511999999999",
@@ -183,7 +224,7 @@ describe("POST /api/campanhas", () => {
 
 describe("GET /api/campanhas/:id", () => {
   beforeEach(() => {
-    service.obter.mockResolvedValue({ id: "campanha-1" });
+    service.obter.mockResolvedValue(CAMPANHA);
     service.listarItens.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 50 });
   });
 
@@ -193,7 +234,7 @@ describe("GET /api/campanhas/:id", () => {
 
   it("devolve a campanha junto da primeira página de itens", async () => {
     await request(await subir()).get("/api/campanhas/campanha-1").expect(200, {
-      campanha: { id: "campanha-1" },
+      campanha: DTO,
       itens: [],
       total: 0,
       pagina: 1,
@@ -286,11 +327,11 @@ describe("POST /api/campanhas/:id/sincronizar", () => {
   });
 
   it("devolve a campanha atualizada com 200 (não 201)", async () => {
-    service.sincronizar.mockResolvedValue({ id: "campanha-1", logSucesso: 7 });
+    service.sincronizar.mockResolvedValue({ ...CAMPANHA, logSucesso: 7 });
 
     await request(await subir())
       .post("/api/campanhas/campanha-1/sincronizar")
-      .expect(200, { campanha: { id: "campanha-1", logSucesso: 7 } });
+      .expect(200, { campanha: { ...DTO, logSucesso: 7 } });
     expect(service.sincronizar).toHaveBeenCalledWith(CTX_OWNER, "campanha-1");
   });
 
@@ -306,14 +347,14 @@ describe("POST /api/campanhas/:id/sincronizar", () => {
 
 describe("POST /api/campanhas/:id/controlar", () => {
   beforeEach(() => {
-    service.controlar.mockResolvedValue({ id: "campanha-1" });
+    service.controlar.mockResolvedValue(CAMPANHA);
   });
 
   it("repassa a ação ao service e responde 200", async () => {
     await request(await subir())
       .post("/api/campanhas/campanha-1/controlar")
       .send({ acao: "stop" })
-      .expect(200, { campanha: { id: "campanha-1" } });
+      .expect(200, { campanha: DTO });
     expect(service.controlar).toHaveBeenCalledWith(CTX_OWNER, "campanha-1", "stop");
   });
 

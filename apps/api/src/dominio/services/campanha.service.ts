@@ -1,8 +1,11 @@
 import { prisma } from "@dominio/lib/prisma";
 import { campanhaRepository } from "@dominio/repositories/campanha.repository";
 import { campanhaItemRepository } from "@dominio/repositories/campanha-item.repository";
+import { instanciaWhatsappRepository } from "@dominio/repositories/instancia-whatsapp.repository";
+import { eventosCampanha } from "@dominio/lib/tempo-real/eventos-campanha";
+import { serializarCampanha } from "@dominio/lib/api/serializa-campanha";
 import { instanciaWhatsappService } from "@dominio/services/instancia-whatsapp.service";
-import { logService } from "@dominio/services/log.service";
+import { logService, type RegistroLog } from "@dominio/services/log.service";
 import { PermissaoNegadaError } from "@dominio/services/membro.service";
 import {
   uazapiClient,
@@ -273,6 +276,54 @@ function compararSincronizacao(
   return mudou ? mudancas : null;
 }
 
+// Status em que a UAZAPI ainda pode mudar algo da campanha. Pausada entra para o webhook
+// (alguém pode retomar pela UAZAPI), mas não para o polling, que só vigia o que anda sozinho.
+const STATUS_ATIVOS: StatusCampanha[] = ["agendada", "enviando", "pausada"];
+const STATUS_POLLING: StatusCampanha[] = ["agendada", "enviando"];
+
+// Chamado só depois que a transação resolveu: um evento de uma escrita desfeita mostraria
+// na tela um estado que o banco não tem.
+function publicarAtualizacao(campanha: CampanhaComInstancia): void {
+  eventosCampanha.publicar({
+    tipo: "campanha.atualizada",
+    escritorioId: campanha.escritorioId,
+    campanha: serializarCampanha(campanha),
+  });
+}
+
+// Grava o resultado de uma sincronização (manual ou do sistema) com o log na mesma
+// transação (RN20) e só então publica — `registrarLog` decide se o autor é o usuário da
+// sessão ou o sistema.
+async function gravarSincronizacao(
+  campanha: CampanhaComInstancia,
+  mudancas: Prisma.CampanhaUncheckedUpdateInput,
+  registrarLog: (registro: RegistroLog, tx: Prisma.TransactionClient) => Promise<unknown>
+): Promise<CampanhaComInstancia> {
+  const sincronizada = await prisma.$transaction(async (tx) => {
+    const atualizada = await campanhaRepository.update(
+      campanha.id,
+      { ...mudancas, sincronizadoEm: new Date() },
+      tx
+    );
+
+    await registrarLog(
+      {
+        acao: "atualizar",
+        entidade: "campanha",
+        entidadeId: campanha.id,
+        resumo: `Campanha ${campanha.nome} sincronizada com a UAZAPI`,
+        dados: mudancas as Prisma.InputJsonValue,
+      },
+      tx
+    );
+
+    return { ...campanha, ...atualizada };
+  });
+
+  publicarAtualizacao(sincronizada);
+  return sincronizada;
+}
+
 export const campanhaService = {
   async listar(ctx: TenantContext): Promise<CampanhaComInstancia[]> {
     return campanhaRepository.listar(ctx.escritorioId);
@@ -459,27 +510,51 @@ export const campanhaService = {
     const mudancas = compararSincronizacao(campanha, remota);
     if (!mudancas) return campanha;
 
-    return prisma.$transaction(async (tx) => {
-      const atualizada = await campanhaRepository.update(
-        id,
-        { ...mudancas, sincronizadoEm: new Date() },
-        tx
-      );
+    return gravarSincronizacao(campanha, mudancas, (registro, tx) =>
+      logService.registrar(ctx, registro, tx)
+    );
+  },
 
-      await logService.registrar(
-        ctx,
-        {
-          acao: "atualizar",
-          entidade: "campanha",
-          entidadeId: id,
-          resumo: `Campanha ${campanha.nome} sincronizada com a UAZAPI`,
-          dados: mudancas as Prisma.InputJsonValue,
-        },
-        tx
-      );
+  // Mesma sincronização, disparada pelo sistema (webhook/polling do tempo real) — sem
+  // sessão, então o escritório vem da própria linha da campanha e o log sai com origem
+  // "sistema". Devolve se algo mudou. Erro da UAZAPI sobe: quem chama decide como logar.
+  async sincronizarPeloSistema(campanhaId: string): Promise<boolean> {
+    const campanha = await campanhaRepository.findById(campanhaId);
+    if (!campanha?.instanciaWhatsappId) return false;
 
-      return { ...campanha, ...atualizada };
-    });
+    const instancia = await instanciaWhatsappRepository.findById(campanha.instanciaWhatsappId);
+    // Instância excluída não é vigiada pelo sistema (o histórico dela continua acessível
+    // pelo sincronizar manual). A checagem de escritório é defesa em profundidade (RN19):
+    // o token de outro tenant nunca fala em nome desta campanha.
+    if (
+      !instancia ||
+      instancia.softDeletedAt !== null ||
+      instancia.escritorioId !== campanha.escritorioId
+    ) {
+      return false;
+    }
+
+    const folders = await uazapiClient.listarCampanhas(instancia.uazapiToken);
+    const remota = folders.find((folder) => folder.id === campanha.uazapiFolderId);
+    if (!remota) return false;
+
+    const mudancas = compararSincronizacao(campanha, remota);
+    if (!mudancas) return false;
+
+    await gravarSincronizacao(campanha, mudancas, (registro, tx) =>
+      logService.registrarSistema(campanha.escritorioId, registro, tx)
+    );
+    return true;
+  },
+
+  // Ids para o webhook: uma notificação da instância pode afetar qualquer campanha dela
+  // que ainda não terminou.
+  async idsAtivosDaInstancia(instanciaId: string): Promise<string[]> {
+    return campanhaRepository.listarIdsPorInstancia(instanciaId, STATUS_ATIVOS);
+  },
+
+  async idsParaPolling(): Promise<string[]> {
+    return campanhaRepository.listarIdsComInstanciaAtiva(STATUS_POLLING);
   },
 
   async controlar(

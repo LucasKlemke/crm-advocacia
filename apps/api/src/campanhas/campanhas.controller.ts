@@ -22,6 +22,7 @@ import {
   paginaCampanhaSchema,
 } from "@crm/compartilhado/schemas/campanha";
 import { tratarErroDeCampanha } from "@dominio/lib/api/erros-campanha";
+import { serializarCampanha } from "@dominio/lib/api/serializa-campanha";
 import type { campanhaService } from "@dominio/services/campanha.service";
 import type { TenantContext } from "@dominio/lib/auth/resolver-tenant";
 
@@ -38,7 +39,8 @@ export class CampanhasController {
 
   @Get()
   async listar(@Tenant() ctx: TenantContext) {
-    return { campanhas: await this.service.listar(ctx) };
+    const campanhas = await this.service.listar(ctx);
+    return { campanhas: campanhas.map(serializarCampanha) };
   }
 
   @Post()
@@ -53,7 +55,7 @@ export class CampanhasController {
       ...resto,
       ...(agendadaPara ? { agendadaPara: new Date(agendadaPara) } : {}),
     });
-    return { campanha };
+    return { campanha: serializarCampanha(campanha) };
   }
 
   // Campanha + página de itens numa resposta só: a tela de detalhe precisa dos dois, e
@@ -66,7 +68,7 @@ export class CampanhasController {
   ) {
     const campanha = await this.service.obter(ctx, id);
     const itens = await this.service.listarItens(ctx, id, { pagina });
-    return { campanha, ...itens };
+    return { campanha: serializarCampanha(campanha), ...itens };
   }
 
   // Status mensagem a mensagem, consultado ao vivo na UAZAPI. Página inválida vira 1
@@ -84,7 +86,7 @@ export class CampanhasController {
   @Post(":id/sincronizar")
   @HttpCode(200)
   async sincronizar(@Tenant() ctx: TenantContext, @Param("id") id: string) {
-    return { campanha: await this.service.sincronizar(ctx, id) };
+    return { campanha: serializarCampanha(await this.service.sincronizar(ctx, id)) };
   }
 
   // Pausar/retomar/excluir o envio na UAZAPI. Com acao="delete" a campanha deixa de
@@ -96,6 +98,7 @@ export class CampanhasController {
     @Param("id") id: string,
     @Body(new ValidacaoZodPipe(acaoCampanhaSchema)) corpo: CorpoAcaoCampanha
   ) {
-    return { campanha: await this.service.controlar(ctx, id, corpo.acao) };
+    const campanha = await this.service.controlar(ctx, id, corpo.acao);
+    return { campanha: campanha ? serializarCampanha(campanha) : null };
   }
 }

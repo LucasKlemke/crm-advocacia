@@ -135,6 +135,79 @@ describe("campanhaRepository", () => {
     expect(await campanhaRepository.findById(campanha.id)).toBeNull();
   });
 
+  describe("consultas do sistema (sem sessão)", () => {
+    async function criarComStatus(
+      nome: string,
+      status: "agendada" | "enviando" | "pausada" | "concluida" | "excluindo",
+      instancia: string | null = instanciaId
+    ) {
+      const campanha = await campanhaRepository.create({
+        nome,
+        mensagemTemplate: "Oi",
+        colunaNumero: "numero",
+        delayMin: 3,
+        delayMax: 6,
+        uazapiFolderId: `folder-${nome}`,
+        totalDestinatarios: 1,
+        status,
+        escritorio: { connect: { id: escritorioId } },
+        criadoPor: { connect: { id: usuarioId } },
+        ...(instancia ? { instancia: { connect: { id: instancia } } } : {}),
+      });
+      return campanha.id;
+    }
+
+    it("listarIdsPorInstancia devolve só as campanhas da instância nos status pedidos", async () => {
+      const outraInstancia = await instanciaWhatsappRepository.create({
+        nome: `Outra ${Date.now()}`,
+        uazapiInstanceId: `instance-outra-${Date.now()}`,
+        uazapiToken: "token",
+        escritorio: { connect: { id: escritorioId } },
+      });
+      const agendada = await criarComStatus("Ag", "agendada");
+      const enviando = await criarComStatus("En", "enviando");
+      const pausada = await criarComStatus("Pa", "pausada");
+      await criarComStatus("Co", "concluida");
+      await criarComStatus("Ex", "excluindo");
+      await criarComStatus("DeOutra", "enviando", outraInstancia.id);
+
+      const ids = await campanhaRepository.listarIdsPorInstancia(instanciaId, [
+        "agendada",
+        "enviando",
+        "pausada",
+      ]);
+
+      expect(ids.sort()).toEqual([agendada, enviando, pausada].sort());
+    });
+
+    it("listarIdsComInstanciaAtiva ignora instância soft-deleted e campanha sem instância", async () => {
+      const excluida = await instanciaWhatsappRepository.create({
+        nome: `Excluída ${Date.now()}`,
+        uazapiInstanceId: `instance-excluida-${Date.now()}`,
+        uazapiToken: "token",
+        softDeletedAt: new Date(),
+        escritorio: { connect: { id: escritorioId } },
+      });
+      const agendada = await criarComStatus("PAg", "agendada");
+      const enviando = await criarComStatus("PEn", "enviando");
+      await criarComStatus("PPa", "pausada");
+      await criarComStatus("PCo", "concluida");
+      await criarComStatus("PDeExcluida", "enviando", excluida.id);
+      await criarComStatus("PSemInstancia", "enviando", null);
+
+      const ids = await campanhaRepository.listarIdsComInstanciaAtiva(["agendada", "enviando"]);
+
+      // Consulta global: outras suítes podem ter campanhas no mesmo banco, então a
+      // comparação fica restrita às campanhas deste escritório de teste.
+      const proprias = await prisma.campanha.findMany({
+        where: { escritorioId },
+        select: { id: true },
+      });
+      const idsProprios = new Set(proprias.map((c) => c.id));
+      expect(ids.filter((id) => idsProprios.has(id)).sort()).toEqual([agendada, enviando].sort());
+    });
+  });
+
   // onDelete: SetNull é a rede de segurança para uma remoção feita FORA da aplicação: o
   // service não apaga mais instância fisicamente (a exclusão é soft), justamente porque
   // zerar este vínculo custa à campanha o token e, com ele, o controle do disparo.
