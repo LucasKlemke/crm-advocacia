@@ -416,9 +416,10 @@ describe("useTempoRealCampanhas — cache", () => {
     expect(mensagensDe("c1")).toBe(1);
     await avancar(1);
     expect(mensagensDe("c1")).toBe(2);
+    // + a releitura tardia (5 s depois do último aviso de cada uma), e mais nada.
     await avancar(10_000);
-    expect(mensagensDe("c1")).toBe(2);
-    expect(mensagensDe("c2")).toBe(1);
+    expect(mensagensDe("c1")).toBe(3);
+    expect(mensagensDe("c2")).toBe(2);
   });
 
   it("campanha.removida tira a campanha da lista e descarta detalhe e mensagens em cache", async () => {
@@ -504,6 +505,52 @@ describe("useTempoRealCampanhas — cache", () => {
     await avancar(3000);
     expect(mensagensDe("c1")).toBe(2);
     expect(espiao).toHaveBeenCalledTimes(2);
+  });
+
+  it("relê as mensagens de novo 5 s depois do último aviso (a UAZAPI grava o status com atraso)", async () => {
+    const { queryClient } = await conectar();
+    const espiao = jest.spyOn(queryClient, "invalidateQueries");
+    const mensagensDe = (id: string) =>
+      espiao.mock.calls.filter(
+        ([filtro]) =>
+          JSON.stringify(filtro?.queryKey) ===
+          JSON.stringify(["campanhas", "mensagens", id]),
+      ).length;
+
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.mensagens", campanhaId: "c1" }),
+    );
+    expect(mensagensDe("c1")).toBe(1);
+
+    // Novo aviso antes dos 5 s adia a releitura tardia (uma só, contada do último aviso).
+    await avancar(4000);
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.mensagens", campanhaId: "c1" }),
+    );
+    expect(mensagensDe("c1")).toBe(2);
+    await avancar(4999);
+    expect(mensagensDe("c1")).toBe(2);
+    await avancar(1);
+    expect(mensagensDe("c1")).toBe(3);
+
+    // A releitura tardia não agenda outra: sem aviso novo, a tabela fica quieta.
+    await avancar(20000);
+    expect(mensagensDe("c1")).toBe(3);
+  });
+
+  it("campanha.removida cancela a releitura tardia das mensagens", async () => {
+    const { queryClient } = await conectar();
+    const espiao = jest.spyOn(queryClient, "invalidateQueries");
+
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.mensagens", campanhaId: "c1" }),
+    );
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.removida", campanhaId: "c1" }),
+    );
+    const chamadas = espiao.mock.calls.length;
+    await avancar(10000);
+    expect(espiao.mock.calls.length).toBe(chamadas);
   });
 
   it("instancia.atualizada substitui a instância na lista em cache, sem refetch", async () => {

@@ -111,6 +111,16 @@ describe("DetalheCampanha", () => {
     expect(screen.getByRole("cell", { name: "Olá Ana" })).toBeInTheDocument();
   });
 
+  it("mostra a barra de progresso do disparo (enviadas + falhas sobre o total)", () => {
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    expect(screen.getByRole("progressbar", { name: "Progresso do disparo" })).toHaveAttribute(
+      "aria-valuenow",
+      "75"
+    );
+    expect(screen.getByText("9 de 12 processadas · 75%")).toBeInTheDocument();
+  });
+
   it("descreve a coluna e os tratamentos de cada variável", () => {
     renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
 
