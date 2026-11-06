@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
-import { renderComQuery, screen, waitFor } from "@/lib/test-utils";
+import { toast } from "sonner";
+import { act, renderComQuery, screen, waitFor } from "@/lib/test-utils";
+import { chaveInstanciasWhatsapp } from "@/hooks/use-instancias-whatsapp";
 import { QrcodeDialog, type QrcodeDialogState } from "./qrcode-dialog";
-import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
+import type {
+  InstanciaWhatsappDTO,
+  ListaInstanciasWhatsapp,
+} from "@crm/compartilhado/tipos/instancia-whatsapp";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
@@ -82,5 +87,75 @@ describe("QrcodeDialog", () => {
       await screen.findByText("Ainda não conectado. Escaneie o QR Code e tente novamente.")
     ).toBeInTheDocument();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  describe("tempo real: a lista de instâncias em cache é atualizada pelo WebSocket", () => {
+    // O TanStack Query notifica os observers num setTimeout(0): espera a entrega para que
+    // atualizações seguidas cheguem ao componente uma a uma, como chegam pelo WebSocket.
+    async function definirLista(
+      queryClient: ReturnType<typeof renderComQuery>["queryClient"],
+      ...instancias: InstanciaWhatsappDTO[]
+    ) {
+      await act(async () => {
+        queryClient.setQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp(), { instancias });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+
+    it("fecha sozinho e avisa quando a instância em cache vira connected", async () => {
+      global.fetch = jest.fn();
+      const onOpenChange = jest.fn();
+      const { queryClient } = renderComQuery(
+        <QrcodeDialog state={ESTADO} onOpenChange={onOpenChange} />
+      );
+      await definirLista(queryClient, instancia("connecting"));
+      expect(onOpenChange).not.toHaveBeenCalled();
+
+      await definirLista(queryClient, instancia("connected"));
+
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(toast.success).toHaveBeenCalledWith("WhatsApp conectado.");
+      // Só lê o cache: quem busca a lista é a tela; o diálogo não dispara requisição.
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("instância nova, ainda fora do cache, fecha quando aparece já conectada", async () => {
+      const onOpenChange = jest.fn();
+      const { queryClient } = renderComQuery(
+        <QrcodeDialog state={ESTADO} onOpenChange={onOpenChange} />
+      );
+
+      await definirLista(queryClient, instancia("connected"));
+
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    });
+
+    it("não fecha na abertura se o cache já dizia connected (estado antigo) nem por outra instância", async () => {
+      const onOpenChange = jest.fn();
+      const { queryClient, rerender } = renderComQuery(
+        <QrcodeDialog state={null} onOpenChange={onOpenChange} />
+      );
+      await definirLista(queryClient, instancia("connected"));
+
+      rerender(<QrcodeDialog state={ESTADO} onOpenChange={onOpenChange} />);
+      await definirLista(queryClient, instancia("connected"), { ...instancia("connected"), id: "outra" });
+
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("estado antigo connected que passa por connecting e volta a connected fecha", async () => {
+      const onOpenChange = jest.fn();
+      const { queryClient, rerender } = renderComQuery(
+        <QrcodeDialog state={null} onOpenChange={onOpenChange} />
+      );
+      await definirLista(queryClient, instancia("connected"));
+      rerender(<QrcodeDialog state={ESTADO} onOpenChange={onOpenChange} />);
+      expect(onOpenChange).not.toHaveBeenCalled();
+
+      await definirLista(queryClient, instancia("connecting"));
+      await definirLista(queryClient, instancia("connected"));
+
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    });
   });
 });

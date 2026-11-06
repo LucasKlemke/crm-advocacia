@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { useVerificarStatusInstanciaWhatsapp } from "@/hooks/use-instancias-whatsapp";
+import {
+  useInstanciaWhatsappEmCache,
+  useVerificarStatusInstanciaWhatsapp,
+} from "@/hooks/use-instancias-whatsapp";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,11 +28,31 @@ export interface QrcodeDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// "Verificar conexão" é um clique manual — sem polling/websocket (fora do escopo desta
-// entrega): o usuário escaneia o QR e decide quando conferir se já conectou.
+// Fecha sozinho quando a instância conecta: o webhook `connection` da UAZAPI faz a API
+// publicar `instancia.atualizada` no WebSocket, que atualiza a lista em cache. "Verificar
+// conexão" continua como atalho manual para quando o tempo real está indisponível.
 export function QrcodeDialog({ state, onOpenChange }: QrcodeDialogProps) {
   const verificar = useVerificarStatusInstanciaWhatsapp();
   const [mensagem, setMensagem] = useState<string | null>(null);
+  const status = useInstanciaWhatsappEmCache(state?.instanciaId)?.status;
+  // Último status visto desde a abertura. Só a TRANSIÇÃO para connected fecha: um
+  // "connected" que já estava no cache quando o diálogo abriu pode ser estado antigo.
+  const visto = useRef<{ instanciaId: string; status: string | undefined } | null>(null);
+
+  useEffect(() => {
+    if (!state) {
+      visto.current = null;
+      return;
+    }
+    const anterior =
+      visto.current?.instanciaId === state.instanciaId ? visto.current.status : status;
+    visto.current = { instanciaId: state.instanciaId, status };
+    if (status === "connected" && anterior !== "connected") {
+      toast.success("WhatsApp conectado.");
+      setMensagem(null);
+      onOpenChange(false);
+    }
+  }, [state, status, onOpenChange]);
 
   function fechar(aberto: boolean) {
     if (!aberto) setMensagem(null);
