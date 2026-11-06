@@ -261,7 +261,8 @@ export const uazapiClient = {
   // Registra o webhook da instância (autenticado com o token dela, não o admintoken).
   // Conferido em https://docs.uazapi.com/docs/integrations-webhooks (uazapiGO v2):
   // POST /webhook, header `token`, corpo { url, enabled, events, excludeMessages? }.
-  // `sender` = "Processamento de campanhas" e `messages_update` = "Entrega e leitura".
+  // `sender` = "Processamento de campanhas", `messages_update` = "Entrega e leitura" e
+  // `connection` = mudança de conexão da instância (QR lido, desconexão).
   // Nunca `messages`/`All`: mensagens recebidas não interessam e trariam conteúdo de terceiros.
   async configurarWebhook(uazapiToken: string, url: string): Promise<void> {
     await chamarUazapi(
@@ -271,7 +272,7 @@ export const uazapiClient = {
         Accept: "application/json",
         token: uazapiToken,
       },
-      { url, enabled: true, events: ["sender", "messages_update"] },
+      { url, enabled: true, events: ["sender", "messages_update", "connection"] },
       "POST",
       true
     );

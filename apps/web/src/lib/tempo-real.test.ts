@@ -60,6 +60,22 @@ describe("interpretarMensagem", () => {
     ).toEqual({ tipo: "campanha.atualizada", campanha: { id: "c1" } });
   });
 
+  it("aceita campanha.mensagens e instancia.atualizada", () => {
+    expect(interpretarMensagem('{"tipo":"campanha.mensagens","campanhaId":"c1"}')).toEqual({
+      tipo: "campanha.mensagens",
+      campanhaId: "c1",
+    });
+    expect(
+      interpretarMensagem('{"tipo":"instancia.atualizada","instancia":{"id":"i1"}}')
+    ).toEqual({ tipo: "instancia.atualizada", instancia: { id: "i1" } });
+  });
+
+  it("recusa campanha.mensagens e instancia.atualizada incompletas", () => {
+    expect(interpretarMensagem('{"tipo":"campanha.mensagens"}')).toBeNull();
+    expect(interpretarMensagem('{"tipo":"instancia.atualizada"}')).toBeNull();
+    expect(interpretarMensagem('{"tipo":"instancia.atualizada","instancia":{}}')).toBeNull();
+  });
+
   it("ignora JSON inválido, binário, tipo desconhecido e payload incompleto", () => {
     expect(interpretarMensagem("não é json")).toBeNull();
     expect(interpretarMensagem(new ArrayBuffer(2))).toBeNull();

@@ -953,7 +953,7 @@ describe("uazapiClient.configurarWebhook", () => {
     expect(JSON.parse(init.body)).toEqual({
       url: "https://api.exemplo.com/hook",
       enabled: true,
-      events: ["sender", "messages_update"],
+      events: ["sender", "messages_update", "connection"],
     });
   });
 

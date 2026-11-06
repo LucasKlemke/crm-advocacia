@@ -9,6 +9,8 @@ import { uazapiClient, UazapiIndisponivelError } from "@dominio/lib/external/uaz
 import { logService } from "@dominio/services/log.service";
 import { urlWebhookDaInstancia } from "@dominio/lib/auth/assinatura-webhook";
 import type { TenantContext } from "@dominio/lib/auth/tenant-context";
+import { eventosCampanha } from "@dominio/lib/tempo-real/eventos-campanha";
+import { prisma } from "@dominio/lib/prisma";
 import type { InstanciaWhatsapp } from "@prisma/client";
 
 jest.mock("@dominio/repositories/instancia-whatsapp.repository");
@@ -1156,5 +1158,224 @@ describe("instanciaWhatsappService — registro do webhook na UAZAPI", () => {
 
     expect(client.configurarWebhook).toHaveBeenCalledTimes(2);
     aviso.mockRestore();
+  });
+});
+
+describe("instanciaWhatsappService — tempo real (instancia.atualizada)", () => {
+  let publicar: jest.SpyInstance;
+  const transacao = prisma.$transaction as unknown as jest.Mock;
+
+  beforeEach(() => {
+    publicar = jest.spyOn(eventosCampanha, "publicar").mockImplementation(() => undefined);
+    logs.registrarSistema.mockResolvedValue({} as never);
+  });
+
+  afterEach(() => publicar.mockRestore());
+
+  function eventoPublicado() {
+    expect(publicar).toHaveBeenCalledTimes(1);
+    return publicar.mock.calls[0][0];
+  }
+
+  describe("verificarStatusPeloSistema", () => {
+    beforeEach(() => {
+      repo.findById.mockResolvedValue(
+        instanciaFake({
+          escritorioId: "esc-da-linha",
+          status: "connecting",
+          numeroConectado: null,
+          fotoPerfilUrl: null,
+        })
+      );
+      client.consultarStatus.mockResolvedValue({ status: "connected", numeroConectado: "5511999999999" });
+      repo.atualizarConexao.mockResolvedValue(
+        instanciaFake({
+          escritorioId: "esc-da-linha",
+          status: "connected",
+          numeroConectado: "5511999999999",
+          fotoPerfilUrl: null,
+        })
+      );
+    });
+
+    it("grava, loga como sistema no escritório da linha, publica sem token e devolve true", async () => {
+      await expect(instanciaWhatsappService.verificarStatusPeloSistema("instancia-1")).resolves.toBe(true);
+
+      expect(client.consultarStatus).toHaveBeenCalledWith("token-secreto");
+      expect(repo.atualizarConexao).toHaveBeenCalledWith(
+        "instancia-1",
+        { status: "connected", numeroConectado: "5511999999999", fotoPerfilUrl: null },
+        expect.anything()
+      );
+      expect(logs.registrarSistema).toHaveBeenCalledWith(
+        "esc-da-linha",
+        expect.objectContaining({
+          acao: "atualizar",
+          entidade: "instancia_whatsapp",
+          entidadeId: "instancia-1",
+        }),
+        expect.anything()
+      );
+      expect(logs.registrar).not.toHaveBeenCalled();
+      const evento = eventoPublicado();
+      expect(evento).toEqual({
+        tipo: "instancia.atualizada",
+        escritorioId: "esc-da-linha",
+        instancia: expect.objectContaining({
+          id: "instancia-1",
+          status: "connected",
+          numeroConectado: "5511999999999",
+        }),
+      });
+      expect(JSON.stringify(evento)).not.toContain("token-secreto");
+    });
+
+    it("sem mudança não grava, não loga, não publica e devolve false", async () => {
+      repo.findById.mockResolvedValue(instanciaFake());
+      client.consultarStatus.mockResolvedValue({
+        status: "connected",
+        numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      });
+
+      await expect(instanciaWhatsappService.verificarStatusPeloSistema("instancia-1")).resolves.toBe(false);
+
+      expect(repo.atualizarConexao).not.toHaveBeenCalled();
+      expect(logs.registrarSistema).not.toHaveBeenCalled();
+      expect(publicar).not.toHaveBeenCalled();
+    });
+
+    it("instância inexistente ou excluída devolve false sem chamar a UAZAPI", async () => {
+      repo.findById.mockResolvedValueOnce(null);
+      await expect(instanciaWhatsappService.verificarStatusPeloSistema("sumida")).resolves.toBe(false);
+
+      repo.findById.mockResolvedValueOnce(instanciaFake({ softDeletedAt: new Date() }));
+      await expect(instanciaWhatsappService.verificarStatusPeloSistema("instancia-1")).resolves.toBe(false);
+
+      expect(client.consultarStatus).not.toHaveBeenCalled();
+      expect(publicar).not.toHaveBeenCalled();
+    });
+
+    it("status fora do contrato aborta antes de qualquer escrita", async () => {
+      client.consultarStatus.mockResolvedValue({ status: "esquisito" } as never);
+
+      await expect(
+        instanciaWhatsappService.verificarStatusPeloSistema("instancia-1")
+      ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+      expect(repo.atualizarConexao).not.toHaveBeenCalled();
+      expect(publicar).not.toHaveBeenCalled();
+    });
+
+    it("publica só depois que a transação resolve; transação que rejeita não publica", async () => {
+      transacao.mockImplementationOnce(async (fn: (tx: unknown) => unknown) => {
+        const resultado = await fn({});
+        expect(publicar).not.toHaveBeenCalled();
+        return resultado;
+      });
+      await instanciaWhatsappService.verificarStatusPeloSistema("instancia-1");
+      expect(publicar).toHaveBeenCalledTimes(1);
+
+      publicar.mockClear();
+      transacao.mockRejectedValueOnce(new Error("deadlock"));
+      await expect(instanciaWhatsappService.verificarStatusPeloSistema("instancia-1")).rejects.toThrow(
+        "deadlock"
+      );
+      expect(publicar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("escritas do usuário também avisam as outras abas", () => {
+    it("verificarStatus com mudança publica para o escritório da sessão; sem mudança, não", async () => {
+      repo.findById.mockResolvedValue(
+        instanciaFake({ status: "connecting", numeroConectado: null, fotoPerfilUrl: null })
+      );
+      client.consultarStatus.mockResolvedValue({ status: "connected", numeroConectado: "5511999999999" });
+      repo.atualizarConexao.mockResolvedValue(instanciaFake({ status: "connected" }));
+
+      await instanciaWhatsappService.verificarStatus(ctx(), "instancia-1");
+      expect(eventoPublicado()).toEqual(
+        expect.objectContaining({ tipo: "instancia.atualizada", escritorioId: "esc-1" })
+      );
+
+      publicar.mockClear();
+      repo.findById.mockResolvedValue(instanciaFake());
+      client.consultarStatus.mockResolvedValue({
+        status: "connected",
+        numeroConectado: "5511999999999",
+        fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+      });
+      await instanciaWhatsappService.verificarStatus(ctx(), "instancia-1");
+      expect(publicar).not.toHaveBeenCalled();
+    });
+
+    it("reconectar publica a instância atualizada", async () => {
+      repo.findById.mockResolvedValue(instanciaFake({ status: "disconnected" }));
+      client.conectarInstancia.mockResolvedValue({ status: "connecting", qrcode: "data:qr" });
+      repo.atualizarConexao.mockResolvedValue(instanciaFake({ status: "connecting" }));
+
+      await instanciaWhatsappService.reconectar(ctx(), "instancia-1");
+
+      expect(eventoPublicado().instancia).toEqual(expect.objectContaining({ status: "connecting" }));
+    });
+
+    it("desconectar publica a instância desconectada", async () => {
+      repo.findById.mockResolvedValue(instanciaFake());
+      client.desconectarInstancia.mockResolvedValue(undefined as never);
+      repo.atualizarConexao.mockResolvedValue(
+        instanciaFake({ status: "disconnected", numeroConectado: null, fotoPerfilUrl: null })
+      );
+
+      await instanciaWhatsappService.desconectar(ctx(), "instancia-1");
+
+      expect(eventoPublicado().instancia).toEqual(expect.objectContaining({ status: "disconnected" }));
+    });
+
+    it("criarEConectar publica a instância nova, sem o token", async () => {
+      repo.findByNome.mockResolvedValue(null);
+      client.criarInstancia.mockResolvedValue({ id: "uazapi-id-1", token: "token-secreto" } as never);
+      client.conectarInstancia.mockResolvedValue({ status: "connecting", qrcode: "data:qr" });
+      repo.create.mockResolvedValue(instanciaFake({ status: "connecting" }));
+
+      await instanciaWhatsappService.criarEConectar(ctx(), { nome: "Atendimento" });
+
+      const evento = eventoPublicado();
+      expect(evento.instancia).toEqual(
+        expect.objectContaining({ id: "instancia-1", status: "connecting" })
+      );
+      expect(JSON.stringify(evento)).not.toContain("token-secreto");
+    });
+
+    it("excluir publica a instância com softDeletedAt preenchido", async () => {
+      repo.findById.mockResolvedValue(instanciaFake());
+      client.deletarInstancia.mockResolvedValue(undefined as never);
+
+      await instanciaWhatsappService.excluir(ctx(), "instancia-1");
+
+      expect(eventoPublicado().instancia).toEqual(
+        expect.objectContaining({ id: "instancia-1", softDeletedAt: expect.any(String) })
+      );
+    });
+
+    it("sincronizarTodas publica uma vez por instância alterada, nenhuma para as iguais", async () => {
+      const igual = instanciaFake({ id: "igual", uazapiInstanceId: "uaz-igual" });
+      const mudou = instanciaFake({ id: "mudou", uazapiInstanceId: "uaz-mudou", status: "connecting" });
+      repo.listar.mockResolvedValueOnce([igual, mudou]).mockResolvedValueOnce([]);
+      client.listarTodasInstancias.mockResolvedValue([
+        {
+          id: "uaz-igual",
+          status: "connected",
+          owner: "5511999999999",
+          fotoPerfilUrl: "https://pps.whatsapp.net/foto.jpg",
+        },
+        { id: "uaz-mudou", status: "connected", owner: "5511999999999" },
+      ]);
+      repo.atualizarConexao.mockResolvedValue(instanciaFake({ id: "mudou", status: "connected" }));
+
+      await instanciaWhatsappService.sincronizarTodas(ctx());
+
+      expect(eventoPublicado().instancia).toEqual(
+        expect.objectContaining({ id: "mudou", status: "connected" })
+      );
+    });
   });
 });

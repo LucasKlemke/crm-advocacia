@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocket } from "ws";
 import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 import { AcessoNegadoError, type SessaoMinima, type TenantContext } from "@dominio/lib/auth/resolver-tenant";
 import { assinarSessao, assinarTicketWs } from "@dominio/lib/auth/sessao-jwt";
 import { eventosCampanha } from "@dominio/lib/tempo-real/eventos-campanha";
@@ -220,6 +221,45 @@ describe("servidor WebSocket /api/ws", () => {
       eventosCampanha.publicar({ tipo: "campanha.removida", escritorioId: "esc-A", campanhaId: "c-1" });
 
       await expect(cliente.proximaMensagem()).resolves.toEqual({ tipo: "campanha.removida", campanhaId: "c-1" });
+    });
+
+    it("repassa campanha.mensagens só com o id da campanha", async () => {
+      await subir();
+      const cliente = await conectarComTicket("user-a", "esc-A");
+
+      eventosCampanha.publicar({ tipo: "campanha.mensagens", escritorioId: "esc-B", campanhaId: "c-B" });
+      eventosCampanha.publicar({ tipo: "campanha.mensagens", escritorioId: "esc-A", campanhaId: "c-A" });
+
+      await expect(cliente.proximaMensagem()).resolves.toEqual({ tipo: "campanha.mensagens", campanhaId: "c-A" });
+    });
+
+    it("repassa instancia.atualizada com o DTO, sem escritorioId no envelope e só ao escritório dela", async () => {
+      await subir();
+      const clienteA = await conectarComTicket("user-a", "esc-A");
+      const clienteB = await conectarComTicket("user-b", "esc-B");
+      const instancia = { id: "inst-A", nome: "Atendimento", status: "connected" } as unknown as InstanciaWhatsappDTO;
+
+      eventosCampanha.publicar({ tipo: "instancia.atualizada", escritorioId: "esc-A", instancia });
+      eventosCampanha.publicar({ tipo: "campanha.removida", escritorioId: "esc-B", campanhaId: "c-B" });
+
+      await expect(clienteA.proximaMensagem()).resolves.toEqual({ tipo: "instancia.atualizada", instancia });
+      await expect(clienteB.proximaMensagem()).resolves.toEqual({ tipo: "campanha.removida", campanhaId: "c-B" });
+    });
+
+    it("loga abertura e fechamento do socket só com o evento e o código, sem ticket", async () => {
+      const logSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
+      await subir();
+      const { ticket } = await assinarTicketWs({ sub: "user-a", escritorioId: "esc-A" });
+      const cliente = conectar(`/api/ws?ticket=${encodeURIComponent(ticket)}`);
+      await cliente.pronto;
+
+      cliente.ws.close(1000);
+      await cliente.fechado;
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(logSpy).toHaveBeenCalledWith("[tempo-real] socket", { evento: "aberto" });
+      expect(logSpy).toHaveBeenCalledWith("[tempo-real] socket", { evento: "fechado", codigo: 1000 });
+      expect(JSON.stringify(logSpy.mock.calls)).not.toContain(ticket);
     });
 
     it("desconectar cancela a assinatura; publicar depois não lança nem loga erro", async () => {

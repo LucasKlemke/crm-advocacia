@@ -5,9 +5,14 @@ import type {
   ListaCampanhas,
   RespostaCampanha,
 } from "@crm/compartilhado/tipos/campanha";
+import type {
+  InstanciaWhatsappDTO,
+  ListaInstanciasWhatsapp,
+} from "@crm/compartilhado/tipos/instancia-whatsapp";
 import { urlBaseWs } from "@/lib/env-ws";
 import { conectarTempoReal, type EstadoTempoReal } from "@/lib/tempo-real";
 import { chaveCampanhas, RAIZ_CAMPANHAS } from "./use-campanhas";
+import { chaveInstanciasWhatsapp } from "./use-instancias-whatsapp";
 
 // Status de cada mensagem vem da UAZAPI (/sender/listmessages): numa campanha enviando,
 // um evento por segundo viraria uma consulta externa por segundo. No máximo uma a cada 3 s
@@ -75,7 +80,35 @@ function aplicarRemocao(queryClient: QueryClient, campanhaId: string) {
   }
 }
 
-/** Abre o WebSocket de tempo real e mantém o cache das campanhas em dia. Montar uma vez, no shell. */
+function aplicarInstancia(queryClient: QueryClient, instancia: InstanciaWhatsappDTO) {
+  const lista = queryClient.getQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp());
+  if (lista) {
+    const conhecida = lista.instancias.some((i) => i.id === instancia.id);
+    if (instancia.softDeletedAt !== null) {
+      // /api/instancias só lista as ativas: a excluída sai da lista.
+      queryClient.setQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp(), {
+        ...lista,
+        instancias: lista.instancias.filter((i) => i.id !== instancia.id),
+      });
+    } else if (conhecida) {
+      queryClient.setQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp(), {
+        ...lista,
+        instancias: lista.instancias.map((i) => (i.id === instancia.id ? instancia : i)),
+      });
+    } else {
+      // Criada em outra aba/por outro membro: a ordem da lista é do servidor.
+      void queryClient.invalidateQueries({ queryKey: chaveInstanciasWhatsapp(), exact: true });
+    }
+  }
+  // Lista e detalhe das campanhas mostram o status da instância que dispara.
+  void queryClient.invalidateQueries({ queryKey: chaveCampanhas(), exact: true });
+  void queryClient.invalidateQueries({ queryKey: [...RAIZ_CAMPANHAS, "detalhe"] });
+}
+
+/**
+ * Abre o WebSocket de tempo real e mantém em dia o cache das campanhas (contadores e status
+ * por mensagem) e das instâncias de WhatsApp (conexão). Montar uma vez, no shell.
+ */
 export function useTempoRealCampanhas(): void {
   const queryClient = useQueryClient();
 
@@ -113,12 +146,22 @@ export function useTempoRealCampanhas(): void {
       base: urlBaseWs,
       aoMudarEstado: definirEstado,
       aoMensagem: (mensagem) => {
-        if (mensagem.tipo === "campanha.atualizada") {
-          aplicarAtualizacao(queryClient, mensagem.campanha);
-          invalidarMensagensComThrottle(mensagem.campanha.id);
-        } else {
-          cancelarPendente(mensagem.campanhaId);
-          aplicarRemocao(queryClient, mensagem.campanhaId);
+        switch (mensagem.tipo) {
+          case "campanha.atualizada":
+            aplicarAtualizacao(queryClient, mensagem.campanha);
+            invalidarMensagensComThrottle(mensagem.campanha.id);
+            break;
+          case "campanha.mensagens":
+            // Entregue/lida mudou na UAZAPI sem mexer nos contadores: só a tabela relê.
+            invalidarMensagensComThrottle(mensagem.campanhaId);
+            break;
+          case "campanha.removida":
+            cancelarPendente(mensagem.campanhaId);
+            aplicarRemocao(queryClient, mensagem.campanhaId);
+            break;
+          case "instancia.atualizada":
+            aplicarInstancia(queryClient, mensagem.instancia);
+            break;
         }
       },
     });

@@ -1,4 +1,6 @@
 import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
+import type { MensagemTempoReal } from "@crm/compartilhado/tipos/tempo-real";
 import { ApiError, apiFetch, ehSessaoExpirada } from "@/lib/api-client";
 
 // Conexão com o WebSocket /api/ws da API (contrato em apps/api/src/tempo-real/servidor-ws.ts).
@@ -6,10 +8,8 @@ import { ApiError, apiFetch, ehSessaoExpirada } from "@/lib/api-client";
 
 export type EstadoTempoReal = "conectado" | "conectando" | "indisponivel";
 
-export type MensagemTempoReal =
-  | { tipo: "pronto" }
-  | { tipo: "campanha.atualizada"; campanha: CampanhaDTO }
-  | { tipo: "campanha.removida"; campanhaId: string };
+// O contrato vive em @crm/compartilhado (o servidor tipa o envio com o mesmo tipo).
+export type { MensagemTempoReal };
 
 const RECONEXAO_INICIAL_MS = 1000;
 const RECONEXAO_MAXIMA_MS = 30_000;
@@ -66,6 +66,20 @@ export function interpretarMensagem(dados: unknown): MensagemTempoReal | null {
       return typeof mensagem.campanhaId === "string"
         ? { tipo: "campanha.removida", campanhaId: mensagem.campanhaId }
         : null;
+    case "campanha.mensagens":
+      return typeof mensagem.campanhaId === "string"
+        ? { tipo: "campanha.mensagens", campanhaId: mensagem.campanhaId }
+        : null;
+    case "instancia.atualizada": {
+      // Sem id não há o que casar com o cache: descartar é mais seguro que inserir lixo.
+      const instancia = mensagem.instancia as Record<string, unknown> | null | undefined;
+      return instancia && typeof instancia === "object" && typeof instancia.id === "string"
+        ? {
+            tipo: "instancia.atualizada",
+            instancia: instancia as unknown as InstanciaWhatsappDTO,
+          }
+        : null;
+    }
     default:
       return null;
   }

@@ -850,7 +850,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   });
 
   it("grava as mudanças, loga como sistema no escritório da campanha e devolve true", async () => {
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(true);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(true);
 
     expect(instanciasRepo.findById).toHaveBeenCalledWith("instancia-1");
     expect(client.listarCampanhas).toHaveBeenCalledWith("token-secreto");
@@ -873,7 +873,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   });
 
   it("publica um evento para o escritório da campanha, sem o uazapiToken", async () => {
-    await campanhaService.sincronizarPeloSistema("campanha-1");
+    await campanhaService.sincronizarPeloSistema("campanha-1", "polling");
 
     expect(publicar).toHaveBeenCalledTimes(1);
     const evento = publicar.mock.calls[0][0];
@@ -894,7 +894,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("sem mudança não grava, não loga, não publica e devolve false", async () => {
     client.listarCampanhas.mockResolvedValue([FOLDER_SEM_MUDANCA]);
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(repo.update).not.toHaveBeenCalled();
     expect(logs.registrarSistema).not.toHaveBeenCalled();
@@ -906,7 +906,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
       instanciaFake({ escritorioId: "esc-da-campanha", softDeletedAt: new Date() })
     );
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
     expect(repo.update).not.toHaveBeenCalled();
@@ -916,7 +916,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("campanha sem instância vinculada devolve false sem chamar a UAZAPI", async () => {
     repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null, instancia: null }));
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(instanciasRepo.findById).not.toHaveBeenCalled();
     expect(client.listarCampanhas).not.toHaveBeenCalled();
@@ -925,7 +925,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("instância inexistente devolve false sem chamar a UAZAPI", async () => {
     instanciasRepo.findById.mockResolvedValue(null);
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
   });
@@ -934,7 +934,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("instância de outro escritório devolve false sem chamar a UAZAPI", async () => {
     instanciasRepo.findById.mockResolvedValue(instanciaFake({ escritorioId: "outro-esc" }));
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
   });
@@ -942,7 +942,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("campanha inexistente devolve false", async () => {
     repo.findById.mockResolvedValue(null);
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
   });
@@ -950,7 +950,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("folder ausente na UAZAPI devolve false sem gravar", async () => {
     client.listarCampanhas.mockResolvedValue([]);
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).resolves.toBe(false);
 
     expect(repo.update).not.toHaveBeenCalled();
     expect(publicar).not.toHaveBeenCalled();
@@ -965,7 +965,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
       return resultado;
     });
 
-    await campanhaService.sincronizarPeloSistema("campanha-1");
+    await campanhaService.sincronizarPeloSistema("campanha-1", "polling");
 
     expect(publicar).toHaveBeenCalledTimes(1);
   });
@@ -973,24 +973,99 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("transação que rejeita não publica nenhum evento e propaga o erro", async () => {
     transacao.mockRejectedValueOnce(new Error("deadlock"));
 
-    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).rejects.toThrow("deadlock");
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "polling")).rejects.toThrow("deadlock");
     expect(publicar).not.toHaveBeenCalled();
   });
 });
 
-describe("campanhaService.idsAtivosDaInstancia", () => {
-  it("pede ao repository as campanhas agendadas, enviando e pausadas da instância", async () => {
-    repo.listarIdsPorInstancia.mockResolvedValue(["c1", "c2"]);
+describe("campanhaService.sincronizarPeloSistema vinda do webhook", () => {
+  beforeEach(() => {
+    repo.findById.mockResolvedValue(campanhaFake({ escritorioId: "esc-da-campanha" }));
+    repo.update.mockImplementation(async (id, data) => ({ id, ...data }) as never);
+    instanciasRepo.findById.mockResolvedValue(instanciaFake({ escritorioId: "esc-da-campanha" }));
+    client.listarCampanhas.mockResolvedValue([FOLDER_ENVIANDO]);
+  });
 
-    await expect(campanhaService.idsAtivosDaInstancia("instancia-1")).resolves.toEqual([
+  it("com mudança publica campanha.atualizada e depois campanha.mensagens", async () => {
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "webhook")).resolves.toBe(true);
+
+    expect(publicar.mock.calls.map(([evento]) => evento.tipo)).toEqual([
+      "campanha.atualizada",
+      "campanha.mensagens",
+    ]);
+    expect(publicar).toHaveBeenLastCalledWith({
+      tipo: "campanha.mensagens",
+      escritorioId: "esc-da-campanha",
+      campanhaId: "campanha-1",
+    });
+  });
+
+  // O status por destinatário (entregue/lida) muda sem mexer nos contadores do folder.
+  it("sem mudança nos contadores não grava, mas publica campanha.mensagens", async () => {
+    client.listarCampanhas.mockResolvedValue([FOLDER_SEM_MUDANCA]);
+
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "webhook")).resolves.toBe(false);
+
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(publicar).toHaveBeenCalledTimes(1);
+    expect(publicar).toHaveBeenCalledWith({
+      tipo: "campanha.mensagens",
+      escritorioId: "esc-da-campanha",
+      campanhaId: "campanha-1",
+    });
+  });
+
+  it("folder ausente na UAZAPI não publica nada", async () => {
+    client.listarCampanhas.mockResolvedValue([]);
+
+    await campanhaService.sincronizarPeloSistema("campanha-1", "webhook");
+
+    expect(publicar).not.toHaveBeenCalled();
+  });
+
+  it("instância de outro escritório não publica nada (RN19)", async () => {
+    instanciasRepo.findById.mockResolvedValue(instanciaFake({ escritorioId: "outro-esc" }));
+
+    await campanhaService.sincronizarPeloSistema("campanha-1", "webhook");
+
+    expect(publicar).not.toHaveBeenCalled();
+  });
+
+  it("transação que rejeita não publica nenhum evento", async () => {
+    transacao.mockRejectedValueOnce(new Error("deadlock"));
+
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1", "webhook")).rejects.toThrow("deadlock");
+    expect(publicar).not.toHaveBeenCalled();
+  });
+
+  it("vinda do polling, sem mudança, não publica campanha.mensagens", async () => {
+    client.listarCampanhas.mockResolvedValue([FOLDER_SEM_MUDANCA]);
+
+    await campanhaService.sincronizarPeloSistema("campanha-1", "polling");
+
+    expect(publicar).not.toHaveBeenCalled();
+  });
+});
+
+describe("campanhaService.idsParaWebhookDaInstancia", () => {
+  it("pede as ativas e as concluídas atualizadas nas últimas 24 h da instância", async () => {
+    repo.listarIdsParaWebhook.mockResolvedValue(["c1", "c2"]);
+    const antes = Date.now();
+
+    await expect(campanhaService.idsParaWebhookDaInstancia("instancia-1")).resolves.toEqual([
       "c1",
       "c2",
     ]);
-    expect(repo.listarIdsPorInstancia).toHaveBeenCalledWith("instancia-1", [
-      "agendada",
-      "enviando",
-      "pausada",
-    ]);
+
+    expect(repo.listarIdsParaWebhook).toHaveBeenCalledWith("instancia-1", {
+      ativos: ["agendada", "enviando", "pausada"],
+      encerrados: ["concluida"],
+      atualizadasDesde: expect.any(Date),
+    });
+    const { atualizadasDesde } = repo.listarIdsParaWebhook.mock.calls[0][1];
+    const janela = antes - atualizadasDesde.getTime();
+    expect(janela).toBeGreaterThanOrEqual(24 * 60 * 60 * 1000 - 1000);
+    expect(janela).toBeLessThanOrEqual(24 * 60 * 60 * 1000 + 1000);
   });
 });
 

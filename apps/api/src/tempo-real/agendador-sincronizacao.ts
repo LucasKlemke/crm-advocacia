@@ -1,29 +1,84 @@
 import type { OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import type { OrigemSincronizacao } from "@dominio/services/campanha.service";
 import type { ConfigTempoReal } from "./config-tempo-real";
 
-// Janela de agrupamento dos webhooks de uma instância (constante do plano).
+// Janela de agrupamento dos webhooks de campanha de uma instância (constante do plano).
 export const DEBOUNCE_WEBHOOK_MS = 2000;
+// Janela dos avisos de conexão (QR lido, desconexão): curta, porque o usuário está olhando
+// para o QR esperando a tela reagir; só junta a rajada de eventos de uma mesma conexão.
+export const DEBOUNCE_CONEXAO_MS = 500;
 
-// Fatia do campanhaService que o agendador usa — permite testar sem banco nem UAZAPI.
+export type { OrigemSincronizacao };
+
+// Fatia dos services que o agendador usa — permite testar sem banco nem UAZAPI.
 export interface ServicoSincronizacao {
-  sincronizarPeloSistema(campanhaId: string): Promise<boolean>;
-  idsAtivosDaInstancia(instanciaId: string): Promise<string[]>;
+  sincronizarPeloSistema(campanhaId: string, origem: OrigemSincronizacao): Promise<boolean>;
+  idsParaWebhookDaInstancia(instanciaId: string): Promise<string[]>;
   idsParaPolling(): Promise<string[]>;
+  verificarStatusInstanciaPeloSistema(instanciaId: string): Promise<boolean>;
 }
 
-// Dispara a sincronização das campanhas a partir de duas fontes sem usuário:
-// - webhook da UAZAPI: agrupado por instância numa janela de 2 s contada a partir do
-//   primeiro aviso (os avisos seguintes dentro da janela são absorvidos). Não é um
-//   debounce "reinicia a cada chamada" de propósito: durante um envio em massa a UAZAPI
-//   avisa a cada poucos segundos, e um debounce que reinicia nunca dispararia;
-// - polling de fallback: garante progresso mesmo sem webhook (dev sem túnel, URL errada).
-// Nenhum erro escapa daqui: tudo vira console.error com os ids e o laço segue.
-export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
+// Agrupa avisos por chave numa janela contada a partir do PRIMEIRO aviso (os seguintes
+// dentro da janela são absorvidos). Não é um debounce "reinicia a cada chamada" de
+// propósito: durante um envio em massa a UAZAPI avisa a cada poucos segundos, e um
+// debounce que reinicia nunca dispararia. Rodadas da mesma chave nunca se sobrepõem: o
+// aviso que chega durante uma rodada ganha nova janela ao fim dela. `executar` não pode
+// rejeitar (quem o fornece loga o próprio erro).
+class JanelaPorChave {
   private readonly pendentes = new Map<string, NodeJS.Timeout>();
-  // Instâncias com sincronização em andamento e, entre elas, as que receberam aviso
-  // durante a rodada: ganham nova janela ao fim, sem sobrepor duas rodadas da mesma instância.
   private readonly emAndamento = new Set<string>();
   private readonly repetirAoFim = new Set<string>();
+
+  constructor(
+    private readonly atrasoMs: number,
+    private readonly executar: (chave: string) => Promise<void>,
+    private readonly ativa: () => boolean
+  ) {}
+
+  agendar(chave: string): void {
+    if (!this.ativa()) return;
+    if (this.emAndamento.has(chave)) {
+      this.repetirAoFim.add(chave);
+      return;
+    }
+    if (this.pendentes.has(chave)) return;
+
+    const timer = setTimeout(() => {
+      this.pendentes.delete(chave);
+      void this.rodar(chave);
+    }, this.atrasoMs);
+    timer.unref();
+    this.pendentes.set(chave, timer);
+  }
+
+  limpar(): void {
+    for (const timer of this.pendentes.values()) clearTimeout(timer);
+    this.pendentes.clear();
+    this.repetirAoFim.clear();
+  }
+
+  private async rodar(chave: string): Promise<void> {
+    this.emAndamento.add(chave);
+    try {
+      await this.executar(chave);
+    } finally {
+      this.emAndamento.delete(chave);
+      if (this.repetirAoFim.delete(chave)) this.agendar(chave);
+    }
+  }
+}
+
+// Dispara a sincronização a partir de fontes sem usuário:
+// - webhook da UAZAPI de campanha (sender, messages_update): agrupado por instância numa
+//   janela de 2 s; sincroniza as campanhas ativas e as concluídas recentes da instância;
+// - webhook de conexão (connection): agrupado por instância numa janela curta; relê o
+//   status da instância (QR lido, número, foto);
+// - polling de fallback: garante progresso mesmo sem webhook (dev sem túnel, URL errada).
+// Nenhum erro escapa daqui: tudo vira console.error com os ids e o laço segue. Cada
+// sincronização gera uma linha de diagnóstico só com ids (nunca telefone ou texto — LGPD).
+export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
+  private readonly janelaCampanhas: JanelaPorChave;
+  private readonly janelaConexao: JanelaPorChave;
   private intervalo: NodeJS.Timeout | null = null;
   private rodadaDePollingEmAndamento = false;
   // Fila por campanha, compartilhada por webhook e polling: duas sincronizações da mesma
@@ -38,7 +93,19 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly servico: ServicoSincronizacao,
     private readonly config: ConfigTempoReal
-  ) {}
+  ) {
+    const ativa = () => this.config.habilitado && !this.parado;
+    this.janelaCampanhas = new JanelaPorChave(
+      DEBOUNCE_WEBHOOK_MS,
+      (instanciaId) => this.sincronizarInstancia(instanciaId),
+      ativa
+    );
+    this.janelaConexao = new JanelaPorChave(
+      DEBOUNCE_CONEXAO_MS,
+      (instanciaId) => this.verificarStatusInstancia(instanciaId),
+      ativa
+    );
+  }
 
   onModuleInit(): void {
     // Em teste o polling só roda quando o próprio teste chama iniciarPolling.
@@ -50,19 +117,11 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   }
 
   agendarInstancia(instanciaId: string): void {
-    if (!this.config.habilitado || this.parado) return;
-    if (this.emAndamento.has(instanciaId)) {
-      this.repetirAoFim.add(instanciaId);
-      return;
-    }
-    if (this.pendentes.has(instanciaId)) return;
+    this.janelaCampanhas.agendar(instanciaId);
+  }
 
-    const timer = setTimeout(() => {
-      this.pendentes.delete(instanciaId);
-      void this.sincronizarInstancia(instanciaId);
-    }, DEBOUNCE_WEBHOOK_MS);
-    timer.unref();
-    this.pendentes.set(instanciaId, timer);
+  agendarStatusInstancia(instanciaId: string): void {
+    this.janelaConexao.agendar(instanciaId);
   }
 
   iniciarPolling(): void {
@@ -75,23 +134,26 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
     this.parado = true;
     if (this.intervalo) clearInterval(this.intervalo);
     this.intervalo = null;
-    for (const timer of this.pendentes.values()) clearTimeout(timer);
-    this.pendentes.clear();
-    this.repetirAoFim.clear();
+    this.janelaCampanhas.limpar();
+    this.janelaConexao.limpar();
   }
 
   private async sincronizarInstancia(instanciaId: string): Promise<void> {
-    this.emAndamento.add(instanciaId);
     try {
-      const ids = await this.servico.idsAtivosDaInstancia(instanciaId);
-      await this.sincronizarEmSequencia(ids, { instanciaId });
+      const ids = await this.servico.idsParaWebhookDaInstancia(instanciaId);
+      await this.sincronizarEmSequencia(ids, "webhook", { instanciaId });
     } catch (erro) {
       console.error("[tempo-real] falha ao listar campanhas da instância", { instanciaId }, erro);
-    } finally {
-      this.emAndamento.delete(instanciaId);
-      if (this.repetirAoFim.delete(instanciaId)) {
-        this.agendarInstancia(instanciaId);
-      }
+    }
+  }
+
+  private async verificarStatusInstancia(instanciaId: string): Promise<void> {
+    if (this.parado) return;
+    try {
+      const mudou = await this.servico.verificarStatusInstanciaPeloSistema(instanciaId);
+      console.log("[tempo-real] instância sincronizada", { instanciaId, mudou });
+    } catch (erro) {
+      console.error("[tempo-real] falha ao verificar o status da instância", { instanciaId }, erro);
     }
   }
 
@@ -100,7 +162,7 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
     this.rodadaDePollingEmAndamento = true;
     try {
       const ids = await this.servico.idsParaPolling();
-      await this.sincronizarEmSequencia(ids, {});
+      await this.sincronizarEmSequencia(ids, "polling", {});
     } catch (erro) {
       console.error("[tempo-real] falha ao listar campanhas para o polling", erro);
     } finally {
@@ -109,21 +171,30 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   }
 
   // Em sequência, não em paralelo: não abre N chamadas simultâneas à UAZAPI por rodada.
-  private async sincronizarEmSequencia(ids: string[], contexto: { instanciaId?: string }): Promise<void> {
+  private async sincronizarEmSequencia(
+    ids: string[],
+    origem: OrigemSincronizacao,
+    contexto: { instanciaId?: string }
+  ): Promise<void> {
     for (const campanhaId of ids) {
       if (this.parado) return;
-      await this.sincronizarNaFila(campanhaId, contexto);
+      await this.sincronizarNaFila(campanhaId, origem, contexto);
     }
   }
 
   // Encadeia na fila da campanha; a promessa da fila nunca rejeita (o erro é logado aqui),
   // então uma falha não trava quem vem depois.
-  private async sincronizarNaFila(campanhaId: string, contexto: { instanciaId?: string }): Promise<void> {
+  private async sincronizarNaFila(
+    campanhaId: string,
+    origem: OrigemSincronizacao,
+    contexto: { instanciaId?: string }
+  ): Promise<void> {
     const anterior = this.filasPorCampanha.get(campanhaId) ?? Promise.resolve();
     const atual = anterior.then(async () => {
       if (this.parado) return;
       try {
-        await this.servico.sincronizarPeloSistema(campanhaId);
+        const mudou = await this.servico.sincronizarPeloSistema(campanhaId, origem);
+        console.log("[tempo-real] campanha sincronizada", { campanhaId, origem, mudou });
       } catch (erro) {
         console.error("[tempo-real] falha ao sincronizar campanha", { ...contexto, campanhaId }, erro);
       }

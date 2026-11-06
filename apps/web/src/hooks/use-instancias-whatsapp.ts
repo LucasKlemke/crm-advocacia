@@ -22,6 +22,17 @@ export function useInstanciasWhatsapp() {
   });
 }
 
+// Lê uma instância da lista já em cache, sem buscar (enabled: false): quem mantém a lista
+// em dia é a tela (useInstanciasWhatsapp) e o tempo real (instancia.atualizada no WebSocket).
+export function useInstanciaWhatsappEmCache(id: string | undefined) {
+  return useQuery({
+    queryKey: chaveInstanciasWhatsapp(),
+    queryFn: () => apiFetch<ListaInstanciasWhatsapp>("/api/instancias"),
+    enabled: false,
+    select: (lista) => lista.instancias.find((instancia) => instancia.id === id),
+  }).data;
+}
+
 export function useCriarInstanciaWhatsapp() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -45,8 +56,9 @@ export function useReconectarInstanciaWhatsapp() {
   });
 }
 
-// Disparado manualmente pelo botão "Verificar conexão" — sem polling automático (fora do
-// escopo desta entrega), por isso é uma mutation e não uma query.
+// Disparado manualmente pelo botão "Verificar conexão" — atalho para quando o tempo real
+// está indisponível (o webhook `connection` da UAZAPI já atualiza a lista sozinho), por
+// isso é uma mutation e não uma query.
 export function useVerificarStatusInstanciaWhatsapp() {
   const queryClient = useQueryClient();
   return useMutation({

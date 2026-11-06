@@ -94,7 +94,7 @@ describe("POST /api/webhooks/uazapi", () => {
 describe("POST /api/webhooks/uazapi/:instanciaId/:assinatura", () => {
   let app: INestApplication;
   let logSpy: jest.SpyInstance;
-  let agendador: { agendarInstancia: jest.Mock };
+  let agendador: { agendarInstancia: jest.Mock; agendarStatusInstancia: jest.Mock };
   const segredoOriginal = process.env.UAZAPI_WEBHOOK_SECRET;
 
   const urlDe = (instanciaId: string, assinatura = assinarInstancia(instanciaId, SEGREDO)) =>
@@ -103,7 +103,7 @@ describe("POST /api/webhooks/uazapi/:instanciaId/:assinatura", () => {
   beforeEach(async () => {
     process.env.UAZAPI_WEBHOOK_SECRET = SEGREDO;
     logSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
-    agendador = { agendarInstancia: jest.fn() };
+    agendador = { agendarInstancia: jest.fn(), agendarStatusInstancia: jest.fn() };
     app = await criarAppDeTeste({
       imports: [WebhooksModule],
       ctx: new NaoAutenticadoError(),
@@ -131,6 +131,31 @@ describe("POST /api/webhooks/uazapi/:instanciaId/:assinatura", () => {
       instanciaId: "inst-1",
     });
     expect(JSON.stringify(logSpy.mock.calls)).not.toContain("5547999999999");
+  });
+
+  it("evento connection agenda só a verificação de status da instância", async () => {
+    await request(app.getHttpServer())
+      .post(urlDe("inst-1"))
+      .send({ EventType: "connection", instance: { status: "connected" } })
+      .expect(200, { ok: true });
+
+    expect(agendador.agendarStatusInstancia).toHaveBeenCalledWith("inst-1");
+    expect(agendador.agendarInstancia).not.toHaveBeenCalled();
+  });
+
+  it("connection também pelo campo event", async () => {
+    await request(app.getHttpServer()).post(urlDe("inst-1")).send({ event: "connection" }).expect(200);
+
+    expect(agendador.agendarStatusInstancia).toHaveBeenCalledWith("inst-1");
+    expect(agendador.agendarInstancia).not.toHaveBeenCalled();
+  });
+
+  it("messages_update e eventos desconhecidos seguem para as campanhas", async () => {
+    await request(app.getHttpServer()).post(urlDe("inst-1")).send({ EventType: "messages_update" }).expect(200);
+    await request(app.getHttpServer()).post(urlDe("inst-1")).send({ EventType: "novidade" }).expect(200);
+
+    expect(agendador.agendarInstancia).toHaveBeenCalledTimes(2);
+    expect(agendador.agendarStatusInstancia).not.toHaveBeenCalled();
   });
 
   it("assinatura válida com corpo não-JSON ou JSON malformado continua 200 e agenda", async () => {

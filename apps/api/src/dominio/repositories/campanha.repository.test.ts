@@ -157,40 +157,57 @@ describe("campanhaRepository", () => {
       return campanha.id;
     }
 
-    it("listarIdsPorInstancia devolve só as campanhas da instância nos status pedidos", async () => {
-      const outraInstancia = await instanciaWhatsappRepository.create({
-        nome: `Outra ${Date.now()}`,
-        uazapiInstanceId: `instance-outra-${Date.now()}`,
+    it("listarIdsParaWebhook soma as ativas às encerradas atualizadas desde o corte, só da instância", async () => {
+      const instancia = await instanciaWhatsappRepository.create({
+        nome: `Webhook ${Date.now()}`,
+        uazapiInstanceId: `instance-webhook-${Date.now()}`,
         uazapiToken: "token",
         escritorio: { connect: { id: escritorioId } },
       });
-      const agendada = await criarComStatus("Ag", "agendada");
-      const enviando = await criarComStatus("En", "enviando");
-      const pausada = await criarComStatus("Pa", "pausada");
-      await criarComStatus("Co", "concluida");
-      await criarComStatus("Ex", "excluindo");
-      await criarComStatus("DeOutra", "enviando", outraInstancia.id);
+      const outraInstancia = await instanciaWhatsappRepository.create({
+        nome: `Webhook outra ${Date.now()}`,
+        uazapiInstanceId: `instance-webhook-outra-${Date.now()}`,
+        uazapiToken: "token",
+        escritorio: { connect: { id: escritorioId } },
+      });
+      const enviando = await criarComStatus("WhEn", "enviando", instancia.id);
+      const pausada = await criarComStatus("WhPa", "pausada", instancia.id);
+      const concluidaRecente = await criarComStatus("WhCoRec", "concluida", instancia.id);
+      const concluidaAntiga = await criarComStatus("WhCoAnt", "concluida", instancia.id);
+      await criarComStatus("WhEx", "excluindo", instancia.id);
+      await criarComStatus("WhCoOutra", "concluida", outraInstancia.id);
+      const corte = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      // @updatedAt aceita valor explícito: simula a campanha encerrada há mais de 24 h.
+      await prisma.campanha.update({
+        where: { id: concluidaAntiga },
+        data: { updatedAt: new Date(corte.getTime() - 60_000) },
+      });
 
-      const ids = await campanhaRepository.listarIdsPorInstancia(instanciaId, [
-        "agendada",
-        "enviando",
-        "pausada",
-      ]);
+      const ids = await campanhaRepository.listarIdsParaWebhook(instancia.id, {
+        ativos: ["agendada", "enviando", "pausada"],
+        encerrados: ["concluida"],
+        atualizadasDesde: corte,
+      });
 
-      expect(ids.sort()).toEqual([agendada, enviando, pausada].sort());
+      expect(ids.sort()).toEqual([enviando, pausada, concluidaRecente].sort());
     });
 
-    it("listarIdsPorInstancia não devolve nada quando a instância está soft-deleted", async () => {
+    it("listarIdsParaWebhook não devolve nada quando a instância está soft-deleted", async () => {
       const excluida = await instanciaWhatsappRepository.create({
-        nome: `Excluída webhook ${Date.now()}`,
-        uazapiInstanceId: `instance-excluida-webhook-${Date.now()}`,
+        nome: `Excluída webhook2 ${Date.now()}`,
+        uazapiInstanceId: `instance-excluida-webhook2-${Date.now()}`,
         uazapiToken: "token",
         softDeletedAt: new Date(),
         escritorio: { connect: { id: escritorioId } },
       });
-      await criarComStatus("WEnviando", "enviando", excluida.id);
+      await criarComStatus("W2En", "enviando", excluida.id);
+      await criarComStatus("W2Co", "concluida", excluida.id);
 
-      const ids = await campanhaRepository.listarIdsPorInstancia(excluida.id, ["agendada", "enviando", "pausada"]);
+      const ids = await campanhaRepository.listarIdsParaWebhook(excluida.id, {
+        ativos: ["agendada", "enviando", "pausada"],
+        encerrados: ["concluida"],
+        atualizadasDesde: new Date(Date.now() - 60_000),
+      });
 
       expect(ids).toEqual([]);
     });
