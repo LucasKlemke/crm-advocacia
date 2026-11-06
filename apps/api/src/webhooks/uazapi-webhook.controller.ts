@@ -3,6 +3,9 @@ import { assinaturaValida } from "@dominio/lib/auth/assinatura-webhook";
 import type { AgendadorSincronizacao } from "../tempo-real/agendador-sincronizacao";
 import { AGENDADOR_SINCRONIZACAO } from "../tempo-real/tokens";
 
+// Evento da UAZAPI para mudança de conexão da instância (QR lido, desconexão).
+const EVENTO_CONEXAO = "connection";
+
 // Campo que identifica o evento no payload da UAZAPI (EventType ou event); sem ele, o
 // typeof do que chegou ("string" para corpo não-JSON, "null" para corpo vazio).
 function tipoDoEvento(payload: unknown): string {
@@ -47,7 +50,9 @@ export class UazapiWebhookController {
   // Rota assinada (URL registrada pela API na instância): a assinatura é o HMAC do id da
   // instância com UAZAPI_WEBHOOK_SECRET. Inválida (ou segredo ausente) → 404, como uma rota
   // inexistente, sem log nem trabalho. Válida → só agenda: o webhook é gatilho, a fonte de
-  // verdade é a releitura de /sender/listfolders na sincronização, então o payload não é lido.
+  // verdade é a releitura na UAZAPI, então do payload só se usa o tipo do evento:
+  // `connection` relê o status da instância (/instance/status); qualquer outro (`sender`,
+  // `messages_update`, desconhecido) relê as campanhas da instância (/sender/listfolders).
   @Post(":instanciaId/:assinatura")
   @HttpCode(200)
   receberAssinado(
@@ -60,8 +65,10 @@ export class UazapiWebhookController {
       throw new NotFoundException();
     }
 
-    console.log("[webhook uazapi]", { ...metadados(corpo), instanciaId });
-    this.agendador.agendarInstancia(instanciaId);
+    const dados = metadados(corpo);
+    console.log("[webhook uazapi]", { ...dados, instanciaId });
+    if (dados.tipo === EVENTO_CONEXAO) this.agendador.agendarStatusInstancia(instanciaId);
+    else this.agendador.agendarInstancia(instanciaId);
     return { ok: true };
   }
 }
