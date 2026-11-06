@@ -2,11 +2,10 @@ import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
 
 // `campanha` é exatamente o que a API HTTP devolveria para a mesma campanha
 // (serializarCampanha) — nunca a linha crua, e nunca com o uazapiToken da instância.
-export type EventoCampanha = {
-  tipo: "campanha.atualizada";
-  escritorioId: string;
-  campanha: CampanhaDTO;
-};
+// `campanha.removida` só leva o id: a linha local já não existe depois do delete.
+export type EventoCampanha =
+  | { tipo: "campanha.atualizada"; escritorioId: string; campanha: CampanhaDTO }
+  | { tipo: "campanha.removida"; escritorioId: string; campanhaId: string };
 
 type Ouvinte = (evento: EventoCampanha) => void;
 

@@ -584,6 +584,13 @@ export const campanhaService = {
           tx
         );
       });
+      // Depois do commit, como em publicarAtualizacao: um delete desfeito não pode sumir
+      // com a campanha da tela dos outros membros.
+      eventosCampanha.publicar({
+        tipo: "campanha.removida",
+        escritorioId: campanha.escritorioId,
+        campanhaId: id,
+      });
       // Sem linha local: o listfolders nunca mais devolveria essa campanha, e o log
       // append-only é o que preserva o rastro.
       return null;
@@ -599,7 +606,7 @@ export const campanhaService = {
         : "enviando";
     const status: StatusCampanha = acao === "stop" ? "pausada" : retomadoComo;
 
-    return prisma.$transaction(async (tx) => {
+    const controlada = await prisma.$transaction(async (tx) => {
       const atualizada = await campanhaRepository.update(id, { status }, tx);
       await logService.registrar(
         ctx,
@@ -613,5 +620,8 @@ export const campanhaService = {
       );
       return { ...campanha, ...atualizada };
     });
+
+    publicarAtualizacao(controlada);
+    return controlada;
   },
 };

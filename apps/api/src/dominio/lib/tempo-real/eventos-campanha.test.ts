@@ -46,6 +46,23 @@ describe("eventosCampanha", () => {
     expect(deB).toHaveBeenCalledTimes(1);
   });
 
+  it("campanha.removida também só chega ao escritório da campanha", () => {
+    const deA = jest.fn();
+    const deB = jest.fn();
+    assinar("esc-a", deA);
+    assinar("esc-b", deB);
+
+    const removida: EventoCampanha = {
+      tipo: "campanha.removida",
+      escritorioId: "esc-a",
+      campanhaId: "campanha-1",
+    };
+    eventosCampanha.publicar(removida);
+
+    expect(deA).toHaveBeenCalledWith(removida);
+    expect(deB).not.toHaveBeenCalled();
+  });
+
   it("o cancelamento para de entregar só para aquele ouvinte", () => {
     const cancelado = jest.fn();
     const ativo = jest.fn();

@@ -13,10 +13,7 @@ import {
   instanciaWhatsappService,
   InstanciaWhatsappNaoEncontradaError,
 } from "@dominio/services/instancia-whatsapp.service";
-import {
-  uazapiClient,
-  UazapiIndisponivelError,
-} from "@dominio/lib/external/uazapi-client";
+import { uazapiClient, UazapiIndisponivelError } from "@dominio/lib/external/uazapi-client";
 import { logService } from "@dominio/services/log.service";
 import { prisma } from "@dominio/lib/prisma";
 import { instanciaWhatsappRepository } from "@dominio/repositories/instancia-whatsapp.repository";
@@ -33,31 +30,20 @@ jest.mock("@dominio/lib/external/uazapi-client");
 jest.mock("@dominio/services/log.service");
 jest.mock("@dominio/repositories/instancia-whatsapp.repository");
 jest.mock("@dominio/services/instancia-whatsapp.service", () => {
-  const real = jest.requireActual(
-    "@dominio/services/instancia-whatsapp.service",
-  );
+  const real = jest.requireActual("@dominio/services/instancia-whatsapp.service");
   return {
     ...real,
-    instanciaWhatsappService: {
-      obterComToken: jest.fn(),
-      obterAtivaComToken: jest.fn(),
-    },
+    instanciaWhatsappService: { obterComToken: jest.fn(), obterAtivaComToken: jest.fn() },
   };
 });
 jest.mock("@dominio/lib/prisma", () => ({
   // A transação roda o callback direto: os repositórios já estão mockados.
-  prisma: {
-    $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn({})),
-  },
+  prisma: { $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn({})) },
 }));
 
 const repo = campanhaRepository as jest.Mocked<typeof campanhaRepository>;
-const itensRepo = campanhaItemRepository as jest.Mocked<
-  typeof campanhaItemRepository
->;
-const instancias = instanciaWhatsappService as jest.Mocked<
-  typeof instanciaWhatsappService
->;
+const itensRepo = campanhaItemRepository as jest.Mocked<typeof campanhaItemRepository>;
+const instancias = instanciaWhatsappService as jest.Mocked<typeof instanciaWhatsappService>;
 const client = uazapiClient as jest.Mocked<typeof uazapiClient>;
 const logs = logService as jest.Mocked<typeof logService>;
 const instanciasRepo = instanciaWhatsappRepository as jest.Mocked<
@@ -70,9 +56,7 @@ function ctx(role: TenantContext["role"] = "owner"): TenantContext {
   return { usuarioId: "user-1", escritorioId: "esc-1", role };
 }
 
-function instanciaFake(
-  over: Partial<InstanciaWhatsapp> = {},
-): InstanciaWhatsapp {
+function instanciaFake(over: Partial<InstanciaWhatsapp> = {}): InstanciaWhatsapp {
   return {
     id: "instancia-1",
     escritorioId: "esc-1",
@@ -89,9 +73,7 @@ function instanciaFake(
   };
 }
 
-function campanhaFake(
-  over: Partial<CampanhaComInstancia> = {},
-): CampanhaComInstancia {
+function campanhaFake(over: Partial<CampanhaComInstancia> = {}): CampanhaComInstancia {
   return {
     id: "campanha-1",
     escritorioId: "esc-1",
@@ -133,6 +115,18 @@ const FOLDER_ENVIANDO = {
   logReproduzido: 2,
 };
 
+// Igual ao que campanhaFake() já tem gravado: sincronizar com ele não muda nada.
+const FOLDER_SEM_MUDANCA = {
+  ...FOLDER_ENVIANDO,
+  status: "scheduled",
+  logTotal: 0,
+  logSucesso: 0,
+  logFalha: 0,
+  logEntregue: 0,
+  logLido: 0,
+  logReproduzido: 0,
+};
+
 const DADOS = {
   nome: "Campanha de teste",
   instanciaId: "instancia-1",
@@ -163,17 +157,13 @@ beforeEach(() => {
     count: 2,
     status: "queued",
   });
-  repo.create.mockImplementation(
-    async (data) => ({ id: "campanha-1", ...data }) as never,
-  );
+  repo.create.mockImplementation(async (data) => ({ id: "campanha-1", ...data }) as never);
   itensRepo.createMany.mockResolvedValue(2);
 });
 
 describe("campanhaService.criar", () => {
   it("rejeita role padrao sem tocar repository ou UAZAPI", async () => {
-    await expect(campanhaService.criar(ctx("padrao"), DADOS)).rejects.toThrow(
-      PermissaoNegadaError,
-    );
+    await expect(campanhaService.criar(ctx("padrao"), DADOS)).rejects.toThrow(PermissaoNegadaError);
 
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
     expect(repo.create).not.toHaveBeenCalled();
@@ -190,13 +180,9 @@ describe("campanhaService.criar", () => {
         info: "Campanha de teste",
         messages: [
           { number: "5511999999999", type: "text", text: "Olá Ana, tudo bem?" },
-          {
-            number: "5511988888888",
-            type: "text",
-            text: "Olá Bruno, tudo bem?",
-          },
+          { number: "5511988888888", type: "text", text: "Olá Bruno, tudo bem?" },
         ],
-      }),
+      })
     );
   });
 
@@ -204,11 +190,8 @@ describe("campanhaService.criar", () => {
     await campanhaService.criar(ctx(), DADOS);
 
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uazapiFolderId: "folder-1",
-        totalDestinatarios: 2,
-      }),
-      expect.anything(),
+      expect.objectContaining({ uazapiFolderId: "folder-1", totalDestinatarios: 2 }),
+      expect.anything()
     );
   });
 
@@ -224,13 +207,9 @@ describe("campanhaService.criar", () => {
           numero: "5511999999999",
           mensagem: "Olá Ana, tudo bem?",
         }),
-        expect.objectContaining({
-          linha: 2,
-          numero: "5511988888888",
-          mensagem: "Olá Bruno, tudo bem?",
-        }),
+        expect.objectContaining({ linha: 2, numero: "5511988888888", mensagem: "Olá Bruno, tudo bem?" }),
       ],
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -239,12 +218,8 @@ describe("campanhaService.criar", () => {
 
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx(),
-      expect.objectContaining({
-        acao: "criar",
-        entidade: "campanha",
-        entidadeId: "campanha-1",
-      }),
-      expect.anything(),
+      expect.objectContaining({ acao: "criar", entidade: "campanha", entidadeId: "campanha-1" }),
+      expect.anything()
     );
   });
 
@@ -256,9 +231,7 @@ describe("campanhaService.criar", () => {
 
     expect(client.criarEnvioAvancado).toHaveBeenCalledWith(
       "token-secreto",
-      expect.objectContaining({
-        scheduledFor: Date.parse("2026-03-01T12:00:00.000Z"),
-      }),
+      expect.objectContaining({ scheduledFor: Date.parse("2026-03-01T12:00:00.000Z") })
     );
   });
 
@@ -270,13 +243,9 @@ describe("campanhaService.criar", () => {
   });
 
   it("recusa instância que não está conectada", async () => {
-    instancias.obterAtivaComToken.mockResolvedValue(
-      instanciaFake({ status: "disconnected" }),
-    );
+    instancias.obterAtivaComToken.mockResolvedValue(instanciaFake({ status: "disconnected" }));
 
-    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toThrow(
-      InstanciaNaoConectadaError,
-    );
+    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toThrow(InstanciaNaoConectadaError);
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
   });
 
@@ -284,12 +253,10 @@ describe("campanhaService.criar", () => {
   // variante estrita, daria para disparar campanha nova por uma instância morta mandando
   // o id direto pra rota (a UI só oferece as ativas).
   it("resolve a instância pela variante que recusa instância excluída", async () => {
-    instancias.obterAtivaComToken.mockRejectedValue(
-      new InstanciaWhatsappNaoEncontradaError(),
-    );
+    instancias.obterAtivaComToken.mockRejectedValue(new InstanciaWhatsappNaoEncontradaError());
 
     await expect(campanhaService.criar(ctx(), DADOS)).rejects.toThrow(
-      InstanciaWhatsappNaoEncontradaError,
+      InstanciaWhatsappNaoEncontradaError
     );
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
     expect(repo.create).not.toHaveBeenCalled();
@@ -297,23 +264,20 @@ describe("campanhaService.criar", () => {
 
   it("recusa variável do template sem coluna mapeada", async () => {
     await expect(
-      campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: {} }),
+      campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: {} })
     ).rejects.toThrow(VariavelSemColunaError);
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
   });
 
   it("recusa mapeamento apontando para coluna inexistente no CSV", async () => {
     await expect(
-      campanhaService.criar(ctx(), {
-        ...DADOS,
-        mapeamentoVariaveis: { nome: { coluna: "Apelido", tratamentos: [] } },
-      }),
+      campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: { nome: { coluna: "Apelido", tratamentos: [] } } })
     ).rejects.toThrow(VariavelSemColunaError);
   });
 
   it("recusa colunaNumero que não existe no CSV", async () => {
     await expect(
-      campanhaService.criar(ctx(), { ...DADOS, colunaNumero: "celular" }),
+      campanhaService.criar(ctx(), { ...DADOS, colunaNumero: "celular" })
     ).rejects.toThrow(DestinatariosInvalidosError);
   });
 
@@ -326,12 +290,8 @@ describe("campanhaService.criar", () => {
       ],
     };
 
-    await expect(campanhaService.criar(ctx(), dados)).rejects.toThrow(
-      DestinatariosInvalidosError,
-    );
-    await expect(campanhaService.criar(ctx(), dados)).rejects.toThrow(
-      /linha 2/i,
-    );
+    await expect(campanhaService.criar(ctx(), dados)).rejects.toThrow(DestinatariosInvalidosError);
+    await expect(campanhaService.criar(ctx(), dados)).rejects.toThrow(/linha 2/i);
     expect(client.criarEnvioAvancado).not.toHaveBeenCalled();
   });
 
@@ -352,9 +312,7 @@ describe("campanhaService.criar", () => {
     await campanhaService.criar(ctx(), {
       ...DADOS,
       linhas: [{ Nome: "", numero: "5511999999999" }],
-      mapeamentoVariaveis: {
-        nome: { coluna: "Nome", tratamentos: [], padrao: "tudo bem" },
-      },
+      mapeamentoVariaveis: { nome: { coluna: "Nome", tratamentos: [], padrao: "tudo bem" } },
     });
 
     const envio = client.criarEnvioAvancado.mock.calls[0][1];
@@ -374,39 +332,29 @@ describe("campanhaService.criar", () => {
 
     expect(itensRepo.createMany).toHaveBeenCalledWith(
       [expect.objectContaining({ variaveis: { nome: "Ana" } })],
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it("grava o mapeamento com os tratamentos escolhidos", async () => {
     const mapeamentoVariaveis = {
-      nome: {
-        coluna: "Nome",
-        tratamentos: ["primeiro_nome"] as const,
-        padrao: "cliente",
-      },
+      nome: { coluna: "Nome", tratamentos: ["primeiro_nome"] as const, padrao: "cliente" },
     };
 
-    await campanhaService.criar(ctx(), {
-      ...DADOS,
-      mapeamentoVariaveis: mapeamentoVariaveis as never,
-    });
+    await campanhaService.criar(ctx(), { ...DADOS, mapeamentoVariaveis: mapeamentoVariaveis as never });
 
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ mapeamentoVariaveis }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it("grava o nome do arquivo CSV quando informado", async () => {
-    await campanhaService.criar(ctx(), {
-      ...DADOS,
-      arquivoCsvNome: "lista.csv",
-    });
+    await campanhaService.criar(ctx(), { ...DADOS, arquivoCsvNome: "lista.csv" });
 
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ arquivoCsvNome: "lista.csv" }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -422,7 +370,7 @@ describe("campanhaService.criar", () => {
         ...DADOS,
         mensagemTemplate: "Olá {{nome}} do {{bairro}}",
         mapeamentoVariaveis: {},
-      }),
+      })
     ).rejects.toThrow(/as variáveis \{\{nome\}\}, \{\{bairro\}\}/);
   });
 
@@ -439,22 +387,19 @@ describe("campanhaService.criar", () => {
   // Planilha sem nenhuma linha não tem cabeçalho para validar contra: recusa pela coluna
   // de número, antes de qualquer efeito.
   it("recusa planilha sem nenhuma linha", async () => {
-    await expect(
-      campanhaService.criar(ctx(), { ...DADOS, linhas: [] }),
-    ).rejects.toThrow(DestinatariosInvalidosError);
+    await expect(campanhaService.criar(ctx(), { ...DADOS, linhas: [] })).rejects.toThrow(
+      DestinatariosInvalidosError
+    );
   });
 
   // Citar 200 linhas numa toast não ajuda ninguém: a mensagem lista as 5 primeiras e
   // resume o resto.
   it("resume as linhas excedentes quando há muitos números inválidos", async () => {
-    const linhas = Array.from({ length: 7 }, () => ({
-      Nome: "X",
-      numero: "1234",
-    }));
+    const linhas = Array.from({ length: 7 }, () => ({ Nome: "X", numero: "1234" }));
 
-    await expect(
-      campanhaService.criar(ctx(), { ...DADOS, linhas }),
-    ).rejects.toThrow(/linha 1, 2, 3, 4, 5 e mais 2/);
+    await expect(campanhaService.criar(ctx(), { ...DADOS, linhas })).rejects.toThrow(
+      /linha 1, 2, 3, 4, 5 e mais 2/
+    );
   });
 
   // A UAZAPI é chamada antes da transação: se a chamada falha, nada é gravado.
@@ -473,15 +418,9 @@ describe("campanhaService.criar", () => {
     const falhaNoBanco = new Error("Transaction already closed");
     (prisma.$transaction as jest.Mock).mockRejectedValueOnce(falhaNoBanco);
 
-    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toBe(
-      falhaNoBanco,
-    );
+    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toBe(falhaNoBanco);
 
-    expect(client.controlarCampanha).toHaveBeenCalledWith(
-      "token-secreto",
-      "folder-1",
-      "delete",
-    );
+    expect(client.controlarCampanha).toHaveBeenCalledWith("token-secreto", "folder-1", "delete");
   });
 
   // Quem explica o problema é a falha da gravação; o erro da limpeza só a esconderia.
@@ -490,9 +429,7 @@ describe("campanhaService.criar", () => {
     (prisma.$transaction as jest.Mock).mockRejectedValueOnce(falhaNoBanco);
     client.controlarCampanha.mockRejectedValue(new UazapiIndisponivelError());
 
-    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toBe(
-      falhaNoBanco,
-    );
+    await expect(campanhaService.criar(ctx(), DADOS)).rejects.toBe(falhaNoBanco);
   });
 });
 
@@ -511,9 +448,7 @@ describe("campanhaService.obter", () => {
   it("devolve a campanha do próprio escritório", async () => {
     repo.findById.mockResolvedValue(campanhaFake());
 
-    await expect(
-      campanhaService.obter(ctx(), "campanha-1"),
-    ).resolves.toMatchObject({
+    await expect(campanhaService.obter(ctx(), "campanha-1")).resolves.toMatchObject({
       id: "campanha-1",
     });
   });
@@ -522,7 +457,7 @@ describe("campanhaService.obter", () => {
     repo.findById.mockResolvedValue(campanhaFake({ escritorioId: "esc-2" }));
 
     await expect(campanhaService.obter(ctx(), "campanha-1")).rejects.toThrow(
-      CampanhaNaoEncontradaError,
+      CampanhaNaoEncontradaError
     );
   });
 
@@ -530,7 +465,7 @@ describe("campanhaService.obter", () => {
     repo.findById.mockResolvedValue(null);
 
     await expect(campanhaService.obter(ctx(), "campanha-1")).rejects.toThrow(
-      CampanhaNaoEncontradaError,
+      CampanhaNaoEncontradaError
     );
   });
 });
@@ -541,9 +476,7 @@ describe("campanhaService.listarItens", () => {
     itensRepo.listarPorCampanha.mockResolvedValue([]);
     itensRepo.contarPorCampanha.mockResolvedValue(120);
 
-    const resultado = await campanhaService.listarItens(ctx(), "campanha-1", {
-      pagina: 3,
-    });
+    const resultado = await campanhaService.listarItens(ctx(), "campanha-1", { pagina: 3 });
 
     expect(itensRepo.listarPorCampanha).toHaveBeenCalledWith("campanha-1", {
       pular: 100,
@@ -592,22 +525,15 @@ describe("campanhaService.listarMensagens", () => {
       itemFake({ numero: "5511999998888" }),
     ] as never);
     client.listarMensagensCampanha.mockResolvedValue(
-      paginaFake(
-        [mensagemFake(), mensagemFake({ status: "Failed", erro: "bloqueado" })],
-        2,
-      ),
+      paginaFake([mensagemFake(), mensagemFake({ status: "Failed", erro: "bloqueado" })], 2)
     );
 
-    const resposta = await campanhaService.listarMensagens(
-      ctx(),
-      "campanha-1",
-      { pagina: 1 },
-    );
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
     expect(client.listarMensagensCampanha).toHaveBeenCalledWith(
       "token-secreto",
       "folder-1",
-      expect.objectContaining({ offset: 0 }),
+      expect.objectContaining({ offset: 0 })
     );
     expect(resposta).toEqual({
       total: 2,
@@ -636,24 +562,18 @@ describe("campanhaService.listarMensagens", () => {
     client.listarMensagensCampanha.mockResolvedValue(paginaFake([], 0));
 
     await expect(
-      campanhaService.listarMensagens(ctx("padrao"), "campanha-1", {
-        pagina: 1,
-      }),
+      campanhaService.listarMensagens(ctx("padrao"), "campanha-1", { pagina: 1 })
     ).resolves.toEqual({ mensagens: [], total: 0, truncado: false });
   });
 
   // Consultar o histórico não é disparar: o token da instância continua valendo.
   it("não exige instância conectada", async () => {
     repo.findById.mockResolvedValue(campanhaFake());
-    instancias.obterComToken.mockResolvedValue(
-      instanciaFake({ status: "disconnected" }),
-    );
-    client.listarMensagensCampanha.mockResolvedValue(
-      paginaFake([mensagemFake()], 1),
-    );
+    instancias.obterComToken.mockResolvedValue(instanciaFake({ status: "disconnected" }));
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 1));
 
     await expect(
-      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 }),
+      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 })
     ).resolves.toHaveProperty("total", 1);
   });
 
@@ -661,18 +581,16 @@ describe("campanhaService.listarMensagens", () => {
     repo.findById.mockResolvedValue(campanhaFake({ escritorioId: "esc-2" }));
 
     await expect(
-      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 }),
+      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 })
     ).rejects.toBeInstanceOf(CampanhaNaoEncontradaError);
     expect(client.listarMensagensCampanha).not.toHaveBeenCalled();
   });
 
   it("recusa campanha cuja instância foi removida", async () => {
-    repo.findById.mockResolvedValue(
-      campanhaFake({ instanciaWhatsappId: null }),
-    );
+    repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null }));
 
     await expect(
-      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 }),
+      campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 })
     ).rejects.toBeInstanceOf(CampanhaSemInstanciaError);
   });
 
@@ -699,9 +617,7 @@ describe("campanhaService.listarMensagens", () => {
 
     await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
-    expect(client.listarMensagensCampanha.mock.calls[0][2]?.limit).toBe(
-      MAX_DESTINATARIOS,
-    );
+    expect(client.listarMensagensCampanha.mock.calls[0][2]?.limit).toBe(MAX_DESTINATARIOS);
   });
 
   // O join acontece aqui para o browser não receber milhares de objetos só para desenhar
@@ -718,15 +634,11 @@ describe("campanhaService.listarMensagens", () => {
           mensagemFake({ chatid: "5511999998888@s.whatsapp.net" }),
           mensagemFake({ chatid: "5511777776666@s.whatsapp.net" }),
         ],
-        2,
-      ),
+        2
+      )
     );
 
-    const resposta = await campanhaService.listarMensagens(
-      ctx(),
-      "campanha-1",
-      { pagina: 1 },
-    );
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
     expect(resposta.mensagens.map((m) => m.numero)).toEqual(["5511999998888"]);
   });
@@ -752,14 +664,10 @@ describe("campanhaService.listarMensagens", () => {
       itemFake({ numero: "5547997355799" }),
     ] as never);
     client.listarMensagensCampanha.mockResolvedValue(
-      paginaFake([mensagemFake({ chatid: "554797355799@s.whatsapp.net" })], 1),
+      paginaFake([mensagemFake({ chatid: "554797355799@s.whatsapp.net" })], 1)
     );
 
-    const resposta = await campanhaService.listarMensagens(
-      ctx(),
-      "campanha-1",
-      { pagina: 1 },
-    );
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
     expect(resposta.mensagens).toHaveLength(1);
   });
@@ -772,24 +680,14 @@ describe("campanhaService.listarMensagens", () => {
     client.listarMensagensCampanha.mockResolvedValue(
       paginaFake(
         [
-          mensagemFake({
-            chatid: "5511999998888@s.whatsapp.net",
-            status: "Sent",
-          }),
-          mensagemFake({
-            chatid: "5511999998888@s.whatsapp.net",
-            status: "Failed",
-          }),
+          mensagemFake({ chatid: "5511999998888@s.whatsapp.net", status: "Sent" }),
+          mensagemFake({ chatid: "5511999998888@s.whatsapp.net", status: "Failed" }),
         ],
-        2,
-      ),
+        2
+      )
     );
 
-    const resposta = await campanhaService.listarMensagens(
-      ctx(),
-      "campanha-1",
-      { pagina: 1 },
-    );
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
     expect(resposta.mensagens).toHaveLength(2);
   });
@@ -799,15 +697,9 @@ describe("campanhaService.listarMensagens", () => {
   it("avisa quando a UAZAPI devolveu menos mensagens que o total", async () => {
     repo.findById.mockResolvedValue(campanhaFake());
     itensRepo.listarPorCampanha.mockResolvedValue([]);
-    client.listarMensagensCampanha.mockResolvedValue(
-      paginaFake([mensagemFake()], 800),
-    );
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 800));
 
-    const resposta = await campanhaService.listarMensagens(
-      ctx(),
-      "campanha-1",
-      { pagina: 1 },
-    );
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 1 });
 
     expect(resposta.truncado).toBe(true);
   });
@@ -815,15 +707,9 @@ describe("campanhaService.listarMensagens", () => {
   it("página além do fim devolve lista vazia sem estourar", async () => {
     repo.findById.mockResolvedValue(campanhaFake());
     itensRepo.listarPorCampanha.mockResolvedValue([]);
-    client.listarMensagensCampanha.mockResolvedValue(
-      paginaFake([mensagemFake()], 1),
-    );
+    client.listarMensagensCampanha.mockResolvedValue(paginaFake([mensagemFake()], 1));
 
-    const resposta = await campanhaService.listarMensagens(
-      ctx(),
-      "campanha-1",
-      { pagina: 99 },
-    );
+    const resposta = await campanhaService.listarMensagens(ctx(), "campanha-1", { pagina: 99 });
 
     expect(resposta.mensagens).toEqual([]);
   });
@@ -832,9 +718,7 @@ describe("campanhaService.listarMensagens", () => {
 describe("campanhaService.sincronizar", () => {
   beforeEach(() => {
     repo.findById.mockResolvedValue(campanhaFake());
-    repo.update.mockImplementation(
-      async (id, data) => ({ id, ...data }) as never,
-    );
+    repo.update.mockImplementation(async (id, data) => ({ id, ...data }) as never);
   });
 
   it("atualiza contadores e status a partir do /sender/listfolders", async () => {
@@ -855,13 +739,8 @@ describe("campanhaService.sincronizar", () => {
 
     expect(repo.update).toHaveBeenCalledWith(
       "campanha-1",
-      expect.objectContaining({
-        status: "enviando",
-        logTotal: 10,
-        logSucesso: 7,
-        logFalha: 1,
-      }),
-      expect.anything(),
+      expect.objectContaining({ status: "enviando", logTotal: 10, logSucesso: 7, logFalha: 1 }),
+      expect.anything()
     );
   });
 
@@ -903,18 +782,16 @@ describe("campanhaService.sincronizar", () => {
       },
     ]);
 
-    await expect(
-      campanhaService.sincronizar(ctx(), "campanha-1"),
-    ).rejects.toBeInstanceOf(UazapiIndisponivelError);
+    await expect(campanhaService.sincronizar(ctx(), "campanha-1")).rejects.toBeInstanceOf(
+      UazapiIndisponivelError
+    );
     expect(repo.update).not.toHaveBeenCalled();
   });
 
   it("permite role padrao sincronizar (é leitura de estado)", async () => {
     client.listarCampanhas.mockResolvedValue([]);
 
-    await expect(
-      campanhaService.sincronizar(ctx("padrao"), "campanha-1"),
-    ).resolves.toBeDefined();
+    await expect(campanhaService.sincronizar(ctx("padrao"), "campanha-1")).resolves.toBeDefined();
   });
 
   it("mantém o estado local quando o folder sumiu da UAZAPI", async () => {
@@ -926,13 +803,11 @@ describe("campanhaService.sincronizar", () => {
   });
 
   it("falha quando a instância que disparou não existe mais", async () => {
-    repo.findById.mockResolvedValue(
-      campanhaFake({ instanciaWhatsappId: null, instancia: null }),
-    );
+    repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null, instancia: null }));
 
-    await expect(
-      campanhaService.sincronizar(ctx(), "campanha-1"),
-    ).rejects.toThrow(CampanhaSemInstanciaError);
+    await expect(campanhaService.sincronizar(ctx(), "campanha-1")).rejects.toThrow(
+      CampanhaSemInstanciaError
+    );
   });
 
   // Tempo real: a tela de quem não clicou em Sincronizar também precisa ver a mudança.
@@ -950,18 +825,7 @@ describe("campanhaService.sincronizar", () => {
   });
 
   it("não publica quando nada mudou", async () => {
-    client.listarCampanhas.mockResolvedValue([
-      {
-        ...FOLDER_ENVIANDO,
-        status: "scheduled",
-        logTotal: 0,
-        logSucesso: 0,
-        logFalha: 0,
-        logEntregue: 0,
-        logLido: 0,
-        logReproduzido: 0,
-      },
-    ]);
+    client.listarCampanhas.mockResolvedValue([FOLDER_SEM_MUDANCA]);
 
     await campanhaService.sincronizar(ctx(), "campanha-1");
 
@@ -972,31 +836,21 @@ describe("campanhaService.sincronizar", () => {
     client.listarCampanhas.mockResolvedValue([FOLDER_ENVIANDO]);
     transacao.mockRejectedValueOnce(new Error("deadlock"));
 
-    await expect(
-      campanhaService.sincronizar(ctx(), "campanha-1"),
-    ).rejects.toThrow("deadlock");
+    await expect(campanhaService.sincronizar(ctx(), "campanha-1")).rejects.toThrow("deadlock");
     expect(publicar).not.toHaveBeenCalled();
   });
 });
 
 describe("campanhaService.sincronizarPeloSistema", () => {
   beforeEach(() => {
-    repo.findById.mockResolvedValue(
-      campanhaFake({ escritorioId: "esc-da-campanha" }),
-    );
-    repo.update.mockImplementation(
-      async (id, data) => ({ id, ...data }) as never,
-    );
-    instanciasRepo.findById.mockResolvedValue(
-      instanciaFake({ escritorioId: "esc-da-campanha" }),
-    );
+    repo.findById.mockResolvedValue(campanhaFake({ escritorioId: "esc-da-campanha" }));
+    repo.update.mockImplementation(async (id, data) => ({ id, ...data }) as never);
+    instanciasRepo.findById.mockResolvedValue(instanciaFake({ escritorioId: "esc-da-campanha" }));
     client.listarCampanhas.mockResolvedValue([FOLDER_ENVIANDO]);
   });
 
   it("grava as mudanças, loga como sistema no escritório da campanha e devolve true", async () => {
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(true);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(true);
 
     expect(instanciasRepo.findById).toHaveBeenCalledWith("instancia-1");
     expect(client.listarCampanhas).toHaveBeenCalledWith("token-secreto");
@@ -1007,16 +861,12 @@ describe("campanhaService.sincronizarPeloSistema", () => {
         logSucesso: 7,
         sincronizadoEm: expect.any(Date),
       }),
-      expect.anything(),
+      expect.anything()
     );
     expect(logs.registrarSistema).toHaveBeenCalledWith(
       "esc-da-campanha",
-      expect.objectContaining({
-        acao: "atualizar",
-        entidade: "campanha",
-        entidadeId: "campanha-1",
-      }),
-      expect.anything(),
+      expect.objectContaining({ acao: "atualizar", entidade: "campanha", entidadeId: "campanha-1" }),
+      expect.anything()
     );
     // Sem sessão não há usuário: o log de usuário nunca é usado aqui.
     expect(logs.registrar).not.toHaveBeenCalled();
@@ -1042,22 +892,9 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   });
 
   it("sem mudança não grava, não loga, não publica e devolve false", async () => {
-    client.listarCampanhas.mockResolvedValue([
-      {
-        ...FOLDER_ENVIANDO,
-        status: "scheduled",
-        logTotal: 0,
-        logSucesso: 0,
-        logFalha: 0,
-        logEntregue: 0,
-        logLido: 0,
-        logReproduzido: 0,
-      },
-    ]);
+    client.listarCampanhas.mockResolvedValue([FOLDER_SEM_MUDANCA]);
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(repo.update).not.toHaveBeenCalled();
     expect(logs.registrarSistema).not.toHaveBeenCalled();
@@ -1066,15 +903,10 @@ describe("campanhaService.sincronizarPeloSistema", () => {
 
   it("instância soft-deleted devolve false sem chamar a UAZAPI", async () => {
     instanciasRepo.findById.mockResolvedValue(
-      instanciaFake({
-        escritorioId: "esc-da-campanha",
-        softDeletedAt: new Date(),
-      }),
+      instanciaFake({ escritorioId: "esc-da-campanha", softDeletedAt: new Date() })
     );
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
     expect(repo.update).not.toHaveBeenCalled();
@@ -1082,13 +914,9 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   });
 
   it("campanha sem instância vinculada devolve false sem chamar a UAZAPI", async () => {
-    repo.findById.mockResolvedValue(
-      campanhaFake({ instanciaWhatsappId: null, instancia: null }),
-    );
+    repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null, instancia: null }));
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(instanciasRepo.findById).not.toHaveBeenCalled();
     expect(client.listarCampanhas).not.toHaveBeenCalled();
@@ -1097,22 +925,16 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("instância inexistente devolve false sem chamar a UAZAPI", async () => {
     instanciasRepo.findById.mockResolvedValue(null);
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
   });
 
   // Defesa em profundidade (RN19): o token de outro tenant nunca fala por esta campanha.
   it("instância de outro escritório devolve false sem chamar a UAZAPI", async () => {
-    instanciasRepo.findById.mockResolvedValue(
-      instanciaFake({ escritorioId: "outro-esc" }),
-    );
+    instanciasRepo.findById.mockResolvedValue(instanciaFake({ escritorioId: "outro-esc" }));
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
   });
@@ -1120,9 +942,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("campanha inexistente devolve false", async () => {
     repo.findById.mockResolvedValue(null);
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(client.listarCampanhas).not.toHaveBeenCalled();
   });
@@ -1130,9 +950,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("folder ausente na UAZAPI devolve false sem gravar", async () => {
     client.listarCampanhas.mockResolvedValue([]);
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).resolves.toBe(false);
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).resolves.toBe(false);
 
     expect(repo.update).not.toHaveBeenCalled();
     expect(publicar).not.toHaveBeenCalled();
@@ -1155,9 +973,7 @@ describe("campanhaService.sincronizarPeloSistema", () => {
   it("transação que rejeita não publica nenhum evento e propaga o erro", async () => {
     transacao.mockRejectedValueOnce(new Error("deadlock"));
 
-    await expect(
-      campanhaService.sincronizarPeloSistema("campanha-1"),
-    ).rejects.toThrow("deadlock");
+    await expect(campanhaService.sincronizarPeloSistema("campanha-1")).rejects.toThrow("deadlock");
     expect(publicar).not.toHaveBeenCalled();
   });
 });
@@ -1166,9 +982,10 @@ describe("campanhaService.idsAtivosDaInstancia", () => {
   it("pede ao repository as campanhas agendadas, enviando e pausadas da instância", async () => {
     repo.listarIdsPorInstancia.mockResolvedValue(["c1", "c2"]);
 
-    await expect(
-      campanhaService.idsAtivosDaInstancia("instancia-1"),
-    ).resolves.toEqual(["c1", "c2"]);
+    await expect(campanhaService.idsAtivosDaInstancia("instancia-1")).resolves.toEqual([
+      "c1",
+      "c2",
+    ]);
     expect(repo.listarIdsPorInstancia).toHaveBeenCalledWith("instancia-1", [
       "agendada",
       "enviando",
@@ -1182,72 +999,54 @@ describe("campanhaService.idsParaPolling", () => {
     repo.listarIdsComInstanciaAtiva.mockResolvedValue(["c1"]);
 
     await expect(campanhaService.idsParaPolling()).resolves.toEqual(["c1"]);
-    expect(repo.listarIdsComInstanciaAtiva).toHaveBeenCalledWith([
-      "agendada",
-      "enviando",
-    ]);
+    expect(repo.listarIdsComInstanciaAtiva).toHaveBeenCalledWith(["agendada", "enviando"]);
   });
 });
 
 describe("campanhaService.controlar", () => {
   beforeEach(() => {
     repo.findById.mockResolvedValue(campanhaFake({ status: "enviando" }));
-    repo.update.mockImplementation(
-      async (id, data) => ({ id, ...data }) as never,
-    );
+    repo.update.mockImplementation(async (id, data) => ({ id, ...data }) as never);
     repo.delete.mockResolvedValue(campanhaFake() as never);
     client.controlarCampanha.mockResolvedValue(undefined);
   });
 
   it("rejeita role padrao", async () => {
-    await expect(
-      campanhaService.controlar(ctx("padrao"), "campanha-1", "stop"),
-    ).rejects.toThrow(PermissaoNegadaError);
+    await expect(campanhaService.controlar(ctx("padrao"), "campanha-1", "stop")).rejects.toThrow(
+      PermissaoNegadaError
+    );
     expect(client.controlarCampanha).not.toHaveBeenCalled();
   });
 
   it("pausa a campanha na UAZAPI e reflete o status local", async () => {
     await campanhaService.controlar(ctx(), "campanha-1", "stop");
 
-    expect(client.controlarCampanha).toHaveBeenCalledWith(
-      "token-secreto",
-      "folder-1",
-      "stop",
-    );
+    expect(client.controlarCampanha).toHaveBeenCalledWith("token-secreto", "folder-1", "stop");
     expect(repo.update).toHaveBeenCalledWith(
       "campanha-1",
       expect.objectContaining({ status: "pausada" }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
   // Sem agendamento futuro, retomar significa voltar a disparar agora: gravar "agendada"
   // faria a tela dizer "Agendada" para uma campanha que está mandando mensagem.
   it("retoma a campanha pausada como enviando quando não há agendamento pendente", async () => {
-    repo.findById.mockResolvedValue(
-      campanhaFake({ status: "pausada", agendadaPara: null }),
-    );
+    repo.findById.mockResolvedValue(campanhaFake({ status: "pausada", agendadaPara: null }));
 
     await campanhaService.controlar(ctx(), "campanha-1", "continue");
 
-    expect(client.controlarCampanha).toHaveBeenCalledWith(
-      "token-secreto",
-      "folder-1",
-      "continue",
-    );
+    expect(client.controlarCampanha).toHaveBeenCalledWith("token-secreto", "folder-1", "continue");
     expect(repo.update).toHaveBeenCalledWith(
       "campanha-1",
       expect.objectContaining({ status: "enviando" }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it("retoma como agendada quando o disparo ainda está no futuro", async () => {
     repo.findById.mockResolvedValue(
-      campanhaFake({
-        status: "pausada",
-        agendadaPara: new Date(Date.now() + 60 * 60 * 1000),
-      }),
+      campanhaFake({ status: "pausada", agendadaPara: new Date(Date.now() + 60 * 60 * 1000) })
     );
 
     await campanhaService.controlar(ctx(), "campanha-1", "continue");
@@ -1255,16 +1054,13 @@ describe("campanhaService.controlar", () => {
     expect(repo.update).toHaveBeenCalledWith(
       "campanha-1",
       expect.objectContaining({ status: "agendada" }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it("retoma como enviando quando a data de agendamento já passou", async () => {
     repo.findById.mockResolvedValue(
-      campanhaFake({
-        status: "pausada",
-        agendadaPara: new Date(Date.now() - 60 * 1000),
-      }),
+      campanhaFake({ status: "pausada", agendadaPara: new Date(Date.now() - 60 * 1000) })
     );
 
     await campanhaService.controlar(ctx(), "campanha-1", "continue");
@@ -1272,7 +1068,7 @@ describe("campanhaService.controlar", () => {
     expect(repo.update).toHaveBeenCalledWith(
       "campanha-1",
       expect.objectContaining({ status: "enviando" }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -1281,36 +1077,92 @@ describe("campanhaService.controlar", () => {
   it("exclui a campanha localmente depois de excluir na UAZAPI", async () => {
     await campanhaService.controlar(ctx(), "campanha-1", "delete");
 
-    expect(client.controlarCampanha).toHaveBeenCalledWith(
-      "token-secreto",
-      "folder-1",
-      "delete",
-    );
+    expect(client.controlarCampanha).toHaveBeenCalledWith("token-secreto", "folder-1", "delete");
     expect(repo.delete).toHaveBeenCalledWith("campanha-1", expect.anything());
     expect(logs.registrar).toHaveBeenCalledWith(
       ctx(),
       expect.objectContaining({ acao: "excluir", entidade: "campanha" }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it("não altera o banco se a UAZAPI recusar a ação", async () => {
     client.controlarCampanha.mockRejectedValue(new Error("indisponível"));
 
-    await expect(
-      campanhaService.controlar(ctx(), "campanha-1", "stop"),
-    ).rejects.toThrow();
+    await expect(campanhaService.controlar(ctx(), "campanha-1", "stop")).rejects.toThrow();
     expect(repo.update).not.toHaveBeenCalled();
     expect(repo.delete).not.toHaveBeenCalled();
   });
 
   it("falha quando a instância que disparou não existe mais", async () => {
-    repo.findById.mockResolvedValue(
-      campanhaFake({ instanciaWhatsappId: null, instancia: null }),
-    );
+    repo.findById.mockResolvedValue(campanhaFake({ instanciaWhatsappId: null, instancia: null }));
 
-    await expect(
-      campanhaService.controlar(ctx(), "campanha-1", "stop"),
-    ).rejects.toThrow(CampanhaSemInstanciaError);
+    await expect(campanhaService.controlar(ctx(), "campanha-1", "stop")).rejects.toThrow(
+      CampanhaSemInstanciaError
+    );
+  });
+
+  // Tempo real: pausar/retomar aparece na tela dos outros membros do escritório.
+  it.each([
+    ["stop", "pausada"],
+    ["continue", "enviando"],
+  ] as const)(
+    "%s publica campanha.atualizada com o DTO da campanha depois de gravar",
+    async (acao, status) => {
+      const resultado = await campanhaService.controlar(ctx(), "campanha-1", acao);
+
+      expect(resultado?.status).toBe(status);
+      expect(publicar).toHaveBeenCalledTimes(1);
+      expect(publicar).toHaveBeenCalledWith({
+        tipo: "campanha.atualizada",
+        escritorioId: "esc-1",
+        campanha: serializarCampanha(resultado!),
+      });
+    }
+  );
+
+  it("delete publica campanha.removida com o id, sem a campanha", async () => {
+    await campanhaService.controlar(ctx(), "campanha-1", "delete");
+
+    expect(publicar).toHaveBeenCalledTimes(1);
+    expect(publicar).toHaveBeenCalledWith({
+      tipo: "campanha.removida",
+      escritorioId: "esc-1",
+      campanhaId: "campanha-1",
+    });
+  });
+
+  it.each(["stop", "continue", "delete"] as const)(
+    "%s só publica depois que a transação resolve",
+    async (acao) => {
+      transacao.mockImplementationOnce(async (fn: (tx: unknown) => unknown) => {
+        const resultado = await fn({});
+        expect(publicar).not.toHaveBeenCalled();
+        return resultado;
+      });
+
+      await campanhaService.controlar(ctx(), "campanha-1", acao);
+
+      expect(publicar).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each(["stop", "continue", "delete"] as const)(
+    "%s não publica nada quando a transação rejeita",
+    async (acao) => {
+      transacao.mockRejectedValueOnce(new Error("deadlock"));
+
+      await expect(campanhaService.controlar(ctx(), "campanha-1", acao)).rejects.toThrow(
+        "deadlock"
+      );
+      expect(publicar).not.toHaveBeenCalled();
+    }
+  );
+
+  it("não publica quando a UAZAPI recusa a ação", async () => {
+    client.controlarCampanha.mockRejectedValue(new Error("indisponível"));
+
+    await expect(campanhaService.controlar(ctx(), "campanha-1", "stop")).rejects.toThrow();
+    expect(publicar).not.toHaveBeenCalled();
   });
 });

@@ -466,8 +466,8 @@ model Campanha {
   itens      CampanhaItem[]
 
   @@index([escritorioId, createdAt])
-  @@index([instanciaWhatsappId])
   // Tempo real: o webhook de uma instância busca as campanhas dela que ainda não terminaram.
+  // O prefixo instanciaWhatsappId também serve à FK (SetNull) e às buscas só por instância.
   @@index([instanciaWhatsappId, status])
   @@map("campanha")
 }
