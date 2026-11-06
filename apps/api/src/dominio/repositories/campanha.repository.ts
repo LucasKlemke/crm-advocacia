@@ -45,17 +45,23 @@ export const campanhaRepository = {
   // Consultas do sistema (webhook/polling do tempo real), sem sessão e portanto sem
   // escritorioId: devolvem só ids, e quem as usa (campanhaService.*PeloSistema) relê
   // cada campanha e deriva o escritório da própria linha antes de escrever ou publicar.
-  async listarIdsPorInstancia(
+  //
+  // Campanhas que um webhook da instância pode ter afetado: as ainda ativas e as já
+  // encerradas que mudaram desde `atualizadasDesde` — confirmações de entrega/leitura
+  // continuam chegando depois que o envio termina. Mesmo filtro de instância viva (RN30).
+  async listarIdsParaWebhook(
     instanciaId: string,
-    status: StatusCampanha[],
+    filtro: { ativos: StatusCampanha[]; encerrados: StatusCampanha[]; atualizadasDesde: Date },
     db: Db = prisma
   ): Promise<string[]> {
     const campanhas = await db.campanha.findMany({
-      // Instância soft-deleted não é vigiada (RN30): um webhook de URL antiga não gera trabalho.
       where: {
         instanciaWhatsappId: instanciaId,
-        status: { in: status },
         instancia: { is: { softDeletedAt: null } },
+        OR: [
+          { status: { in: filtro.ativos } },
+          { status: { in: filtro.encerrados }, updatedAt: { gte: filtro.atualizadasDesde } },
+        ],
       },
       select: { id: true },
     });

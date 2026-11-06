@@ -2,10 +2,12 @@ import { prisma } from "@dominio/lib/prisma";
 import { instanciaWhatsappRepository } from "@dominio/repositories/instancia-whatsapp.repository";
 import { uazapiClient, UazapiIndisponivelError } from "@dominio/lib/external/uazapi-client";
 import { urlWebhookDaInstancia } from "@dominio/lib/auth/assinatura-webhook";
-import { logService } from "@dominio/services/log.service";
+import { eventosCampanha } from "@dominio/lib/tempo-real/eventos-campanha";
+import { serializarInstancia } from "@dominio/lib/api/serializa-instancia";
+import { logService, type RegistroLog } from "@dominio/services/log.service";
 import { PermissaoNegadaError } from "@dominio/services/membro.service";
 import type { TenantContext } from "@dominio/lib/auth/tenant-context";
-import type { InstanciaWhatsapp, StatusInstanciaWhatsapp } from "@prisma/client";
+import type { InstanciaWhatsapp, Prisma, StatusInstanciaWhatsapp } from "@prisma/client";
 
 export { PermissaoNegadaError };
 
@@ -143,6 +145,62 @@ function compararConexao(
   return { mudou, numeroConectado, fotoPerfilUrl };
 }
 
+// Avisa as abas abertas do escritório (tempo real) que a instância mudou. Chamado só depois
+// que a transação resolveu: um evento de escrita desfeita mostraria um estado que o banco
+// não tem. serializarInstancia nunca leva o uazapiToken.
+function publicarInstancia(instancia: InstanciaWhatsapp): void {
+  eventosCampanha.publicar({
+    tipo: "instancia.atualizada",
+    escritorioId: instancia.escritorioId,
+    instancia: serializarInstancia(instancia),
+  });
+}
+
+// Relê o status na UAZAPI e, se algo mudou, grava com o log na mesma transação (RN20) e
+// publica depois do commit. `registrarLog` decide se o autor é o usuário da sessão ou o
+// sistema. Devolve a linha gravada, ou null quando nada mudou (sem escrita, sem log).
+async function aplicarStatusRemoto(
+  atual: InstanciaWhatsapp,
+  registrarLog: (registro: RegistroLog, tx: Prisma.TransactionClient) => Promise<unknown>
+): Promise<InstanciaWhatsapp | null> {
+  const consulta = await uazapiClient.consultarStatus(atual.uazapiToken);
+  // Valida o status ANTES de qualquer comparação/escrita: um status fora do contrato
+  // aborta aqui, sem nenhuma escrita no banco e sem log.
+  const statusValidado = paraStatusInstancia(consulta.status);
+
+  const { mudou, numeroConectado, fotoPerfilUrl } = compararConexao(atual, {
+    status: statusValidado,
+    numeroConectado: consulta.numeroConectado,
+    fotoPerfilUrl: consulta.fotoPerfilUrl,
+  });
+
+  // Nada mudou de fato: não toca no banco nem polui a auditoria com log vazio.
+  if (!mudou) return null;
+
+  const instancia = await prisma.$transaction(async (tx) => {
+    const atualizada = await instanciaWhatsappRepository.atualizarConexao(
+      atual.id,
+      { status: statusValidado, numeroConectado, fotoPerfilUrl },
+      tx
+    );
+
+    await registrarLog(
+      {
+        acao: "atualizar",
+        entidade: "instancia_whatsapp",
+        entidadeId: atualizada.id,
+        resumo: `Status da instância ${atualizada.nome} atualizado`,
+      },
+      tx
+    );
+
+    return atualizada;
+  });
+
+  publicarInstancia(instancia);
+  return instancia;
+}
+
 export const instanciaWhatsappService = {
   async listar(ctx: TenantContext): Promise<InstanciaSemToken[]> {
     const instancias = await instanciaWhatsappRepository.listar(ctx.escritorioId);
@@ -217,6 +275,7 @@ export const instanciaWhatsappService = {
         return nova;
       });
 
+      publicarInstancia(instancia);
       await registrarWebhook(instancia);
 
       return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
@@ -265,6 +324,7 @@ export const instanciaWhatsappService = {
       return atualizada;
     });
 
+    publicarInstancia(instancia);
     await registrarWebhook(atual);
 
     return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
@@ -305,6 +365,7 @@ export const instanciaWhatsappService = {
       return atualizada;
     });
 
+    publicarInstancia(instancia);
     return semToken(instancia);
   },
 
@@ -320,8 +381,9 @@ export const instanciaWhatsappService = {
     // UAZAPI, invisível pro escritório e impossível de excluir pela UI.
     await uazapiClient.deletarInstancia(atual.uazapiToken);
 
+    const quando = new Date();
     await prisma.$transaction(async (tx) => {
-      await instanciaWhatsappRepository.marcarExcluida(id, new Date(), tx);
+      await instanciaWhatsappRepository.marcarExcluida(id, quando, tx);
 
       await logService.registrar(
         ctx,
@@ -334,6 +396,9 @@ export const instanciaWhatsappService = {
         tx
       );
     });
+
+    // Com softDeletedAt preenchido: as outras abas tiram a instância da lista.
+    publicarInstancia({ ...atual, softDeletedAt: quando });
   },
 
   // Uso exclusivo de outro Service no servidor (campanha.service precisa do token para
@@ -354,44 +419,24 @@ export const instanciaWhatsappService = {
 
   async verificarStatus(ctx: TenantContext, id: string): Promise<InstanciaSemToken> {
     const atual = await obterAtivaDoTenant(ctx, id);
-    const consulta = await uazapiClient.consultarStatus(atual.uazapiToken);
-    // Valida o status ANTES de qualquer comparação/escrita: um status fora do contrato
-    // aborta aqui, sem nenhuma escrita no banco e sem log.
-    const statusValidado = paraStatusInstancia(consulta.status);
+    const atualizada = await aplicarStatusRemoto(atual, (registro, tx) =>
+      logService.registrar(ctx, registro, tx)
+    );
+    return semToken(atualizada ?? atual);
+  },
 
-    const { mudou, numeroConectado, fotoPerfilUrl } = compararConexao(atual, {
-      status: statusValidado,
-      numeroConectado: consulta.numeroConectado,
-      fotoPerfilUrl: consulta.fotoPerfilUrl,
-    });
+  // Mesma verificação, disparada pelo sistema (webhook `connection` da UAZAPI: QR lido,
+  // desconexão) — sem sessão, então o escritório vem da própria linha e o log sai com
+  // origem "sistema". Instância excluída não é vigiada (RN30). Devolve se algo mudou. Erro
+  // da UAZAPI sobe: quem chama (o agendador do tempo real) decide como logar.
+  async verificarStatusPeloSistema(instanciaId: string): Promise<boolean> {
+    const atual = await instanciaWhatsappRepository.findById(instanciaId);
+    if (!atual || atual.softDeletedAt !== null) return false;
 
-    // Nada mudou de fato: não toca no banco nem polui a auditoria com log vazio.
-    if (!mudou) {
-      return semToken(atual);
-    }
-
-    const instancia = await prisma.$transaction(async (tx) => {
-      const atualizada = await instanciaWhatsappRepository.atualizarConexao(
-        id,
-        { status: statusValidado, numeroConectado, fotoPerfilUrl },
-        tx
-      );
-
-      await logService.registrar(
-        ctx,
-        {
-          acao: "atualizar",
-          entidade: "instancia_whatsapp",
-          entidadeId: atualizada.id,
-          resumo: `Status da instância ${atualizada.nome} atualizado`,
-        },
-        tx
-      );
-
-      return atualizada;
-    });
-
-    return semToken(instancia);
+    const atualizada = await aplicarStatusRemoto(atual, (registro, tx) =>
+      logService.registrarSistema(atual.escritorioId, registro, tx)
+    );
+    return atualizada !== null;
   },
 
   // Sem exigirPapelDeGestao: leitura + escrita condicional disponível a qualquer membro
@@ -434,8 +479,9 @@ export const instanciaWhatsappService = {
         // nenhuma mudança por trás (RN20 é sobre escrita real).
         if (local.softDeletedAt) continue;
 
+        const quando = new Date();
         await prisma.$transaction(async (tx) => {
-          await instanciaWhatsappRepository.marcarExcluida(local.id, new Date(), tx);
+          await instanciaWhatsappRepository.marcarExcluida(local.id, quando, tx);
           await logService.registrar(
             ctx,
             {
@@ -447,6 +493,7 @@ export const instanciaWhatsappService = {
             tx
           );
         });
+        publicarInstancia({ ...local, softDeletedAt: quando });
         continue;
       }
 
@@ -481,7 +528,7 @@ export const instanciaWhatsappService = {
       // A restauração conta como mudança mesmo com status idêntico ao que já estava salvo.
       if (!mudou && !ressuscitar) continue;
 
-      await prisma.$transaction(async (tx) => {
+      const sincronizada = await prisma.$transaction(async (tx) => {
         if (ressuscitar) {
           await instanciaWhatsappRepository.restaurar(local.id, tx);
         }
@@ -508,7 +555,11 @@ export const instanciaWhatsappService = {
           },
           tx
         );
+
+        // Restaurada sem mudança de conexão: a linha local com o softDeletedAt já zerado.
+        return mudou ? atualizada : { ...local, softDeletedAt: null };
       });
+      publicarInstancia(sincronizada);
     }
 
     const atualizadas = await instanciaWhatsappRepository.listar(ctx.escritorioId);

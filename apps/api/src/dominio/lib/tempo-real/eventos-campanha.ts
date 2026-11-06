@@ -1,11 +1,17 @@
 import type { CampanhaDTO } from "@crm/compartilhado/tipos/campanha";
+import type { InstanciaWhatsappDTO } from "@crm/compartilhado/tipos/instancia-whatsapp";
 
+// Eventos de tempo real do escritório (o nome do módulo ficou de quando só havia campanhas).
 // `campanha` é exatamente o que a API HTTP devolveria para a mesma campanha
 // (serializarCampanha) — nunca a linha crua, e nunca com o uazapiToken da instância.
 // `campanha.removida` só leva o id: a linha local já não existe depois do delete.
+// `campanha.mensagens` só avisa que o status por destinatário (entregue/lida, que vive só na
+// UAZAPI) pode ter mudado — quem recebe reconsulta. `instancia` sai de serializarInstancia.
 export type EventoCampanha =
   | { tipo: "campanha.atualizada"; escritorioId: string; campanha: CampanhaDTO }
-  | { tipo: "campanha.removida"; escritorioId: string; campanhaId: string };
+  | { tipo: "campanha.removida"; escritorioId: string; campanhaId: string }
+  | { tipo: "campanha.mensagens"; escritorioId: string; campanhaId: string }
+  | { tipo: "instancia.atualizada"; escritorioId: string; instancia: InstanciaWhatsappDTO };
 
 type Ouvinte = (evento: EventoCampanha) => void;
 

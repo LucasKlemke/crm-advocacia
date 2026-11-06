@@ -11,14 +11,17 @@ import {
 } from "@dominio/lib/auth/resolver-tenant";
 import { DURACAO_TICKET_WS_SEGUNDOS, verificarTicketWs } from "@dominio/lib/auth/sessao-jwt";
 import { eventosCampanha, type EventoCampanha } from "@dominio/lib/tempo-real/eventos-campanha";
+import type { MensagemTempoReal } from "@crm/compartilhado/tipos/tempo-real";
 
 // Servidor WebSocket de /api/ws: entrega o progresso das campanhas ao escritório da
 // sessão. Não é uma rota Nest — anexa-se ao `upgrade` do http.Server da API (main.ts).
 //
-// Contrato servidor → cliente (JSON):
+// Contrato servidor → cliente (JSON), tipado em @crm/compartilhado/tipos/tempo-real:
 //   { tipo: "pronto" }                                       — autenticado e assinado
 //   { tipo: "campanha.atualizada", campanha: CampanhaDTO }
 //   { tipo: "campanha.removida", campanhaId: string }
+//   { tipo: "campanha.mensagens", campanhaId: string }       — reconsultar o status por destinatário
+//   { tipo: "instancia.atualizada", instancia: InstanciaWhatsappDTO }
 // Códigos de fechamento: 4401 (ticket ausente/inválido/expirado/reusado ou sem acesso ao
 // escritório), 4403 (Origin proibida), 4429 (substituída: o usuário abriu uma 6ª conexão),
 // 1011 (erro interno ao resolver o tenant).
@@ -60,19 +63,21 @@ interface Conexao {
   cancelar: () => void;
 }
 
-type MensagemWs =
-  | { tipo: "pronto" }
-  | { tipo: "campanha.atualizada"; campanha: unknown }
-  | { tipo: "campanha.removida"; campanhaId: string };
-
 // O payload que vai ao browser nunca leva o escritorioId: o socket já é de um escritório só.
-function paraCliente(evento: EventoCampanha): MensagemWs {
-  return evento.tipo === "campanha.atualizada"
-    ? { tipo: "campanha.atualizada", campanha: evento.campanha }
-    : { tipo: "campanha.removida", campanhaId: evento.campanhaId };
+function paraCliente(evento: EventoCampanha): MensagemTempoReal {
+  switch (evento.tipo) {
+    case "campanha.atualizada":
+      return { tipo: "campanha.atualizada", campanha: evento.campanha };
+    case "campanha.removida":
+      return { tipo: "campanha.removida", campanhaId: evento.campanhaId };
+    case "campanha.mensagens":
+      return { tipo: "campanha.mensagens", campanhaId: evento.campanhaId };
+    case "instancia.atualizada":
+      return { tipo: "instancia.atualizada", instancia: evento.instancia };
+  }
 }
 
-function enviar(socket: WebSocket, mensagem: MensagemWs): void {
+function enviar(socket: WebSocket, mensagem: MensagemTempoReal): void {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(mensagem));
 }
 
@@ -146,7 +151,11 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
     socket.on("pong", () => {
       conexao.vivo = true;
     });
-    socket.once("close", () => remover(conexao));
+    // Só o evento e o código: a URL do upgrade carrega o ticket.
+    socket.once("close", (codigo: number) => {
+      console.log("[tempo-real] socket", { evento: "fechado", codigo });
+      remover(conexao);
+    });
 
     const lista = conexoesPorUsuario.get(ctx.usuarioId) ?? [];
     lista.push(conexao);
@@ -157,6 +166,7 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
       antiga.socket.close(CODIGO_LIMITE_CONEXOES, "Limite de conexões");
     }
 
+    console.log("[tempo-real] socket", { evento: "aberto" });
     enviar(socket, { tipo: "pronto" });
   }
 
