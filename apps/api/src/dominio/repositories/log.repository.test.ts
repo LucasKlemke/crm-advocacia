@@ -60,6 +60,22 @@ describe("logRepository", () => {
     expect(log.entidadeId).toBe("cliente-1");
   });
 
+  it("aceita log do sistema: sem autor e com origem sistema", async () => {
+    const log = await logRepository.create({
+      origem: "sistema",
+      acao: "atualizar",
+      entidade: "campanha",
+      entidadeId: "camp-1",
+      resumo: "Sincronizada pelo sistema",
+      escritorio: { connect: { id: escritorioId } },
+    });
+    expect(log.usuarioId).toBeNull();
+    expect(log.origem).toBe("sistema");
+
+    const [lido] = await logRepository.listarPorEntidade(escritorioId, "campanha", "camp-1");
+    expect(lido.usuario).toBeNull();
+  });
+
   it("persiste o diff em dados", async () => {
     const log = await registrar(escritorioId, "cliente-1", "Cliente atualizado", {
       telefone: { antes: "48999990000", depois: "48988887777" },
@@ -75,7 +91,7 @@ describe("logRepository", () => {
 
     const logs = await logRepository.listarPorEntidade(escritorioId, "cliente", "cliente-1");
     expect(logs.map((l) => l.resumo)).toEqual(["Segundo", "Primeiro"]);
-    expect(logs[0].usuario.nome).toBe("Autor do Log");
+    expect(logs[0].usuario?.nome).toBe("Autor do Log");
   });
 
   it("não devolve logs de outro escritório (RN19)", async () => {

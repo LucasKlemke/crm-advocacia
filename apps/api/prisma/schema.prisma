@@ -40,6 +40,13 @@ enum TipoArquivo {
   jpeg
 }
 
+enum OrigemLog {
+  usuario
+  sistema
+
+  @@map("origem_log")
+}
+
 enum EntidadeLog {
   cliente
   comentario
@@ -271,7 +278,8 @@ model Documento {
 model Log {
   id           String      @id @default(uuid())
   escritorioId String      @map("escritorio_id")
-  usuarioId    String      @map("usuario_id")
+  usuarioId    String?     @map("usuario_id")
+  origem       OrigemLog   @default(usuario)
   acao         AcaoLog
   entidade     EntidadeLog
   entidadeId   String      @map("entidade_id")
@@ -280,7 +288,7 @@ model Log {
   createdAt    DateTime    @default(now()) @map("created_at")
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Cascade)
-  usuario    Usuario    @relation("LogAutor", fields: [usuarioId], references: [id], onDelete: Restrict)
+  usuario    Usuario?   @relation("LogAutor", fields: [usuarioId], references: [id], onDelete: Restrict)
 
   @@index([escritorioId, createdAt])
   @@index([escritorioId, entidade, entidadeId])

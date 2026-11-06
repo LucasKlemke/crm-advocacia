@@ -31,6 +31,23 @@ export const logService = {
     );
   },
 
+  // Escrita feita pelo próprio sistema (ex.: sincronização com a UAZAPI): sem autor,
+  // no escritório informado, marcada com origem "sistema".
+  async registrarSistema(escritorioId: string, registro: RegistroLog, db?: Db): Promise<Log> {
+    return logRepository.create(
+      {
+        origem: "sistema",
+        acao: registro.acao,
+        entidade: registro.entidade,
+        entidadeId: registro.entidadeId,
+        resumo: registro.resumo.slice(0, 255),
+        ...(registro.dados ? { dados: registro.dados } : {}),
+        escritorio: { connect: { id: escritorioId } },
+      },
+      db
+    );
+  },
+
   async listarPorEntidade(ctx: TenantContext, entidade: EntidadeLog, entidadeId: string) {
     return logRepository.listarPorEntidade(ctx.escritorioId, entidade, entidadeId);
   },

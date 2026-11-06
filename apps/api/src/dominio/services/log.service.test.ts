@@ -91,6 +91,44 @@ describe("logService.registrar", () => {
   });
 });
 
+describe("logService.registrarSistema", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repo.create.mockResolvedValue({ id: "log-1" } as never);
+  });
+
+  it("registrarSistema grava origem sistema sem autor e no escritório informado", async () => {
+    await logService.registrarSistema("esc-9", {
+      acao: "atualizar",
+      entidade: "campanha",
+      entidadeId: "camp-1",
+      resumo: "Sincronizada",
+    });
+
+    const data = repo.create.mock.calls[0][0] as Record<string, unknown>;
+    expect(data).toEqual(
+      expect.objectContaining({
+        origem: "sistema",
+        escritorio: { connect: { id: "esc-9" } },
+      })
+    );
+    expect(data).not.toHaveProperty("usuario");
+  });
+
+  it("registrar continua gravando o autor e não força origem", async () => {
+    await logService.registrar(ctx, {
+      acao: "criar",
+      entidade: "cliente",
+      entidadeId: "cli-1",
+      resumo: "Criado",
+    });
+
+    const data = repo.create.mock.calls[0][0] as Record<string, unknown>;
+    expect(data).not.toHaveProperty("origem");
+    expect(data.usuario).toEqual({ connect: { id: "user-1" } });
+  });
+});
+
 describe("logService.listarPorEntidade", () => {
   beforeEach(() => {
     jest.clearAllMocks();
