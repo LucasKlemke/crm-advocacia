@@ -11,7 +11,12 @@ import type {
   RespostaCampanha,
   RespostaItensCampanha,
 } from "@crm/compartilhado/tipos/campanha";
+import type {
+  InstanciaWhatsappDTO,
+  ListaInstanciasWhatsapp,
+} from "@crm/compartilhado/tipos/instancia-whatsapp";
 import { ApiError, SessaoExpiradaError } from "@/lib/api-client";
+import { chaveInstanciasWhatsapp } from "./use-instancias-whatsapp";
 import {
   chaveCampanha,
   chaveCampanhas,
@@ -86,6 +91,22 @@ function campanhaFake(over: Partial<CampanhaDTO> = {}): CampanhaDTO {
 }
 
 type Detalhe = RespostaCampanha & RespostaItensCampanha;
+
+function instanciaFake(over: Partial<InstanciaWhatsappDTO> = {}): InstanciaWhatsappDTO {
+  return {
+    id: "i1",
+    escritorioId: "esc-1",
+    nome: "Atendimento",
+    uazapiInstanceId: "uaz-1",
+    status: "connecting",
+    numeroConectado: null,
+    fotoPerfilUrl: null,
+    softDeletedAt: null,
+    createdAt: "2026-11-01T10:00:00.000Z",
+    updatedAt: "2026-11-01T10:00:00.000Z",
+    ...over,
+  };
+}
 
 function detalheFake(campanha = campanhaFake()): Detalhe {
   return { campanha, itens: [], total: 0, pagina: 1, porPagina: 50 };
@@ -455,6 +476,103 @@ describe("useTempoRealCampanhas — cache", () => {
     expect(observador.getCurrentResult().status).toBe("error");
     expect(observador.getCurrentResult().data).toBeUndefined();
     cancelar();
+  });
+
+  it("campanha.mensagens invalida só as mensagens da campanha, com o mesmo throttle", async () => {
+    const { queryClient } = await conectar();
+    queryClient.setQueryData(chaveCampanha("c1", 1), detalheFake());
+    const espiao = jest.spyOn(queryClient, "invalidateQueries");
+    const mensagensDe = (id: string) =>
+      espiao.mock.calls.filter(
+        ([filtro]) =>
+          JSON.stringify(filtro?.queryKey) ===
+          JSON.stringify(["campanhas", "mensagens", id]),
+      ).length;
+
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.mensagens", campanhaId: "c1" }),
+    );
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.mensagens", campanhaId: "c1" }),
+    );
+
+    expect(mensagensDe("c1")).toBe(1);
+    // O detalhe (contadores) não é tocado: quem muda ali é o campanha.atualizada.
+    expect(
+      queryClient.getQueryState(chaveCampanha("c1", 1))?.isInvalidated,
+    ).toBe(false);
+    await avancar(3000);
+    expect(mensagensDe("c1")).toBe(2);
+    expect(espiao).toHaveBeenCalledTimes(2);
+  });
+
+  it("instancia.atualizada substitui a instância na lista em cache, sem refetch", async () => {
+    const { queryClient } = await conectar();
+    queryClient.setQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp(), {
+      instancias: [instanciaFake(), instanciaFake({ id: "i2" })],
+    });
+    const chamadasAntes = apiFetchMock.mock.calls.length;
+
+    const conectada = instanciaFake({
+      status: "connected",
+      numeroConectado: "5511999999999",
+      fotoPerfilUrl: "https://foto",
+    });
+    act(() =>
+      ultimoSocket().receber({ tipo: "instancia.atualizada", instancia: conectada }),
+    );
+
+    const lista = queryClient.getQueryData<ListaInstanciasWhatsapp>(
+      chaveInstanciasWhatsapp(),
+    );
+    expect(lista?.instancias).toEqual([conectada, instanciaFake({ id: "i2" })]);
+    expect(
+      queryClient.getQueryState(chaveInstanciasWhatsapp())?.isInvalidated,
+    ).toBe(false);
+    expect(apiFetchMock).toHaveBeenCalledTimes(chamadasAntes);
+  });
+
+  it("instancia.atualizada de instância excluída tira ela da lista", async () => {
+    const { queryClient } = await conectar();
+    queryClient.setQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp(), {
+      instancias: [instanciaFake(), instanciaFake({ id: "i2" })],
+    });
+
+    act(() =>
+      ultimoSocket().receber({
+        tipo: "instancia.atualizada",
+        instancia: instanciaFake({ softDeletedAt: "2026-11-06T00:00:00.000Z" }),
+      }),
+    );
+
+    expect(
+      queryClient
+        .getQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp())
+        ?.instancias.map((i) => i.id),
+    ).toEqual(["i2"]);
+  });
+
+  it("instância que a lista em cache não conhece invalida a lista; campanhas também são invalidadas", async () => {
+    const { queryClient } = await conectar();
+    queryClient.setQueryData<ListaInstanciasWhatsapp>(chaveInstanciasWhatsapp(), {
+      instancias: [instanciaFake()],
+    });
+    queryClient.setQueryData<ListaCampanhas>(chaveCampanhas(), {
+      campanhas: [campanhaFake()],
+    });
+
+    act(() =>
+      ultimoSocket().receber({
+        tipo: "instancia.atualizada",
+        instancia: instanciaFake({ id: "nova" }),
+      }),
+    );
+
+    expect(
+      queryClient.getQueryState(chaveInstanciasWhatsapp())?.isInvalidated,
+    ).toBe(true);
+    // A lista e o detalhe das campanhas mostram o status da instância que dispara.
+    expect(queryClient.getQueryState(chaveCampanhas())?.isInvalidated).toBe(true);
   });
 
   it("ignora mensagens fora do contrato", async () => {
