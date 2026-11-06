@@ -128,7 +128,7 @@ Tabela transversal que responde, para qualquer operação de escrita do sistema:
 | usuario_id | uuid? | FK → `usuario`, `onDelete: Restrict` — **quem fez**; nulo quando `origem = 'sistema'` |
 | origem | enum `origem_log` | `usuario` (padrão) ou `sistema` — escrita feita pelo próprio sistema (sem autor), via `logService.registrarSistema` |
 | acao | enum | `criar` \| `atualizar` \| `excluir` \| `restaurar` |
-| entidade | enum | `cliente` \| `comentario` \| `caso` \| `status` (cresce com o domínio) |
+| entidade | enum `EntidadeLog` | `cliente` \| `comentario` \| `caso` \| `status` \| `tipo_processo` \| `membro` \| `documento` \| `instancia_whatsapp` \| `campanha` \| `evento` (espelha `EntidadeLog` em `apps/api/prisma/schema.prisma`; cresce por migration a cada entidade nova) |
 | entidade_id | uuid | Id do registro afetado |
 | resumo | varchar(255) | Texto legível, ex.: "Cliente Maria Silva desativado" |
 | dados | jsonb | Diff dos campos alterados: `{ campo: { antes, depois } }` |

@@ -10,13 +10,14 @@
 ## Arquitetura
 
 - [arquitetura/visao-geral.md](arquitetura/visao-geral.md) — C4 (contexto/containers/componentes), camadas do backend (TenantGuard → Tenant Context → Controller → Service → Repository), módulos funcionais, decisões de stack e isolamento de tenant. Consulte antes de decidir onde uma nova peça de lógica deve morar.
+- [arquitetura/tempo-real.md](arquitetura/tempo-real.md) — progresso de campanhas em tempo real: webhook assinado da UAZAPI → agendador (debounce + polling) → sincronização pelo sistema → barramento por escritório → WebSocket `/api/ws` com ticket; contrato de eventos e códigos de fechamento, configuração por ambiente e limites (1 task, memória; como trocar por `LISTEN/NOTIFY`).
 - [arquitetura/migracao-nestjs.md](arquitetura/migracao-nestjs.md) — migração do Next.js para React + NestJS (concluída): estratégia strangler, fases, autenticação própria (cookie `crm_sessao`), convenções da API e decisões da consolidação (alias `@dominio`, tsup, Vercel Services).
 
 ## Banco de dados
 
 - [database/docker-setup.md](database/docker-setup.md) — como subir o PostgreSQL local via Docker Compose, variáveis de ambiente, comandos do dia a dia.
 - [database/schema.md](database/schema.md) — as 22 tabelas do modelo de dados multi-tenant, relacionamentos e notas de implementação Prisma.
-- [database/migrations-prisma.md](database/migrations-prisma.md) — fluxo obrigatório de migrations (`migrate dev`/`migrate deploy`), como reverter, nomenclatura, seeds, auditoria do histórico de schema. Consulte sempre que for alterar `schema.prisma`.
+- [database/migrations-prisma.md](database/migrations-prisma.md) — fluxo obrigatório de migrations (`migrate dev`/`migrate deploy`), como reverter, nomenclatura, seeds, auditoria do histórico de schema, onde cada deploy migra e a regra expand/contract (a migration roda antes do rollout, com a versão anterior ainda no ar). Consulte sempre que for alterar `schema.prisma`.
 
 ## App (monorepo: API Nest, web React, compartilhado)
 
@@ -35,7 +36,8 @@
 
 ## Deploy
 
-- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica em RDS+S3, produção real em Supabase), por que dois deploys Vercel a partir do mesmo repositório (cada um com os services `web` e `api`, via Vercel Services), passo a passo manual dos Projects (variáveis, spike de go/no-go, plano B), o S3Client compatível com múltiplos provedores, variáveis de ambiente por Project, pipeline de deploy, rollback.
+- [deploy/deploy.md](deploy/deploy.md) — ambientes (local, produção acadêmica na AWS com a SPA na Vercel, produção real em Supabase com Vercel Services), por que dois deploys a partir do mesmo repositório, topologia de cada um, passo a passo do Project Supabase (variáveis, `TEMPO_REAL_HABILITADO=false`, spike de go/no-go, plano B), o S3Client compatível com múltiplos provedores, pipeline de deploy, rollback.
+- [deploy/aws-terraform.md](deploy/aws-terraform.md) — passo a passo do deploy acadêmico na AWS: checklist do que só o dono da conta faz, bootstrap (estado remoto + OIDC), variáveis/secrets do GitHub, primeiro deploy pelo `deploy-aws.yml`, Project Vercel `pac` (`apps/web/vercel.json`, `VITE_WS_URL`), webhooks das instâncias, migração opcional de dados, custos estimados, `terraform destroy`. Código em `infra/` (READMEs de `infra/bootstrap` e `infra/terraform`).
 
 ## Git
 
@@ -49,5 +51,5 @@
 3. Toda tarefa que **muda o schema** → `database/schema.md` (o que muda) + `database/migrations-prisma.md` (como aplicar).
 4. Toda tarefa de **UI** → `app/design-system.md` (tokens) + `app/modularizacao.md` (reuso).
 5. Toda tarefa de **código de produção** → não é considerada concluída sem o teste correspondente (`testes/estrategia-tdd.md`) e um commit no padrão (`git/commits-e-branches.md`).
-6. Toda tarefa de **deploy ou infraestrutura** → `deploy/deploy.md`; mudanças que afetam monitoramento → também `qualidade/observabilidade.md`.
+6. Toda tarefa de **deploy ou infraestrutura** → `deploy/deploy.md` (e `deploy/aws-terraform.md` + `infra/` para a AWS); mudanças que afetam monitoramento → também `qualidade/observabilidade.md`.
 7. Antes de cada orientação/entrega → conferir se a Wiki do GitHub precisa de atualização (`git/wiki-github.md`).

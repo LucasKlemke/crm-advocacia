@@ -21,12 +21,12 @@ O sistema é **multi-tenant**: cada escritório cadastrado (`escritorio`) tem se
 | Estilo | Tailwind CSS |
 | Autenticação | Sessão própria da API: cookie httpOnly `crm_sessao` (JWT HS256 via `jose`, `AUTH_SECRET`, `exp`/`iat` obrigatórios); `role` sempre lido do banco; login só aceita corpo JSON (urlencoded é recusado, anti-CSRF) |
 | Validação | Zod — mesmos schemas no formulário (web) e no pipe da API |
-| Banco de dados | PostgreSQL + Prisma ORM (`apps/api/prisma`) — RDS (deploy acadêmico) ou Supabase (deploy real), mesmo schema, ver [docs/deploy/deploy.md](docs/deploy/deploy.md) |
+| Banco de dados | PostgreSQL + Prisma ORM (`apps/api/prisma`) — Amazon RDS (deploy acadêmico, via Terraform) ou Supabase (deploy real), mesmo schema, ver [docs/deploy/deploy.md](docs/deploy/deploy.md) |
 | Armazenamento de arquivos | S3 ou provedor S3-compatível (URL assinada) — Amazon S3 (deploy acadêmico) ou Supabase Storage (deploy real) |
-| Jobs assíncronos | AWS Lambda + Amazon EventBridge Scheduler (ainda não implementado) |
+| Jobs assíncronos e tempo real | `NotificacaoScheduler`: AWS Lambda + EventBridge Scheduler (ainda não implementado). Progresso de campanhas: webhook assinado da UAZAPI + polling de fallback no processo da API + WebSocket `/api/ws` (`ws`), só onde há processo vivo (ECS) — ver [docs/arquitetura/tempo-real.md](docs/arquitetura/tempo-real.md) |
 | WhatsApp | Uazapi (API não-oficial via QR Code, apenas envio) |
-| Hosting | Vercel com Services: cada Project de produção publica `web` (estático) + `api` (Fluid Compute) na mesma origem — ver [docs/deploy/deploy.md](docs/deploy/deploy.md) |
-| CI/CD | GitHub Actions (lint, typecheck, cobertura, e2e, SonarCloud) |
+| Hosting | Deploy acadêmico (`crm-advocacia-pac`): Vercel só com a SPA (`apps/web/vercel.json`, proxy de `/api/*`) + AWS (ECS Fargate, ALB, CloudFront, RDS, S3, Secrets Manager) em Terraform (`infra/`). Deploy real (`crm-advocacia-supabase`): Vercel Services (`vercel.json` da raiz, `web` + `api` na mesma origem, `TEMPO_REAL_HABILITADO=false`) — ver [docs/deploy/deploy.md](docs/deploy/deploy.md) e [docs/deploy/aws-terraform.md](docs/deploy/aws-terraform.md) |
+| CI/CD | GitHub Actions: `ci.yml` (lint, typecheck, cobertura, e2e, SonarCloud, `terraform fmt/validate`), `infra-plan.yml` (`terraform plan` em PR) e `deploy-aws.yml` (push na `main`: imagem ARM64 no ECR → migration em `run-task` → `terraform apply` → rollout conferido), com credencial AWS só por OIDC |
 | Análise estática | ESLint (flat config do monorepo) + SonarCloud |
 | Monitoramento | New Relic (agente Node na API) |
 | Testes | Jest + `@swc/jest` (+ supertest na API, Testing Library no web) e Playwright (E2E contra o build de produção) |
@@ -34,7 +34,7 @@ O sistema é **multi-tenant**: cada escritório cadastrado (`escritorio`) tem se
 
 ## Arquitetura (camadas do backend)
 
-O browser fala com uma única origem: `/api/*` vai para a API Nest, o resto para a SPA (proxy do Vite em dev e no `vite preview`, Vercel Services em produção). Todo request da API segue: **Auth (TenantGuard) → Tenant Context → Controller → Service → Repository** (persistência), ou **Service → Cliente Externo** (integrações).
+O browser fala com uma única origem: `/api/*` vai para a API Nest, o resto para a SPA (proxy do Vite em dev e no `vite preview`, Vercel Services no deploy real, rewrite da Vercel para o CloudFront no acadêmico). A exceção é o WebSocket `/api/ws`, que no deploy acadêmico vai direto ao CloudFront (`VITE_WS_URL`) autenticado por ticket. Todo request da API segue: **Auth (TenantGuard) → Tenant Context → Controller → Service → Repository** (persistência), ou **Service → Cliente Externo** (integrações).
 
 - **Auth / TenantGuard** (`apps/api/src/comum/tenant`): lê e valida o cookie `crm_sessao` e resolve `usuarioId` + `escritorioId`; o `role` vem sempre do banco (RN19). Toda rota de tenant usa `@UseGuards(TenantGuard)` + `@Tenant() ctx`.
 - **Tenant Context**: o `TenantContext` produzido pelo guard é o único jeito de chamar um Service — nenhum Repository é chamado sem ele.
@@ -42,7 +42,8 @@ O browser fala com uma única origem: `/api/*` vai para a API Nest, o resto para
 - **Services** (`apps/api/src/dominio/services`): regras de negócio (isolamento entre tenants, CPF único por escritório, papéis, templates, retentativas etc.). Entram no container do Nest por token (`useValue` + `@Inject(TOKEN)`).
 - **Repositories** (`apps/api/src/dominio/repositories`, Prisma): único ponto de acesso ao banco; toda query filtra por `escritorio_id`.
 - **Clientes externos** (`apps/api/src/dominio/lib/external`): `UazapiClient` (WhatsApp), `S3Client` (documentos); `EmailClient` (SMTP) previsto, ainda não implementado.
-- **Front** (`apps/web`): componentes → hooks TanStack Query (`hooks/`) → `apiFetch` (`lib/api-client.ts`) → `/api/*`. Nunca importa `@prisma/client` nem código da API (regra de lint); compartilha só `@crm/compartilhado`.
+- **Tempo real** (`apps/api/src/tempo-real`, `apps/api/src/webhooks`): webhook público `POST /api/webhooks/uazapi/:instanciaId/:assinatura` (HMAC do id com `UAZAPI_WEBHOOK_SECRET`; inválido → 404) e polling de fallback disparam `sincronizarPeloSistema` (log com origem `sistema`); a mudança vai pelo barramento em memória `eventosCampanha` (por escritório) ao WebSocket `/api/ws`, aberto com ticket de uso único (`GET /api/tempo-real/ticket`, 60 s, preso ao escritório da sessão). Variáveis: `API_PUBLIC_URL`, `UAZAPI_WEBHOOK_SECRET`, `WEB_ORIGINS`, `TEMPO_REAL_HABILITADO`, `TEMPO_REAL_POLLING_MS` (API) e `VITE_WS_URL` (web). Detalhes em [docs/arquitetura/tempo-real.md](docs/arquitetura/tempo-real.md).
+- **Front** (`apps/web`): componentes → hooks TanStack Query (`hooks/`) → `apiFetch` (`lib/api-client.ts`) → `/api/*`. O hook `useTempoRealCampanhas` (montado uma vez no layout autenticado) mantém o WebSocket e atualiza o cache das campanhas. Nunca importa `@prisma/client` nem código da API (regra de lint); compartilha só `@crm/compartilhado`.
 
 Serviço assíncrono separado: `NotificacaoScheduler` (Lambda) roda em background verificando prazos de **todos os escritórios** e acionando WhatsApp/e-mail — não depende de nenhum usuário estar com a interface aberta, e processa cada tenant de forma isolada.
 
@@ -65,7 +66,9 @@ Imports: na API, `@dominio/*` → `apps/api/src/dominio/*`; no web, `@/*` → `a
 | `npm run build` / `npm start` | `apps/api/dist/main.js` (tsup) + `apps/web/dist` / API pelo script `start` do `@crm/api` (`--import ./dist/instrumentacao.js`) + `vite preview` do web |
 | `npm run e2e` | Build + Playwright contra o build de produção (API :3001, web :4173) |
 | `npm run prisma:migrate` | `prisma migrate dev` em `apps/api` |
-| `npm run dev:tunnel` / `npm run ngrok:start` | Túnel ngrok para a API em :3001 (webhook da UAZAPI) |
+| `npm run dev:tunnel` / `npm run ngrok:start` | Túnel ngrok para a API em :3001 (webhook da UAZAPI; use a URL como `API_PUBLIC_URL`) |
+| `docker build -f apps/api/Dockerfile -t crm-api .` | Imagem de produção da API (contexto = raiz; o deploy gera `linux/arm64`) |
+| `terraform fmt -check -recursive infra` / `terraform init -backend=false && terraform validate` | Checagens locais da infra (o segundo em `infra/bootstrap` e em `infra/terraform`); `plan`/`apply` só pelo passo a passo de [docs/deploy/aws-terraform.md](docs/deploy/aws-terraform.md) |
 
 ## Modelo de dados (22 tabelas)
 
@@ -87,7 +90,7 @@ Banco local sobe via Docker Compose ([docs/database/docker-setup.md](docs/databa
 - **RN30 (nova)**: instância de WhatsApp nunca é apagada fisicamente — excluir grava `soft_deleted_at`, porque a linha é a única cópia do `uazapi_token` e sem ela toda campanha daquela instância perde o canal de controle com a UAZAPI. Vale também para a sincronização, que marca a instância ausente de `/instance/all` em vez de removê-la e a restaura quando ela reaparece.
 - **RN31 (nova)**: agenda (`/agenda`) é compartilhada — todo membro do escritório vê e cria eventos do tenant — e o vínculo do evento é opcional e **exclusivo**: `caso_id` XOR `cliente_id`, ou nenhum dos dois, com o alvo validado contra o escritório da sessão antes de qualquer escrita. Editar/excluir cabe ao autor, `owner` ou `admin`, e excluir é soft delete; sem recorrência e sem notificações nesta versão.
 - **RN22 (nova)**: todo caso tem um `tipo_processo` obrigatório do próprio escritório no lugar de título livre; nome único por escritório, escrita restrita a owner/admin, e tipo com processos vinculados não pode ser excluído.
-- **RN20 (nova)**: toda escrita gera um registro em `log` (quem — usuário ou sistema — /quando/o quê + diff dos campos), gravado na mesma transação da mudança — escrita que falha não deixa log, e mudança efetivada nunca fica sem log. Tabela append-only; ação em lote gera um log por entidade afetada.
+- **RN20 (nova)**: toda escrita gera um registro em `log` (quem — usuário ou o próprio sistema —, quando, o quê e o diff dos campos), gravado na mesma transação da mudança — escrita que falha não deixa log, e mudança efetivada nunca fica sem log. Tabela append-only; ação em lote gera um log por entidade afetada.
 - **RN21 (nova)**: comentários (`comentario`) substituem campos livres de observação, são ancorados por `escopo`+`escopo_id` e o alvo é validado contra o tenant antes de qualquer escrita. Editar é exclusivo do autor; excluir (soft) cabe ao autor, `owner` ou `admin`.
 
 Detalhamento completo em [docs/produto/regras-negocio.md](docs/produto/regras-negocio.md); casos de uso/user stories por fluxo em [docs/produto/casos-de-uso.md](docs/produto/casos-de-uso.md).

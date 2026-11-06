@@ -51,4 +51,15 @@ Em produção/staging, usar **`prisma migrate deploy`** (`npm run prisma:deploy 
 
 - `migrate deploy` só aplica migrations já existentes em `apps/api/prisma/migrations/`, sem tentar gerar novas nem perguntar nada interativamente — seguro para pipeline automatizado.
 - `migrate dev` é exclusivo do fluxo de desenvolvimento local (gera novas migrations a partir de mudanças no schema).
-- O passo `prisma migrate deploy` roda no build do service `api` na Vercel (`npm run vercel-build` → `apps/api/scripts/migrar-no-deploy.mjs`), **somente em produção** (`VERCEL_ENV=production`), contra `DIRECT_URL`, em cada um dos dois Projects ([../deploy/deploy.md](../deploy/deploy.md)). Previews nunca migram. Falha de migration falha o build e nada é publicado. Toda mudança de schema segue expand/contract, para que o rollback do app nunca fique incompatível com o schema já migrado. Localmente: `npm run prisma:migrate` (raiz) = `prisma migrate dev` em `apps/api`; no CI, `npm run prisma:deploy -w @crm/api`.
+- **Deploy real (Supabase, Vercel Services)**: `prisma migrate deploy` roda no build do service `api` (`npm run vercel-build` → `apps/api/scripts/migrar-no-deploy.mjs`), **somente em produção** (`VERCEL_ENV=production`), contra `DIRECT_URL` ([../deploy/deploy.md](../deploy/deploy.md)). Previews nunca migram. Falha de migration falha o build e nada é publicado.
+- **Deploy acadêmico (AWS)**: o `deploy-aws.yml` registra a task definition nova e roda `npm run migrar -w @crm/api` (= `prisma migrate deploy`) numa task avulsa (`aws ecs run-task`) com a imagem nova; só com exit code 0 o serviço ECS troca de revisão. O container da API **não** migra ao subir ([../deploy/aws-terraform.md](../deploy/aws-terraform.md)). Localmente: `npm run prisma:migrate` (raiz) = `prisma migrate dev` em `apps/api`; no CI, `npm run prisma:deploy -w @crm/api`.
+
+## Regra expand/contract (obrigatória)
+
+Nos dois deploys a migration é aplicada **antes** de a versão nova do app entrar no ar, enquanto a versão anterior ainda atende requisições (no AWS, a task antiga segue servindo até o rollout do ECS terminar; na Vercel, o deployment anterior serve até o build novo ser promovido). E um rollback (Instant Rollback da Vercel, circuit breaker do ECS ou re-executar o deploy num SHA antigo) volta o app, **nunca o schema**. Logo, toda migration precisa ser compatível ao mesmo tempo com o código novo e com o código anterior:
+
+1. **Expand** (PR da funcionalidade): só acrescentar — tabela nova, coluna anulável ou com `DEFAULT`, índice novo, valor novo de enum (que o código antigo nunca lê nem grava). Nada de `DROP`, `RENAME` ou `NOT NULL` sem default em coluna existente.
+2. **Migrar dados**, se preciso, na própria migration (SQL idempotente) ou num passo posterior; o código novo tolera linhas ainda no formato antigo.
+3. **Contract** (PR posterior, depois que nenhuma versão em execução ou alvo de rollback usa o que vai sair): remover a coluna/tabela obsoleta, apertar `NOT NULL`.
+
+Renomear coluna = criar a nova (expand) → código grava nas duas e lê a nova → remover a antiga (contract). Na revisão do SQL (passo 3 do fluxo acima), qualquer `DROP`/`RENAME`/`ALTER ... SET NOT NULL` precisa justificar por que é seguro com a versão anterior ainda no ar.
