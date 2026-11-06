@@ -1,5 +1,5 @@
 output "api_url" {
-  description = "URL pública da API (CloudFront). API_ORIGIN da Vercel; VITE_WS_URL = mesma URL com wss://."
+  description = "URL pública da API (CloudFront); domínio do rewrite em apps/web/vercel.json e base do VITE_WS_URL"
   value       = local.api_public_url
 }
 
