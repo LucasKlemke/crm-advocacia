@@ -16,7 +16,7 @@ const app = configurarApp(await NestFactory.create(AppModule, OPCOES_APP));
 const porta = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 
 // WebSocket /api/ws no mesmo http.Server (ECS). Desligado onde não há processo vivo
-// (Vercel Functions: TEMPO_REAL_HABILITADO=false).
+// (Vercel Functions: TEMPO_REAL_HABILITADO=false ou, sem valor, VERCEL definido).
 const tempoReal = lerConfigTempoReal();
 if (tempoReal.habilitado) {
   const servidorWs = anexarServidorWs(app.getHttpServer(), { origensWeb: tempoReal.origensWeb });

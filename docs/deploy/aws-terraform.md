@@ -40,23 +40,26 @@ desenvolvimento). Siga na ordem; cada item aponta a seção com o detalhe.
 - [ ] 4. Cadastrar no GitHub as variáveis `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `TF_STATE_BUCKET`,
       `WEB_ORIGINS_JSON`, `UAZAPI_SERVER_URL` e os secrets `TF_VAR_UAZAPI_ADMIN_TOKEN`,
       `TF_VAR_NEW_RELIC_LICENSE_KEY`, `TF_VAR_BUDGET_EMAIL` ([GitHub](#2-variáveis-e-secrets-do-github)).
-- [ ] 5. Primeiro deploy: merge na `main` ou "Run workflow" do `Deploy AWS (API)` na `main`; anotar o
+- [ ] 5. Deploy Supabase, **antes** do merge desta mudança na `main`: definir
+      `TEMPO_REAL_HABILITADO=false` no Project `crm-advocacia-supabase` e conferir o tamanho da função
+      `api` (o Prisma agora gera 4 engines) ([deploy.md](deploy.md)). Sem a variável a API já nasce
+      com o tempo real desligado na Vercel (o padrão é desligado quando `VERCEL` está definido); o
+      valor explícito é cinto e suspensório.
+- [ ] 6. Primeiro deploy: merge na `main` ou "Run workflow" do `Deploy AWS (API)` na `main`; anotar o
       `api_url` do resumo do job ([Primeiro deploy](#3-primeiro-deploy)).
-- [ ] 6. Conferir no console (Billing → Budgets) o orçamento `crm-pac-mensal` e que o e-mail de
+- [ ] 7. Conferir no console (Billing → Budgets) o orçamento `crm-pac-mensal` e que o e-mail de
       alerta chega (remetente AWS Budgets; olhe o spam) ([Orçamento](#orçamento-e-custos)).
-- [ ] 7. Vercel, Project `crm-advocacia-pac`: trocar o Root Directory para `apps/web` **antes** do
+- [ ] 8. Vercel, Project `crm-advocacia-pac`: trocar o Root Directory para `apps/web` **antes** do
       merge desta mudança na `main` (senão o `pac` builda o `vercel.json` de Services da raiz e quebra);
       depois do primeiro deploy AWS, commitar o domínio do CloudFront no lugar do placeholder de
       `apps/web/vercel.json`, definir `VITE_WS_URL` e remover as variáveis antigas da API
       ([Vercel](#4-vercel-project-crm-advocacia-pac)).
-- [ ] 8. Criar as instâncias de WhatsApp do deploy acadêmico (não compartilhar instâncias com o deploy
+- [ ] 9. Criar as instâncias de WhatsApp do deploy acadêmico (não compartilhar instâncias com o deploy
       Supabase) ou reconfigurar as existentes com "Sincronizar instâncias"
       ([Webhooks](#5-webhooks-das-instâncias-uazapi)).
-- [ ] 9. Conferir na UAZAPI real que `POST /webhook` **substitui** o webhook da instância em vez de
+- [ ] 10. Conferir na UAZAPI real que `POST /webhook` **substitui** o webhook da instância em vez de
       acrescentar um segundo (a doc da UAZAPI não deixa explícito) ([Webhooks](#5-webhooks-das-instâncias-uazapi)).
-- [ ] 10. (Opcional) Migrar dados do RDS/S3 acadêmicos antigos ([Migração de dados](#6-opcional-migrar-dados-do-deploy-antigo)).
-- [ ] 11. Deploy Supabase: definir `TEMPO_REAL_HABILITADO=false` no Project `crm-advocacia-supabase` e
-      conferir o tamanho da função `api` (o Prisma agora gera 4 engines) ([deploy.md](deploy.md)).
+- [ ] 11. (Opcional) Migrar dados do RDS/S3 acadêmicos antigos ([Migração de dados](#6-opcional-migrar-dados-do-deploy-antigo)).
 - [ ] 12. Validar ponta a ponta ([Verificação](#7-verificação-ponta-a-ponta)).
 - [ ] 13. Depois da avaliação: `terraform destroy` em `infra/terraform` e, por último, o bootstrap
       ([Desmontar](#desmontar-depois-da-avaliação)).

@@ -1,5 +1,6 @@
 export interface ConfigTempoReal {
-  // Desligado no deploy Supabase (Vercel Functions não mantém processo vivo): sem polling,
+  // Desligado no deploy Supabase (Vercel Functions não mantém processo vivo; é o padrão quando
+  // VERCEL está definido e TEMPO_REAL_HABILITADO não): sem polling,
   // sem servidor WS e o webhook assinado só responde.
   habilitado: boolean;
   // Intervalo do polling de fallback no servidor; 0 desliga.
@@ -27,10 +28,18 @@ function lerOrigens(valor: string | undefined): string[] {
     .filter((origem) => origem.length > 0);
 }
 
+// Sem valor explícito, o padrão depende de onde a API roda: na Vercel (que define VERCEL nas
+// Functions) o processo não vive o bastante para WS/polling, então nasce desligado; fora dela,
+// ligado. Valor explícito sempre prevalece: só "false" desliga, qualquer outro liga.
+function lerHabilitado(env: NodeJS.ProcessEnv): boolean {
+  const valor = env.TEMPO_REAL_HABILITADO?.trim().toLowerCase();
+  if (!valor) return !env.VERCEL;
+  return valor !== "false";
+}
+
 export function lerConfigTempoReal(env: NodeJS.ProcessEnv = process.env): ConfigTempoReal {
   return {
-    // Padrão ligado: só o valor explícito "false" desliga.
-    habilitado: env.TEMPO_REAL_HABILITADO?.trim().toLowerCase() !== "false",
+    habilitado: lerHabilitado(env),
     pollingMs: lerPollingMs(env.TEMPO_REAL_POLLING_MS),
     origensWeb: lerOrigens(env.WEB_ORIGINS),
   };

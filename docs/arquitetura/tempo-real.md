@@ -69,7 +69,7 @@ destinatário da campanha são reconsultadas com throttle de 3000 ms.
 
 | Variável | Dev local | Deploy acadêmico (AWS) | Deploy real (Supabase/Vercel) |
 |---|---|---|---|
-| `TEMPO_REAL_HABILITADO` | `true` (padrão) | `true` | **`false`** (Vercel Functions não mantêm processo vivo: sem polling, sem `/api/ws`, ticket → 404) |
+| `TEMPO_REAL_HABILITADO` | `true` (padrão fora da Vercel; sem valor e com `VERCEL` definido, desligado) | `true` | **`false`** (Vercel Functions não mantêm processo vivo: sem polling, sem `/api/ws`, ticket → 404) |
 | `API_PUBLIC_URL` | URL do ngrok (`npm run dev:tunnel`) ou vazio (só polling) | URL do CloudFront (Terraform) | vazio |
 | `UAZAPI_WEBHOOK_SECRET` | qualquer valor | gerado pelo Terraform (Secrets Manager) | vazio (rota assinada responde 404) |
 | `WEB_ORIGINS` | `http://localhost:5173,http://localhost:4173` | `web_origins` do Terraform | irrelevante (WS desligado) |

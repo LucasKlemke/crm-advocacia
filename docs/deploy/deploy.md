@@ -109,7 +109,7 @@ Em Settings → Environment Variables (ou `vercel env add <NOME> production`). A
 | `AWS_S3_ENDPOINT` | endpoint S3 do Supabase Storage | Production, Preview |
 | `AWS_S3_PREFIX` | `production` (Preview: `preview`) | Production, Preview |
 | `UAZAPI_SERVER_URL` / `UAZAPI_ADMIN_TOKEN` | conta UAZAPI | Production, Preview |
-| `TEMPO_REAL_HABILITADO` | **`false`** — Vercel Functions não mantêm processo vivo: sem polling, sem `/api/ws`, `GET /api/tempo-real/ticket` → 404 e a tela de campanha fica em "Atualização manual" | Production, Preview |
+| `TEMPO_REAL_HABILITADO` | **`false`** — Vercel Functions não mantêm processo vivo: sem polling, sem `/api/ws`, `GET /api/tempo-real/ticket` → 404 e a tela de campanha fica em "Atualização manual". Sem a variável a API já desliga sozinha quando `VERCEL` está definido (padrão da Vercel); o valor explícito fica como garantia e sempre prevalece | Production, Preview |
 | `NEW_RELIC_LICENSE_KEY` | license key | Production |
 | `NEW_RELIC_APP_NAME` | `crm-advocacia-api (supabase)` | Production |
 | `NEW_RELIC_NO_CONFIG_FILE` | `true` | Production |
