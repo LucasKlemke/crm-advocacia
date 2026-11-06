@@ -136,3 +136,26 @@ jobs:
         if: ${{ env.SONAR_TOKEN != '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  infra:
+    name: terraform (fmt e validate)
+    runs-on: ubuntu-latest
+    # Sem credencial AWS: `init -backend=false` não toca o estado remoto e `validate` é offline
+    # (só baixa os providers do registry). plan/apply ficam no infra-plan.yml / deploy-aws.yml.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.x
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive infra
+      - name: validate infra/bootstrap
+        working-directory: infra/bootstrap
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: validate infra/terraform
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
