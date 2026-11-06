@@ -31,6 +31,7 @@ import {
 import { podePausar, podeRetomar } from "../../_components/controle-campanha";
 import { rotuloInstancia } from "../../_components/rotulo-instancia";
 import { StatusBadgeCampanha } from "../../_components/status-badge-campanha";
+import { deveAcompanharMensagens } from "@/lib/acompanhar-mensagens";
 import { ProgressoCampanha } from "./progresso-campanha";
 import { StatusBadgeMensagem } from "./status-badge-mensagem";
 
@@ -105,7 +106,15 @@ export function DetalheCampanha({ campanhaId, somenteLeitura }: DetalheCampanhaP
   // Só depois que o banco respondeu: a tabela de destinatários é o que dá contexto ao
   // status, e uma campanha que nem carregou não tem por que consultar a UAZAPI. A página
   // vai junto porque o servidor devolve só o status dos destinatários dela.
-  const mensagens = useMensagensCampanha(campanhaId, pagina, data !== undefined);
+  const mensagens = useMensagensCampanha(campanhaId, pagina, data !== undefined, (resposta) => {
+    if (!data) return false;
+    const porNumero = resumirPorNumero(resposta?.mensagens ?? []);
+    return deveAcompanharMensagens(
+      data.campanha,
+      data.itens.map((item) => porNumero.get(chaveTelefone(item.numero))?.status),
+      Date.now()
+    );
+  });
 
   // Duas chamadas à UAZAPI, diferente da listagem: /sender/listfolders pelos contadores da
   // campanha e /sender/listmessages pelo status de cada mensagem — aqui as duas coisas
