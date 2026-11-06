@@ -1,6 +1,10 @@
 // CJS de propósito: o pacote é "type": "module" e o Jest 29 roda em CommonJS.
 // @swc/jest substitui o jest do Next da raiz — mesmas transformações (TS + JSX automático).
 // Metas de cobertura: docs/testes/estrategia-tdd.md (piso institucional de 25% no front).
+// Fuso fixo: as datas são exibidas no horário local do navegador (escritórios no Brasil) e
+// os testes comparam strings formatadas. Sem isto, o runner do CI (UTC) desloca 3 h.
+process.env.TZ = "America/Sao_Paulo";
+
 module.exports = {
   testEnvironment: "<rootDir>/test/ambiente-jsdom.cjs",
   roots: ["<rootDir>/src"],
