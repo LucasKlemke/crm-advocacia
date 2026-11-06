@@ -1,17 +1,23 @@
 import { Module } from "@nestjs/common";
 import { campanhaService } from "@dominio/services/campanha.service";
 import { AgendadorSincronizacao } from "./agendador-sincronizacao";
-import { lerConfigTempoReal } from "./config-tempo-real";
-import { AGENDADOR_SINCRONIZACAO } from "./tokens";
+import { lerConfigTempoReal, type ConfigTempoReal } from "./config-tempo-real";
+import { TempoRealController, TempoRealHabilitadoGuard } from "./tempo-real.controller";
+import { AGENDADOR_SINCRONIZACAO, CONFIG_TEMPO_REAL } from "./tokens";
 
-// Tempo real das campanhas: por ora o agendador (webhook + polling); o servidor WS entra aqui também.
+// Tempo real das campanhas: agendador (webhook + polling) e o ticket do WebSocket. O
+// servidor WS em si é anexado ao http.Server no main.ts (servidor-ws.ts).
 @Module({
+  controllers: [TempoRealController],
   providers: [
+    { provide: CONFIG_TEMPO_REAL, useFactory: () => lerConfigTempoReal() },
+    TempoRealHabilitadoGuard,
     {
       provide: AGENDADOR_SINCRONIZACAO,
-      useFactory: () => new AgendadorSincronizacao(campanhaService, lerConfigTempoReal()),
+      useFactory: (config: ConfigTempoReal) => new AgendadorSincronizacao(campanhaService, config),
+      inject: [CONFIG_TEMPO_REAL],
     },
   ],
-  exports: [AGENDADOR_SINCRONIZACAO],
+  exports: [AGENDADOR_SINCRONIZACAO, CONFIG_TEMPO_REAL],
 })
 export class TempoRealModule {}

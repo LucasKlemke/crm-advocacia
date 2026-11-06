@@ -27,6 +27,12 @@ env:
   AWS_S3_PREFIX: ci
   UAZAPI_SERVER_URL: http://localhost:9
   UAZAPI_ADMIN_TOKEN: ci
+  API_PUBLIC_URL: ""
+  UAZAPI_WEBHOOK_SECRET: segredo-webhook-apenas-para-ci
+  WEB_ORIGINS: http://localhost:4173,http://localhost:5173
+  TEMPO_REAL_HABILITADO: "true"
+  # Sem UAZAPI no CI: polling desligado para o e2e não logar falhas a cada 15 s.
+  TEMPO_REAL_POLLING_MS: "0"
 
 jobs:
   qualidade:

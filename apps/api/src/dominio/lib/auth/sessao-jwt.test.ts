@@ -9,6 +9,10 @@ import {
   verificarSessao,
   opcoesCookieSessao,
   extrairTokenDoCookie,
+  AUDIENCIA_TICKET_WS,
+  DURACAO_TICKET_WS_SEGUNDOS,
+  assinarTicketWs,
+  verificarTicketWs,
 } from "./sessao-jwt";
 
 const SEGREDO = "segredo-de-teste-com-pelo-menos-32-caracteres";
@@ -214,6 +218,109 @@ describe("sessao-jwt", () => {
 
     it.each([undefined, null, "", `${NOME_COOKIE_SESSAO_CRM}=`])("devolve null para %p", (cabecalho) => {
       expect(extrairTokenDoCookie(cabecalho)).toBeNull();
+    });
+  });
+
+  describe("ticket do WebSocket", () => {
+    function payloadDe(token: string) {
+      return JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+    }
+
+    it("aud crm-ws e validade de 60 s", () => {
+      expect(AUDIENCIA_TICKET_WS).toBe("crm-ws");
+      expect(DURACAO_TICKET_WS_SEGUNDOS).toBe(60);
+    });
+
+    it("faz ida e volta com usuário, escritório e jti", async () => {
+      const { ticket, jti } = await assinarTicketWs({ sub: "user-1", escritorioId: "esc-1" });
+
+      expect(jti).toEqual(expect.any(String));
+      expect(jti.length).toBeGreaterThanOrEqual(16);
+      await expect(verificarTicketWs(ticket)).resolves.toEqual({ sub: "user-1", escritorioId: "esc-1", jti });
+      const payload = payloadDe(ticket);
+      expect(payload.aud).toBe("crm-ws");
+      expect(payload.exp - payload.iat).toBe(60);
+    });
+
+    it("cada ticket tem um jti diferente", async () => {
+      const a = await assinarTicketWs({ sub: "user-1", escritorioId: "esc-1" });
+      const b = await assinarTicketWs({ sub: "user-1", escritorioId: "esc-1" });
+      expect(a.jti).not.toBe(b.jti);
+    });
+
+    it("ticket expirado → null", async () => {
+      const agora = Math.floor(Date.now() / 1000);
+      const ticket = await new SignJWT({ escritorioId: "esc-1" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setAudience("crm-ws")
+        .setJti("jti-1")
+        .setIssuedAt(agora - 120)
+        .setExpirationTime(agora - 60)
+        .sign(chave());
+
+      await expect(verificarTicketWs(ticket)).resolves.toBeNull();
+    });
+
+    it("token de sessão comum → null (sem aud crm-ws)", async () => {
+      const sessao = await assinarSessao({ sub: "user-1", escritorioId: "esc-1" });
+      await expect(verificarTicketWs(sessao)).resolves.toBeNull();
+    });
+
+    it("token com aud crm-ws mas sem jti → null", async () => {
+      const agora = Math.floor(Date.now() / 1000);
+      const ticket = await new SignJWT({ escritorioId: "esc-1" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setAudience("crm-ws")
+        .setIssuedAt(agora)
+        .setExpirationTime(agora + 60)
+        .sign(chave());
+
+      await expect(verificarTicketWs(ticket)).resolves.toBeNull();
+    });
+
+    it("ticket com validade maior que 60 s (iat antigo) → null", async () => {
+      const agora = Math.floor(Date.now() / 1000);
+      const ticket = await new SignJWT({ escritorioId: "esc-1" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setAudience("crm-ws")
+        .setJti("jti-1")
+        .setIssuedAt(agora - 120)
+        .setExpirationTime(agora + 3600)
+        .sign(chave());
+
+      await expect(verificarTicketWs(ticket)).resolves.toBeNull();
+    });
+
+    it("ticket sem escritório → null", async () => {
+      const agora = Math.floor(Date.now() / 1000);
+      const ticket = await new SignJWT({})
+        .setProtectedHeader({ alg: "HS256" })
+        .setSubject("user-1")
+        .setAudience("crm-ws")
+        .setJti("jti-1")
+        .setIssuedAt(agora)
+        .setExpirationTime(agora + 60)
+        .sign(chave());
+
+      await expect(verificarTicketWs(ticket)).resolves.toBeNull();
+    });
+
+    it("ticket assinado com outro segredo → null", async () => {
+      const { ticket } = await assinarTicketWs({ sub: "user-1", escritorioId: "esc-1" });
+      process.env.AUTH_SECRET = "outro-segredo-com-pelo-menos-32-caracteres!!";
+      await expect(verificarTicketWs(ticket)).resolves.toBeNull();
+    });
+
+    it.each([undefined, null, ""])("ticket %p → null", async (ticket) => {
+      await expect(verificarTicketWs(ticket)).resolves.toBeNull();
+    });
+
+    it("o ticket não serve como sessão (verificarSessao recusa token com aud)", async () => {
+      const { ticket } = await assinarTicketWs({ sub: "user-1", escritorioId: "esc-1" });
+      await expect(verificarSessao(ticket)).resolves.toBeNull();
     });
   });
 });

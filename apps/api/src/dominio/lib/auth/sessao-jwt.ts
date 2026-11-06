@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 
 // Sessão própria do CRM (Fase 3 da migração — docs/arquitetura/migracao-nestjs.md).
@@ -66,6 +67,11 @@ export async function verificarSessao(
     if (typeof payload.sub !== "string" || payload.sub.length === 0) {
       return null;
     }
+    // A sessão nunca tem `aud`: um token com audiência (ex.: o ticket do WebSocket, que
+    // trafega na URL) não pode virar cookie de sessão.
+    if (payload.aud !== undefined) {
+      return null;
+    }
     return {
       sub: payload.sub,
       escritorioId:
@@ -76,6 +82,63 @@ export async function verificarSessao(
     };
   } catch {
     // Assinatura inválida, expirado ou malformado: para quem chama, é só "sem sessão".
+    return null;
+  }
+}
+
+// Ticket do WebSocket (/api/ws). O browser não manda cookie confiável no upgrade
+// cross-origin e o ticket vai na query string, então ele é curto (60 s), de uso único
+// (`jti`, registrado pelo servidor WS) e tem audiência própria: não serve como sessão, e
+// a sessão não serve como ticket.
+export const AUDIENCIA_TICKET_WS = "crm-ws";
+export const DURACAO_TICKET_WS_SEGUNDOS = 60;
+
+export interface TicketWs {
+  sub: string;
+  escritorioId: string;
+  jti: string;
+}
+
+export async function assinarTicketWs(dados: {
+  sub: string;
+  escritorioId: string;
+}): Promise<{ ticket: string; jti: string }> {
+  const agora = Math.floor(Date.now() / 1000);
+  const jti = randomUUID();
+  const ticket = await new SignJWT({ escritorioId: dados.escritorioId })
+    .setProtectedHeader({ alg: ALGORITMO })
+    .setSubject(dados.sub)
+    .setAudience(AUDIENCIA_TICKET_WS)
+    .setJti(jti)
+    .setIssuedAt(agora)
+    .setExpirationTime(agora + DURACAO_TICKET_WS_SEGUNDOS)
+    .sign(chave());
+  return { ticket, jti };
+}
+
+export async function verificarTicketWs(
+  ticket: string | null | undefined,
+): Promise<TicketWs | null> {
+  if (!ticket) return null;
+  const segredo = chave();
+
+  try {
+    const { payload } = await jwtVerify(ticket, segredo, {
+      algorithms: [ALGORITMO],
+      audience: AUDIENCIA_TICKET_WS,
+      requiredClaims: ["exp", "iat", "jti"],
+      maxTokenAge: DURACAO_TICKET_WS_SEGUNDOS,
+    });
+    const { sub, jti, escritorioId } = payload;
+    if (
+      typeof sub !== "string" || sub.length === 0 ||
+      typeof jti !== "string" || jti.length === 0 ||
+      typeof escritorioId !== "string" || escritorioId.length === 0
+    ) {
+      return null;
+    }
+    return { sub, escritorioId, jti };
+  } catch {
     return null;
   }
 }
