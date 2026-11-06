@@ -10,6 +10,20 @@ import {
 } from "@aws-sdk/client-s3";
 import { Readable } from "node:stream";
 
+// Registra a config recebida pelo construtor do S3Client do SDK (subclasse transparente,
+// para o mockClient continuar funcionando sobre o mesmo protótipo).
+const configsConstruidas: Array<Record<string, unknown>> = [];
+jest.mock("@aws-sdk/client-s3", () => {
+  const real = jest.requireActual("@aws-sdk/client-s3");
+  class S3ClientEspiao extends real.S3Client {
+    constructor(config: Record<string, unknown>) {
+      super(config);
+      configsConstruidas.push(config);
+    }
+  }
+  return { ...real, S3Client: S3ClientEspiao };
+});
+
 jest.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: jest.fn(async (_client: unknown, command: { constructor: { name: string } }) => {
     return `https://bucket.s3.amazonaws.com/signed?op=${command.constructor.name}`;
@@ -23,6 +37,7 @@ const s3Mock = mockClient(AwsS3Client);
 
 beforeEach(() => {
   s3Mock.reset();
+  configsConstruidas.length = 0;
   (getSignedUrl as jest.Mock).mockClear();
   process.env.AWS_REGION = "us-east-1";
   process.env.AWS_ACCESS_KEY_ID = "fake-key";
@@ -160,5 +175,31 @@ describe("s3Client.excluirArquivo", () => {
       Bucket: "bucket-teste",
       Key: "development/esc-1/avatares/user-1/123-foto.png",
     });
+  });
+});
+
+describe("credenciais do cliente AWS", () => {
+  it("passa credentials explícitas quando AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY existem", async () => {
+    await s3Client.gerarUrlDownload("k");
+
+    expect(configsConstruidas[0].credentials).toEqual({
+      accessKeyId: "fake-key",
+      secretAccessKey: "fake-secret",
+    });
+  });
+
+  it.each([
+    ["sem nenhuma chave", undefined, undefined],
+    ["só com a chave de acesso", "fake-key", undefined],
+    ["só com o segredo", undefined, "fake-secret"],
+  ])("omite credentials (cadeia padrão/task role) %s", async (_nome, chave, segredo) => {
+    if (chave) process.env.AWS_ACCESS_KEY_ID = chave;
+    else delete process.env.AWS_ACCESS_KEY_ID;
+    if (segredo) process.env.AWS_SECRET_ACCESS_KEY = segredo;
+    else delete process.env.AWS_SECRET_ACCESS_KEY;
+
+    await s3Client.gerarUrlDownload("k");
+
+    expect(configsConstruidas[0]).not.toHaveProperty("credentials");
   });
 });

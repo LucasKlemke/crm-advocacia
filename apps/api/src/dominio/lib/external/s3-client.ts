@@ -24,12 +24,14 @@ function obterBucket(): string {
 // endereçamento virtual-hosted-style (bucket.endpoint) padrão da AWS.
 function criarClienteAws(): AwsS3Client {
   const endpoint = process.env.AWS_S3_ENDPOINT;
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  // Chaves explícitas só quando o par existe (Supabase Storage, dev local). Sem elas,
+  // omite `credentials` e o SDK usa a cadeia padrão (task role do ECS na AWS).
+  const credentials = accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined;
   return new AwsS3Client({
     region: process.env.AWS_REGION,
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-    },
+    ...(credentials ? { credentials } : {}),
     ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
   });
 }
