@@ -16,8 +16,8 @@ concurrency:
   group: deploy-aws
   cancel-in-progress: false
 
-# Nada de `environment:` nos jobs: a trust policy da role (infra/bootstrap) só aceita o `sub`
-# `repo:<owner>/<repo>:ref:refs/heads/main` (e `:pull_request`); com environment o `sub` mudaria.
+# Nada de `environment:` nos jobs: a trust policy da role de deploy (infra/bootstrap) só aceita o
+# `sub` `repo:<owner>/<repo>:ref:refs/heads/main`; com environment o `sub` mudaria.
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
