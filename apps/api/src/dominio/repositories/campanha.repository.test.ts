@@ -180,6 +180,21 @@ describe("campanhaRepository", () => {
       expect(ids.sort()).toEqual([agendada, enviando, pausada].sort());
     });
 
+    it("listarIdsPorInstancia não devolve nada quando a instância está soft-deleted", async () => {
+      const excluida = await instanciaWhatsappRepository.create({
+        nome: `Excluída webhook ${Date.now()}`,
+        uazapiInstanceId: `instance-excluida-webhook-${Date.now()}`,
+        uazapiToken: "token",
+        softDeletedAt: new Date(),
+        escritorio: { connect: { id: escritorioId } },
+      });
+      await criarComStatus("WEnviando", "enviando", excluida.id);
+
+      const ids = await campanhaRepository.listarIdsPorInstancia(excluida.id, ["agendada", "enviando", "pausada"]);
+
+      expect(ids).toEqual([]);
+    });
+
     it("listarIdsComInstanciaAtiva ignora instância soft-deleted e campanha sem instância", async () => {
       const excluida = await instanciaWhatsappRepository.create({
         nome: `Excluída ${Date.now()}`,

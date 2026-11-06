@@ -51,7 +51,12 @@ export const campanhaRepository = {
     db: Db = prisma
   ): Promise<string[]> {
     const campanhas = await db.campanha.findMany({
-      where: { instanciaWhatsappId: instanciaId, status: { in: status } },
+      // Instância soft-deleted não é vigiada (RN30): um webhook de URL antiga não gera trabalho.
+      where: {
+        instanciaWhatsappId: instanciaId,
+        status: { in: status },
+        instancia: { is: { softDeletedAt: null } },
+      },
       select: { id: true },
     });
     return campanhas.map((campanha) => campanha.id);

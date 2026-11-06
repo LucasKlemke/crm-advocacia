@@ -275,6 +275,105 @@ describe("AgendadorSincronizacao", () => {
     });
   });
 
+  describe("serialização por campanha entre webhook e polling", () => {
+    it("polling segurando camp-1: a janela do webhook não sincroniza camp-1 de novo até a primeira terminar", async () => {
+      const segura = adiada<boolean>();
+      servico.idsParaPolling.mockResolvedValue(["camp-1"]);
+      servico.idsAtivosDaInstancia.mockResolvedValue(["camp-1"]);
+      servico.sincronizarPeloSistema.mockReturnValueOnce(segura.promessa).mockResolvedValue(true);
+      agendador = new AgendadorSincronizacao(servico, CONFIG);
+
+      agendador.iniciarPolling();
+      await jest.advanceTimersByTimeAsync(15000);
+      expect(servico.sincronizarPeloSistema).toHaveBeenCalledTimes(1);
+
+      agendador.agendarInstancia("inst-1");
+      await jest.advanceTimersByTimeAsync(DEBOUNCE_WEBHOOK_MS);
+      expect(servico.idsAtivosDaInstancia).toHaveBeenCalledTimes(1);
+      expect(servico.sincronizarPeloSistema).toHaveBeenCalledTimes(1);
+
+      segura.resolver(true);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(servico.sincronizarPeloSistema).toHaveBeenCalledTimes(2);
+      expect(servico.sincronizarPeloSistema).toHaveBeenLastCalledWith("camp-1");
+      // A fila da campanha é limpa quando a última sincronização termina.
+      const filas = (agendador as unknown as { filasPorCampanha: Map<string, unknown> }).filasPorCampanha;
+      expect(filas.size).toBe(0);
+    });
+
+    it("falha da sincronização anterior não trava a fila da campanha", async () => {
+      const segura = adiada<boolean>();
+      servico.idsParaPolling.mockResolvedValue(["camp-1"]);
+      servico.idsAtivosDaInstancia.mockResolvedValue(["camp-1"]);
+      servico.sincronizarPeloSistema.mockReturnValueOnce(segura.promessa).mockResolvedValue(true);
+      agendador = new AgendadorSincronizacao(servico, CONFIG);
+
+      agendador.iniciarPolling();
+      await jest.advanceTimersByTimeAsync(15000);
+      agendador.agendarInstancia("inst-1");
+      await jest.advanceTimersByTimeAsync(DEBOUNCE_WEBHOOK_MS);
+
+      // Rejeição de uma Promise criada fora do fluxo do agendador: precisa ser absorvida.
+      const rejeicao = Promise.reject(new Error("UAZAPI fora do ar"));
+      segura.resolver(rejeicao as unknown as boolean);
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(servico.sincronizarPeloSistema).toHaveBeenCalledTimes(2);
+      expect(erroSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[tempo-real]"),
+        expect.objectContaining({ campanhaId: "camp-1" }),
+        expect.any(Error)
+      );
+    });
+
+    it("campanhas diferentes não esperam uma pela outra", async () => {
+      const segura = adiada<boolean>();
+      servico.idsParaPolling.mockResolvedValue(["camp-1"]);
+      servico.idsAtivosDaInstancia.mockResolvedValue(["camp-2"]);
+      servico.sincronizarPeloSistema.mockReturnValueOnce(segura.promessa).mockResolvedValue(true);
+      agendador = new AgendadorSincronizacao(servico, CONFIG);
+
+      agendador.iniciarPolling();
+      await jest.advanceTimersByTimeAsync(15000);
+      agendador.agendarInstancia("inst-1");
+      await jest.advanceTimersByTimeAsync(DEBOUNCE_WEBHOOK_MS);
+
+      expect(servico.sincronizarPeloSistema).toHaveBeenCalledTimes(2);
+      expect(servico.sincronizarPeloSistema).toHaveBeenLastCalledWith("camp-2");
+      segura.resolver(true);
+    });
+  });
+
+  describe("depois de parar()", () => {
+    it("agendarInstancia e iniciarPolling viram no-op", async () => {
+      agendador = new AgendadorSincronizacao(servico, CONFIG);
+
+      agendador.parar();
+      agendador.agendarInstancia("inst-1");
+      agendador.iniciarPolling();
+      await jest.advanceTimersByTimeAsync(60000);
+
+      expect(servico.idsAtivosDaInstancia).not.toHaveBeenCalled();
+      expect(servico.idsParaPolling).not.toHaveBeenCalled();
+    });
+
+    it("aviso recebido durante uma rodada que termina depois de parar() não reagenda", async () => {
+      const segura = adiada<string[]>();
+      servico.idsAtivosDaInstancia.mockReturnValueOnce(segura.promessa);
+      agendador = new AgendadorSincronizacao(servico, CONFIG);
+
+      agendador.agendarInstancia("inst-1");
+      await jest.advanceTimersByTimeAsync(DEBOUNCE_WEBHOOK_MS);
+      agendador.agendarInstancia("inst-1");
+      agendador.parar();
+      segura.resolver(["camp-1"]);
+      await jest.advanceTimersByTimeAsync(DEBOUNCE_WEBHOOK_MS * 3);
+
+      expect(servico.idsAtivosDaInstancia).toHaveBeenCalledTimes(1);
+      expect(servico.sincronizarPeloSistema).not.toHaveBeenCalled();
+    });
+  });
+
   describe("ciclo de vida no Nest", () => {
     const nodeEnvOriginal = process.env.NODE_ENV;
     afterEach(() => {

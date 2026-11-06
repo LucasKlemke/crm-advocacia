@@ -26,8 +26,14 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   private readonly repetirAoFim = new Set<string>();
   private intervalo: NodeJS.Timeout | null = null;
   private rodadaDePollingEmAndamento = false;
-  // Incrementado em parar(): rodadas iniciadas antes não seguem para o próximo id.
-  private geracao = 0;
+  // Fila por campanha, compartilhada por webhook e polling: duas sincronizações da mesma
+  // campanha nunca se sobrepõem (sem leitura duplicada da UAZAPI, log RN20 duplicado nem
+  // contador antigo gravado por último); a seguinte relê depois que a anterior gravou.
+  // A entrada some quando a última da fila termina.
+  private readonly filasPorCampanha = new Map<string, Promise<void>>();
+  // parar() é terminal (desligamento do módulo): depois dele nada agenda, inicia ou segue
+  // para o próximo id.
+  private parado = false;
 
   constructor(
     private readonly servico: ServicoSincronizacao,
@@ -44,7 +50,7 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   }
 
   agendarInstancia(instanciaId: string): void {
-    if (!this.config.habilitado) return;
+    if (!this.config.habilitado || this.parado) return;
     if (this.emAndamento.has(instanciaId)) {
       this.repetirAoFim.add(instanciaId);
       return;
@@ -60,13 +66,13 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   }
 
   iniciarPolling(): void {
-    if (!this.config.habilitado || this.config.pollingMs <= 0 || this.intervalo) return;
+    if (!this.config.habilitado || this.parado || this.config.pollingMs <= 0 || this.intervalo) return;
     this.intervalo = setInterval(() => void this.rodadaDePolling(), this.config.pollingMs);
     this.intervalo.unref();
   }
 
   parar(): void {
-    this.geracao++;
+    this.parado = true;
     if (this.intervalo) clearInterval(this.intervalo);
     this.intervalo = null;
     for (const timer of this.pendentes.values()) clearTimeout(timer);
@@ -75,16 +81,15 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   }
 
   private async sincronizarInstancia(instanciaId: string): Promise<void> {
-    const geracao = this.geracao;
     this.emAndamento.add(instanciaId);
     try {
       const ids = await this.servico.idsAtivosDaInstancia(instanciaId);
-      await this.sincronizarEmSequencia(ids, geracao, { instanciaId });
+      await this.sincronizarEmSequencia(ids, { instanciaId });
     } catch (erro) {
       console.error("[tempo-real] falha ao listar campanhas da instância", { instanciaId }, erro);
     } finally {
       this.emAndamento.delete(instanciaId);
-      if (this.repetirAoFim.delete(instanciaId) && geracao === this.geracao) {
+      if (this.repetirAoFim.delete(instanciaId)) {
         this.agendarInstancia(instanciaId);
       }
     }
@@ -93,10 +98,9 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   private async rodadaDePolling(): Promise<void> {
     if (this.rodadaDePollingEmAndamento) return;
     this.rodadaDePollingEmAndamento = true;
-    const geracao = this.geracao;
     try {
       const ids = await this.servico.idsParaPolling();
-      await this.sincronizarEmSequencia(ids, geracao, {});
+      await this.sincronizarEmSequencia(ids, {});
     } catch (erro) {
       console.error("[tempo-real] falha ao listar campanhas para o polling", erro);
     } finally {
@@ -105,18 +109,27 @@ export class AgendadorSincronizacao implements OnModuleInit, OnModuleDestroy {
   }
 
   // Em sequência, não em paralelo: não abre N chamadas simultâneas à UAZAPI por rodada.
-  private async sincronizarEmSequencia(
-    ids: string[],
-    geracao: number,
-    contexto: { instanciaId?: string }
-  ): Promise<void> {
+  private async sincronizarEmSequencia(ids: string[], contexto: { instanciaId?: string }): Promise<void> {
     for (const campanhaId of ids) {
-      if (geracao !== this.geracao) return;
+      if (this.parado) return;
+      await this.sincronizarNaFila(campanhaId, contexto);
+    }
+  }
+
+  // Encadeia na fila da campanha; a promessa da fila nunca rejeita (o erro é logado aqui),
+  // então uma falha não trava quem vem depois.
+  private async sincronizarNaFila(campanhaId: string, contexto: { instanciaId?: string }): Promise<void> {
+    const anterior = this.filasPorCampanha.get(campanhaId) ?? Promise.resolve();
+    const atual = anterior.then(async () => {
+      if (this.parado) return;
       try {
         await this.servico.sincronizarPeloSistema(campanhaId);
       } catch (erro) {
         console.error("[tempo-real] falha ao sincronizar campanha", { ...contexto, campanhaId }, erro);
       }
-    }
+    });
+    this.filasPorCampanha.set(campanhaId, atual);
+    await atual;
+    if (this.filasPorCampanha.get(campanhaId) === atual) this.filasPorCampanha.delete(campanhaId);
   }
 }
