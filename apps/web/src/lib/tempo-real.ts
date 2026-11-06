@@ -21,8 +21,15 @@ const RECONEXAO_MAXIMA_MS = 30_000;
 // resolvem tentando de novo com ticket novo.
 const FECHAMENTOS_DEFINITIVOS = new Set([4403, 4429]);
 
+// Respostas do pedido de ticket que encerram as tentativas: 403 (sem permissão) e 404 (desligado).
+const STATUS_DEFINITIVOS = new Set([403, 404]);
+
 /** URL do WebSocket: `base` (VITE_WS_URL) quando a API mora em outra origem; senão a da página. */
-export function montarUrlWs(ticket: string, base: string | undefined, localizacao: Location): string {
+export function montarUrlWs(
+  ticket: string,
+  base: string | undefined,
+  localizacao: Location,
+): string {
   const query = `/api/ws?ticket=${encodeURIComponent(ticket)}`;
   if (base) return `${base.replace(/\/+$/, "")}${query}`;
   const protocolo = localizacao.protocol === "https:" ? "wss:" : "ws:";
@@ -50,7 +57,10 @@ export function interpretarMensagem(dados: unknown): MensagemTempoReal | null {
       return { tipo: "pronto" };
     case "campanha.atualizada":
       return mensagem.campanha && typeof mensagem.campanha === "object"
-        ? { tipo: "campanha.atualizada", campanha: mensagem.campanha as CampanhaDTO }
+        ? {
+            tipo: "campanha.atualizada",
+            campanha: mensagem.campanha as CampanhaDTO,
+          }
         : null;
     case "campanha.removida":
       return typeof mensagem.campanhaId === "string"
@@ -64,14 +74,18 @@ export function interpretarMensagem(dados: unknown): MensagemTempoReal | null {
 export interface OpcoesConexaoTempoReal {
   base: string | undefined;
   aoMudarEstado: (estado: EstadoTempoReal) => void;
-  aoMensagem: (mensagem: Exclude<MensagemTempoReal, { tipo: "pronto" }>) => void;
+  aoMensagem: (
+    mensagem: Exclude<MensagemTempoReal, { tipo: "pronto" }>,
+  ) => void;
 }
 
 /**
  * Abre e mantém a conexão: ticket → socket → ("pronto") conectado. Toda reconexão pede
  * ticket novo, porque o ticket é de uso único e vale 60 s.
  */
-export function conectarTempoReal(opcoes: OpcoesConexaoTempoReal): { fechar: () => void } {
+export function conectarTempoReal(opcoes: OpcoesConexaoTempoReal): {
+  fechar: () => void;
+} {
   let encerrado = false;
   let tentativa = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -92,12 +106,18 @@ export function conectarTempoReal(opcoes: OpcoesConexaoTempoReal): { fechar: () 
     timer = undefined;
     let ticket: string;
     try {
-      ({ ticket } = await apiFetch<{ ticket: string }>("/api/tempo-real/ticket"));
+      ({ ticket } = await apiFetch<{ ticket: string }>(
+        "/api/tempo-real/ticket",
+      ));
     } catch (erro) {
       if (encerrado) return;
-      // 404: tempo real desligado no servidor (TEMPO_REAL_HABILITADO=false). Sessão
-      // expirada: o apiFetch já está levando ao login. Em nenhum dos dois insistir ajuda.
-      if (ehSessaoExpirada(erro) || (erro instanceof ApiError && erro.status === 404)) {
+      // 404: tempo real desligado no servidor (TEMPO_REAL_HABILITADO=false). 403: sessão sem
+      // permissão para o ticket. Sessão expirada: o apiFetch já está levando ao login. Em
+      // nenhum dos três insistir ajuda.
+      if (
+        ehSessaoExpirada(erro) ||
+        (erro instanceof ApiError && STATUS_DEFINITIVOS.has(erro.status))
+      ) {
         desistir();
         return;
       }

@@ -61,7 +61,7 @@ Servidor → cliente (JSON); o cliente não envia nada além de `pong`:
 
 Ping do servidor a cada 25000 ms; quem não respondeu ao ping anterior é derrubado. Reconexão do cliente
 com backoff exponencial de 1 s até 30 s, **sempre com ticket novo** (uso único). Ticket que responde
-404 (tempo real desligado) ou sessão expirada no pedido do ticket → o cliente não tenta de novo e fica em
+404 (tempo real desligado), 403 (sem permissão) ou sessão expirada no pedido do ticket → o cliente não tenta de novo e fica em
 "Atualização manual" (`apps/web/src/lib/tempo-real.ts`). Mensagens por
 destinatário da campanha são reconsultadas com throttle de 3000 ms.
 

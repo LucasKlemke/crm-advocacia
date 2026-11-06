@@ -1,5 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
-import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryObserver,
+} from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import type {
   CampanhaDTO,
@@ -8,8 +12,15 @@ import type {
   RespostaItensCampanha,
 } from "@crm/compartilhado/tipos/campanha";
 import { ApiError, SessaoExpiradaError } from "@/lib/api-client";
-import { chaveCampanha, chaveCampanhas, chaveMensagensCampanha } from "./use-campanhas";
-import { useEstadoTempoReal, useTempoRealCampanhas } from "./use-tempo-real-campanhas";
+import {
+  chaveCampanha,
+  chaveCampanhas,
+  chaveMensagensCampanha,
+} from "./use-campanhas";
+import {
+  useEstadoTempoReal,
+  useTempoRealCampanhas,
+} from "./use-tempo-real-campanhas";
 
 const apiFetchMock = jest.fn();
 jest.mock("@/lib/api-client", () => ({
@@ -40,7 +51,8 @@ class WebSocketFalso {
   }
 }
 
-const ultimoSocket = () => WebSocketFalso.instancias[WebSocketFalso.instancias.length - 1];
+const ultimoSocket = () =>
+  WebSocketFalso.instancias[WebSocketFalso.instancias.length - 1];
 
 function campanhaFake(over: Partial<CampanhaDTO> = {}): CampanhaDTO {
   return {
@@ -80,16 +92,22 @@ function detalheFake(campanha = campanhaFake()): Detalhe {
 }
 
 function montar() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(QueryClientProvider, { client: queryClient }, children);
+    return createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children,
+    );
   }
   const hook = renderHook(
     () => {
       useTempoRealCampanhas();
       return useEstadoTempoReal();
     },
-    { wrapper: Wrapper }
+    { wrapper: Wrapper },
   );
   return { queryClient, ...hook };
 }
@@ -152,6 +170,17 @@ describe("useTempoRealCampanhas — conexão", () => {
     expect(WebSocketFalso.instancias).toHaveLength(0);
   });
 
+  it("403 no ticket: fica indisponível e nunca mais tenta (sem permissão, insistir não ajuda)", async () => {
+    apiFetchMock.mockRejectedValue(new ApiError("Acesso negado", 403));
+    const { result } = montar();
+    await avancar(0);
+
+    expect(result.current).toBe("indisponivel");
+    await avancar(120_000);
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+    expect(WebSocketFalso.instancias).toHaveLength(0);
+  });
+
   it("sessão expirada no ticket: não insiste (o apiFetch já leva ao login)", async () => {
     apiFetchMock.mockRejectedValue(new SessaoExpiradaError());
     const { result } = montar();
@@ -199,13 +228,16 @@ describe("useTempoRealCampanhas — conexão", () => {
     expect(result.current).toBe("conectado");
   });
 
-  it.each([4401, 1011])("fechamento %i: reconecta com ticket novo", async (codigo) => {
-    await conectar();
-    act(() => ultimoSocket().fecharPeloServidor(codigo));
-    await avancar(1000);
-    expect(apiFetchMock).toHaveBeenCalledTimes(2);
-    expect(WebSocketFalso.instancias).toHaveLength(2);
-  });
+  it.each([4401, 1011])(
+    "fechamento %i: reconecta com ticket novo",
+    async (codigo) => {
+      await conectar();
+      act(() => ultimoSocket().fecharPeloServidor(codigo));
+      await avancar(1000);
+      expect(apiFetchMock).toHaveBeenCalledTimes(2);
+      expect(WebSocketFalso.instancias).toHaveLength(2);
+    },
+  );
 
   it("fechamentos seguidos sem 'pronto' alongam o backoff", async () => {
     await conectar();
@@ -219,15 +251,18 @@ describe("useTempoRealCampanhas — conexão", () => {
     expect(WebSocketFalso.instancias).toHaveLength(3);
   });
 
-  it.each([4403, 4429])("fechamento %i: para de vez e fica indisponível", async (codigo) => {
-    const { result } = await conectar();
-    act(() => ultimoSocket().fecharPeloServidor(codigo));
+  it.each([4403, 4429])(
+    "fechamento %i: para de vez e fica indisponível",
+    async (codigo) => {
+      const { result } = await conectar();
+      act(() => ultimoSocket().fecharPeloServidor(codigo));
 
-    expect(result.current).toBe("indisponivel");
-    await avancar(120_000);
-    expect(apiFetchMock).toHaveBeenCalledTimes(1);
-    expect(WebSocketFalso.instancias).toHaveLength(1);
-  });
+      expect(result.current).toBe("indisponivel");
+      await avancar(120_000);
+      expect(apiFetchMock).toHaveBeenCalledTimes(1);
+      expect(WebSocketFalso.instancias).toHaveLength(1);
+    },
+  );
 
   it("desmontar fecha o socket e não reconecta", async () => {
     const { unmount } = await conectar();
@@ -244,9 +279,10 @@ describe("useTempoRealCampanhas — conexão", () => {
   it("desmontar antes do ticket chegar não abre socket", async () => {
     let resolver: (valor: { ticket: string }) => void = () => {};
     apiFetchMock.mockImplementation(
-      () => new Promise((resolve) => {
-        resolver = resolve;
-      })
+      () =>
+        new Promise((resolve) => {
+          resolver = resolve;
+        }),
     );
     const { unmount } = montar();
     unmount();
@@ -260,39 +296,64 @@ describe("useTempoRealCampanhas — cache", () => {
   it("campanha.atualizada mescla a campanha em todas as páginas do detalhe e na lista, sem refetch", async () => {
     const { queryClient } = await conectar();
     queryClient.setQueryData(chaveCampanha("c1", 1), detalheFake());
-    queryClient.setQueryData(chaveCampanha("c1", 2), { ...detalheFake(), pagina: 2 });
-    queryClient.setQueryData(chaveCampanha("c2", 1), detalheFake(campanhaFake({ id: "c2" })));
+    queryClient.setQueryData(chaveCampanha("c1", 2), {
+      ...detalheFake(),
+      pagina: 2,
+    });
+    queryClient.setQueryData(
+      chaveCampanha("c2", 1),
+      detalheFake(campanhaFake({ id: "c2" })),
+    );
     queryClient.setQueryData<ListaCampanhas>(chaveCampanhas(), {
       campanhas: [campanhaFake(), campanhaFake({ id: "c2" })],
     });
     const chamadasAntes = apiFetchMock.mock.calls.length;
 
     const atualizada = campanhaFake({ logSucesso: 9, status: "concluida" });
-    act(() => ultimoSocket().receber({ tipo: "campanha.atualizada", campanha: atualizada }));
+    act(() =>
+      ultimoSocket().receber({
+        tipo: "campanha.atualizada",
+        campanha: atualizada,
+      }),
+    );
 
-    expect(queryClient.getQueryData<Detalhe>(chaveCampanha("c1", 1))?.campanha).toEqual(atualizada);
+    expect(
+      queryClient.getQueryData<Detalhe>(chaveCampanha("c1", 1))?.campanha,
+    ).toEqual(atualizada);
     const pagina2 = queryClient.getQueryData<Detalhe>(chaveCampanha("c1", 2));
     expect(pagina2?.campanha.logSucesso).toBe(9);
     expect(pagina2?.pagina).toBe(2);
-    expect(queryClient.getQueryData<Detalhe>(chaveCampanha("c2", 1))?.campanha.logSucesso).toBe(2);
+    expect(
+      queryClient.getQueryData<Detalhe>(chaveCampanha("c2", 1))?.campanha
+        .logSucesso,
+    ).toBe(2);
     const lista = queryClient.getQueryData<ListaCampanhas>(chaveCampanhas());
     expect(lista?.campanhas.map((c) => [c.id, c.status])).toEqual([
       ["c1", "concluida"],
       ["c2", "enviando"],
     ]);
-    expect(queryClient.getQueryState(chaveCampanhas())?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(chaveCampanhas())?.isInvalidated).toBe(
+      false,
+    );
     expect(apiFetchMock).toHaveBeenCalledTimes(chamadasAntes);
   });
 
   it("campanha que a lista em cache não conhece invalida a lista", async () => {
     const { queryClient } = await conectar();
-    queryClient.setQueryData<ListaCampanhas>(chaveCampanhas(), { campanhas: [campanhaFake()] });
+    queryClient.setQueryData<ListaCampanhas>(chaveCampanhas(), {
+      campanhas: [campanhaFake()],
+    });
 
     act(() =>
-      ultimoSocket().receber({ tipo: "campanha.atualizada", campanha: campanhaFake({ id: "nova" }) })
+      ultimoSocket().receber({
+        tipo: "campanha.atualizada",
+        campanha: campanhaFake({ id: "nova" }),
+      }),
     );
 
-    expect(queryClient.getQueryState(chaveCampanhas())?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(chaveCampanhas())?.isInvalidated).toBe(
+      true,
+    );
   });
 
   it("invalida as mensagens com throttle de 3000 ms por campanha (com uma rodada final)", async () => {
@@ -300,14 +361,29 @@ describe("useTempoRealCampanhas — cache", () => {
     const espiao = jest.spyOn(queryClient, "invalidateQueries");
     const mensagensDe = (id: string) =>
       espiao.mock.calls.filter(
-        ([filtro]) => JSON.stringify(filtro?.queryKey) === JSON.stringify(["campanhas", "mensagens", id])
+        ([filtro]) =>
+          JSON.stringify(filtro?.queryKey) ===
+          JSON.stringify(["campanhas", "mensagens", id]),
       ).length;
 
-    act(() => ultimoSocket().receber({ tipo: "campanha.atualizada", campanha: campanhaFake() }));
-    await avancar(500);
-    act(() => ultimoSocket().receber({ tipo: "campanha.atualizada", campanha: campanhaFake() }));
     act(() =>
-      ultimoSocket().receber({ tipo: "campanha.atualizada", campanha: campanhaFake({ id: "c2" }) })
+      ultimoSocket().receber({
+        tipo: "campanha.atualizada",
+        campanha: campanhaFake(),
+      }),
+    );
+    await avancar(500);
+    act(() =>
+      ultimoSocket().receber({
+        tipo: "campanha.atualizada",
+        campanha: campanhaFake(),
+      }),
+    );
+    act(() =>
+      ultimoSocket().receber({
+        tipo: "campanha.atualizada",
+        campanha: campanhaFake({ id: "c2" }),
+      }),
     );
 
     // Dois eventos da c1 em 1 s → uma invalidação; a c2 tem a própria janela.
@@ -330,22 +406,37 @@ describe("useTempoRealCampanhas — cache", () => {
       campanhas: [campanhaFake(), campanhaFake({ id: "c2" })],
     });
     queryClient.setQueryData(chaveCampanha("c1", 1), detalheFake());
-    queryClient.setQueryData(chaveMensagensCampanha("c1", 1), { mensagens: [], total: 0, truncado: false });
-    queryClient.setQueryData(chaveCampanha("c2", 1), detalheFake(campanhaFake({ id: "c2" })));
+    queryClient.setQueryData(chaveMensagensCampanha("c1", 1), {
+      mensagens: [],
+      total: 0,
+      truncado: false,
+    });
+    queryClient.setQueryData(
+      chaveCampanha("c2", 1),
+      detalheFake(campanhaFake({ id: "c2" })),
+    );
 
-    act(() => ultimoSocket().receber({ tipo: "campanha.removida", campanhaId: "c1" }));
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.removida", campanhaId: "c1" }),
+    );
 
     expect(
-      queryClient.getQueryData<ListaCampanhas>(chaveCampanhas())?.campanhas.map((c) => c.id)
+      queryClient
+        .getQueryData<ListaCampanhas>(chaveCampanhas())
+        ?.campanhas.map((c) => c.id),
     ).toEqual(["c2"]);
     expect(queryClient.getQueryData(chaveCampanha("c1", 1))).toBeUndefined();
-    expect(queryClient.getQueryData(chaveMensagensCampanha("c1", 1))).toBeUndefined();
+    expect(
+      queryClient.getQueryData(chaveMensagensCampanha("c1", 1)),
+    ).toBeUndefined();
     expect(queryClient.getQueryData(chaveCampanha("c2", 1))).toBeDefined();
   });
 
   it("campanha.removida com o detalhe aberto refaz a busca (a tela cai no erro de carregamento)", async () => {
     const { queryClient } = await conectar();
-    apiFetchMock.mockRejectedValue(new ApiError("Campanha não encontrada", 404));
+    apiFetchMock.mockRejectedValue(
+      new ApiError("Campanha não encontrada", 404),
+    );
     queryClient.setQueryData(chaveCampanha("c1", 1), detalheFake());
     // O observer faz o papel do useCampanha da tela de detalhe montada.
     const observador = new QueryObserver(queryClient, {
@@ -355,7 +446,9 @@ describe("useTempoRealCampanhas — cache", () => {
     });
     const cancelar = observador.subscribe(() => {});
 
-    act(() => ultimoSocket().receber({ tipo: "campanha.removida", campanhaId: "c1" }));
+    act(() =>
+      ultimoSocket().receber({ tipo: "campanha.removida", campanhaId: "c1" }),
+    );
     await avancar(0);
 
     expect(apiFetchMock).toHaveBeenCalledWith("/api/campanhas/c1?pagina=1");
@@ -371,7 +464,10 @@ describe("useTempoRealCampanhas — cache", () => {
     act(() => ultimoSocket().onmessage?.({ data: "lixo" }));
     act(() => ultimoSocket().receber({ tipo: "desconhecido" }));
 
-    expect(queryClient.getQueryData<Detalhe>(chaveCampanha("c1", 1))?.campanha.logSucesso).toBe(2);
+    expect(
+      queryClient.getQueryData<Detalhe>(chaveCampanha("c1", 1))?.campanha
+        .logSucesso,
+    ).toBe(2);
     expect(result.current).toBe("conectado");
   });
 });
