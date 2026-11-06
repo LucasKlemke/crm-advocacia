@@ -35,7 +35,7 @@ export default defineConfig([
 
   // API + compartilhado + scripts: Node.
   {
-    files: ["apps/api/**/*.{ts,mjs,cjs}", "packages/**/*.{ts,cjs}", "scripts/**/*.mjs", "*.{ts,mjs}", "e2e/**/*.ts"],
+    files: ["apps/api/**/*.{ts,mjs,cjs}", "packages/**/*.{ts,cjs}", "scripts/**/*.mjs", "*.{ts,mjs}", "e2e/**/*.{ts,mjs}"],
     languageOptions: { globals: { ...globals.node } },
   },
   {
