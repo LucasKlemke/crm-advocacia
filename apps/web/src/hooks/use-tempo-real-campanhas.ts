@@ -19,9 +19,10 @@ import { chaveInstanciasWhatsapp } from "./use-instancias-whatsapp";
 // por campanha, e o último evento da janela nunca se perde (rodada no fim dela).
 const THROTTLE_MENSAGENS_MS = 3000;
 // A UAZAPI avisa (webhook) e atualiza os contadores antes de gravar o status de cada
-// mensagem em /sender/listmessages: a releitura imediata ainda vê o valor velho. Uma
-// releitura tardia, contada do último aviso da campanha, pega o valor já gravado.
-const RECONSULTA_MENSAGENS_MS = 5000;
+// mensagem em /sender/listmessages, com atraso variável (em produção passou de 5 s e
+// chegou perto de um minuto): a releitura imediata ainda vê o valor velho. Uma escada de
+// releituras, contada do último aviso da campanha, pega o valor quando ele for gravado.
+const RECONSULTAS_MENSAGENS_MS = [5_000, 15_000, 30_000, 60_000];
 
 // Estado da conexão num store de módulo: a conexão é uma só por aba (montada no shell) e
 // qualquer tela lê o estado sem precisar de provider.
@@ -119,21 +120,25 @@ export function useTempoRealCampanhas(): void {
   useEffect(() => {
     const ultimaInvalidacao = new Map<string, number>();
     const pendentes = new Map<string, ReturnType<typeof setTimeout>>();
-    const reconsultas = new Map<string, ReturnType<typeof setTimeout>>();
+    const reconsultas = new Map<string, ReturnType<typeof setTimeout>[]>();
 
     function invalidarMensagens(campanhaId: string) {
       ultimaInvalidacao.set(campanhaId, Date.now());
       void queryClient.invalidateQueries({ queryKey: chaveMensagens(campanhaId) });
     }
 
+    function cancelarReconsultas(campanhaId: string) {
+      reconsultas.get(campanhaId)?.forEach((timer) => clearTimeout(timer));
+      reconsultas.delete(campanhaId);
+    }
+
     function agendarReconsulta(campanhaId: string) {
-      clearTimeout(reconsultas.get(campanhaId));
+      cancelarReconsultas(campanhaId);
       reconsultas.set(
         campanhaId,
-        setTimeout(() => {
-          reconsultas.delete(campanhaId);
-          invalidarMensagens(campanhaId);
-        }, RECONSULTA_MENSAGENS_MS)
+        RECONSULTAS_MENSAGENS_MS.map((atraso) =>
+          setTimeout(() => invalidarMensagens(campanhaId), atraso)
+        )
       );
     }
 
@@ -157,8 +162,7 @@ export function useTempoRealCampanhas(): void {
     function cancelarPendente(campanhaId: string) {
       clearTimeout(pendentes.get(campanhaId));
       pendentes.delete(campanhaId);
-      clearTimeout(reconsultas.get(campanhaId));
-      reconsultas.delete(campanhaId);
+      cancelarReconsultas(campanhaId);
     }
 
     const conexao = conectarTempoReal({
@@ -189,7 +193,7 @@ export function useTempoRealCampanhas(): void {
       conexao.fechar();
       pendentes.forEach((timer) => clearTimeout(timer));
       pendentes.clear();
-      reconsultas.forEach((timer) => clearTimeout(timer));
+      reconsultas.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)));
       reconsultas.clear();
       definirEstado("conectando");
     };

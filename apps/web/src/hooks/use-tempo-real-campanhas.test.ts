@@ -507,7 +507,7 @@ describe("useTempoRealCampanhas — cache", () => {
     expect(espiao).toHaveBeenCalledTimes(2);
   });
 
-  it("relê as mensagens de novo 5 s depois do último aviso (a UAZAPI grava o status com atraso)", async () => {
+  it("relê as mensagens aos 5, 15, 30 e 60 s depois do último aviso (a UAZAPI grava o status com atraso)", async () => {
     const { queryClient } = await conectar();
     const espiao = jest.spyOn(queryClient, "invalidateQueries");
     const mensagensDe = (id: string) =>
@@ -522,7 +522,7 @@ describe("useTempoRealCampanhas — cache", () => {
     );
     expect(mensagensDe("c1")).toBe(1);
 
-    // Novo aviso antes dos 5 s adia a releitura tardia (uma só, contada do último aviso).
+    // Novo aviso reinicia a escada de releituras, contada do último aviso.
     await avancar(4000);
     act(() =>
       ultimoSocket().receber({ tipo: "campanha.mensagens", campanhaId: "c1" }),
@@ -530,12 +530,18 @@ describe("useTempoRealCampanhas — cache", () => {
     expect(mensagensDe("c1")).toBe(2);
     await avancar(4999);
     expect(mensagensDe("c1")).toBe(2);
-    await avancar(1);
+    await avancar(1); // 5 s
     expect(mensagensDe("c1")).toBe(3);
+    await avancar(10_000); // 15 s
+    expect(mensagensDe("c1")).toBe(4);
+    await avancar(15_000); // 30 s
+    expect(mensagensDe("c1")).toBe(5);
+    await avancar(30_000); // 60 s
+    expect(mensagensDe("c1")).toBe(6);
 
-    // A releitura tardia não agenda outra: sem aviso novo, a tabela fica quieta.
-    await avancar(20000);
-    expect(mensagensDe("c1")).toBe(3);
+    // As releituras não agendam outras: sem aviso novo, a tabela fica quieta.
+    await avancar(120_000);
+    expect(mensagensDe("c1")).toBe(6);
   });
 
   it("campanha.removida cancela a releitura tardia das mensagens", async () => {
@@ -549,7 +555,7 @@ describe("useTempoRealCampanhas — cache", () => {
       ultimoSocket().receber({ tipo: "campanha.removida", campanhaId: "c1" }),
     );
     const chamadas = espiao.mock.calls.length;
-    await avancar(10000);
+    await avancar(120_000);
     expect(espiao.mock.calls.length).toBe(chamadas);
   });
 
