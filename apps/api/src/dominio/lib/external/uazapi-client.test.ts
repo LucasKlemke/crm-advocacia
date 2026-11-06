@@ -928,3 +928,50 @@ describe("uazapiClient", () => {
     });
   });
 });
+
+describe("uazapiClient.configurarWebhook", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+    process.env.UAZAPI_SERVER_URL = SERVER_URL;
+    process.env.UAZAPI_ADMIN_TOKEN = ADMIN_TOKEN;
+  });
+
+  afterEach(() => {
+    delete process.env.UAZAPI_SERVER_URL;
+    delete process.env.UAZAPI_ADMIN_TOKEN;
+  });
+
+  it("faz POST /webhook com o token da instância e só os eventos de campanha", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(respostaFake([{ enabled: true }]));
+
+    await uazapiClient.configurarWebhook("tok-inst", "https://api.exemplo.com/hook");
+
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe(`${SERVER_URL}/webhook`);
+    expect(init.method).toBe("POST");
+    expect(init.headers.token).toBe("tok-inst");
+    expect(JSON.parse(init.body)).toEqual({
+      url: "https://api.exemplo.com/hook",
+      enabled: true,
+      events: ["sender", "messages_update"],
+    });
+  });
+
+  it("não assina eventos de mensagens recebidas", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(respostaFake({}));
+
+    await uazapiClient.configurarWebhook("tok", "https://x/hook");
+
+    const corpo = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(corpo.events).not.toContain("messages");
+    expect(corpo.events).not.toContain("All");
+  });
+
+  it("lança UazapiIndisponivelError em erro HTTP", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(respostaFake({}, { status: 500 }));
+
+    await expect(uazapiClient.configurarWebhook("tok", "https://x/hook")).rejects.toThrow(
+      UazapiIndisponivelError
+    );
+  });
+});

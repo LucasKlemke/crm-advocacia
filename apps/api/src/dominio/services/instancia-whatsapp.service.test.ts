@@ -7,12 +7,16 @@ import {
 import { instanciaWhatsappRepository } from "@dominio/repositories/instancia-whatsapp.repository";
 import { uazapiClient, UazapiIndisponivelError } from "@dominio/lib/external/uazapi-client";
 import { logService } from "@dominio/services/log.service";
+import { urlWebhookDaInstancia } from "@dominio/lib/auth/assinatura-webhook";
 import type { TenantContext } from "@dominio/lib/auth/tenant-context";
 import type { InstanciaWhatsapp } from "@prisma/client";
 
 jest.mock("@dominio/repositories/instancia-whatsapp.repository");
 jest.mock("@dominio/lib/external/uazapi-client");
 jest.mock("@dominio/services/log.service");
+jest.mock("@dominio/lib/auth/assinatura-webhook", () => ({
+  urlWebhookDaInstancia: jest.fn((id: string) => `https://api.exemplo.com/hook/${id}`),
+}));
 jest.mock("@dominio/lib/prisma", () => ({
   // A transação roda o callback direto: os repositórios já estão mockados.
   prisma: { $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn({})) },
@@ -20,6 +24,7 @@ jest.mock("@dominio/lib/prisma", () => ({
 
 const repo = instanciaWhatsappRepository as jest.Mocked<typeof instanciaWhatsappRepository>;
 const client = uazapiClient as jest.Mocked<typeof uazapiClient>;
+const urlWebhook = urlWebhookDaInstancia as jest.MockedFunction<typeof urlWebhookDaInstancia>;
 const logs = logService as jest.Mocked<typeof logService>;
 
 function ctx(role: TenantContext["role"] = "owner"): TenantContext {
@@ -46,6 +51,8 @@ function instanciaFake(over: Partial<InstanciaWhatsapp> = {}): InstanciaWhatsapp
 beforeEach(() => {
   jest.clearAllMocks();
   logs.registrar.mockResolvedValue({} as never);
+  urlWebhook.mockImplementation((id: string) => `https://api.exemplo.com/hook/${id}`);
+  client.configurarWebhook.mockResolvedValue(undefined);
 });
 
 describe("instanciaWhatsappService.listar", () => {
@@ -1029,5 +1036,125 @@ describe("instanciaWhatsappService — instância excluída", () => {
     expect(erro).toBeInstanceOf(NomeInstanciaDuplicadoError);
     expect((erro as Error).message).toContain("excluída");
     expect(client.criarInstancia).not.toHaveBeenCalled();
+  });
+});
+
+describe("instanciaWhatsappService — registro do webhook na UAZAPI", () => {
+  function prepararCriacao() {
+    repo.findByNome.mockResolvedValue(null);
+    client.criarInstancia.mockResolvedValue({
+      id: "uazapi-id-1",
+      token: "token-secreto",
+      status: "disconnected",
+    });
+    client.conectarInstancia.mockResolvedValue({ status: "connecting" });
+    repo.create.mockResolvedValue(instanciaFake({ id: "instancia-1", status: "connecting" }));
+  }
+
+  it("ao criar, registra o webhook assinado da instância local", async () => {
+    prepararCriacao();
+
+    await instanciaWhatsappService.criarEConectar(ctx(), { nome: "Atendimento" });
+
+    expect(urlWebhook).toHaveBeenCalledWith("instancia-1");
+    expect(client.configurarWebhook).toHaveBeenCalledWith(
+      "token-secreto",
+      "https://api.exemplo.com/hook/instancia-1"
+    );
+  });
+
+  it("ao criar com URL nula (sem API_PUBLIC_URL/segredo), não chama configurarWebhook", async () => {
+    prepararCriacao();
+    urlWebhook.mockReturnValue(null);
+
+    await instanciaWhatsappService.criarEConectar(ctx(), { nome: "Atendimento" });
+
+    expect(client.configurarWebhook).not.toHaveBeenCalled();
+  });
+
+  it("falha do webhook não derruba a criação e o aviso não vaza o token", async () => {
+    prepararCriacao();
+    client.configurarWebhook.mockRejectedValue(new UazapiIndisponivelError());
+    const aviso = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const resultado = await instanciaWhatsappService.criarEConectar(ctx(), { nome: "Atendimento" });
+
+    expect(resultado.instancia.id).toBe("instancia-1");
+    expect(client.deletarInstancia).not.toHaveBeenCalled();
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(aviso.mock.calls)).toContain("instancia-1");
+    expect(JSON.stringify(aviso.mock.calls)).not.toContain("token-secreto");
+    aviso.mockRestore();
+  });
+
+  it("ao reconectar, registra o webhook com o token salvo", async () => {
+    repo.findById.mockResolvedValue(instanciaFake());
+    client.conectarInstancia.mockResolvedValue({ status: "connecting" });
+    repo.atualizarConexao.mockResolvedValue(instanciaFake({ status: "connecting" }));
+
+    await instanciaWhatsappService.reconectar(ctx(), "instancia-1");
+
+    expect(client.configurarWebhook).toHaveBeenCalledWith(
+      "token-secreto",
+      "https://api.exemplo.com/hook/instancia-1"
+    );
+  });
+
+  it("ao reconectar com URL nula ou falha do webhook, a reconexão segue", async () => {
+    repo.findById.mockResolvedValue(instanciaFake());
+    client.conectarInstancia.mockResolvedValue({ status: "connecting" });
+    repo.atualizarConexao.mockResolvedValue(instanciaFake({ status: "connecting" }));
+    const aviso = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    urlWebhook.mockReturnValue(null);
+    await instanciaWhatsappService.reconectar(ctx(), "instancia-1");
+    expect(client.configurarWebhook).not.toHaveBeenCalled();
+
+    urlWebhook.mockImplementation((id: string) => `https://api.exemplo.com/hook/${id}`);
+    client.configurarWebhook.mockRejectedValue(new UazapiIndisponivelError());
+    await expect(instanciaWhatsappService.reconectar(ctx(), "instancia-1")).resolves.toBeDefined();
+    aviso.mockRestore();
+  });
+
+  it("a sincronização reconfigura o webhook só das instâncias ativas presentes na UAZAPI", async () => {
+    const ativa = instanciaFake({ id: "i-ativa", uazapiInstanceId: "uaz-a", uazapiToken: "tok-a" });
+    const sumida = instanciaFake({ id: "i-sumida", uazapiInstanceId: "uaz-s", uazapiToken: "tok-s" });
+    repo.listar.mockResolvedValueOnce([ativa, sumida]).mockResolvedValueOnce([]);
+    client.listarTodasInstancias.mockResolvedValue([
+      {
+        id: "uaz-a",
+        status: "connected",
+        owner: ativa.numeroConectado!,
+        fotoPerfilUrl: ativa.fotoPerfilUrl!,
+      },
+    ]);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(client.configurarWebhook).toHaveBeenCalledTimes(1);
+    expect(client.configurarWebhook).toHaveBeenCalledWith(
+      "tok-a",
+      "https://api.exemplo.com/hook/i-ativa"
+    );
+  });
+
+  it("falha do webhook na sincronização não interrompe o lote", async () => {
+    const a = instanciaFake({ id: "i-a", uazapiInstanceId: "uaz-a", uazapiToken: "tok-a" });
+    const b = instanciaFake({ id: "i-b", uazapiInstanceId: "uaz-b", uazapiToken: "tok-b" });
+    repo.listar.mockResolvedValueOnce([a, b]).mockResolvedValueOnce([]);
+    const remota = (id: string) => ({
+      id,
+      status: "connected",
+      owner: a.numeroConectado!,
+      fotoPerfilUrl: a.fotoPerfilUrl!,
+    });
+    client.listarTodasInstancias.mockResolvedValue([remota("uaz-a"), remota("uaz-b")]);
+    client.configurarWebhook.mockRejectedValueOnce(new UazapiIndisponivelError());
+    const aviso = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await instanciaWhatsappService.sincronizarTodas(ctx());
+
+    expect(client.configurarWebhook).toHaveBeenCalledTimes(2);
+    aviso.mockRestore();
   });
 });

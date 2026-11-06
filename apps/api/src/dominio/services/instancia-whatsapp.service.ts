@@ -1,6 +1,7 @@
 import { prisma } from "@dominio/lib/prisma";
 import { instanciaWhatsappRepository } from "@dominio/repositories/instancia-whatsapp.repository";
 import { uazapiClient, UazapiIndisponivelError } from "@dominio/lib/external/uazapi-client";
+import { urlWebhookDaInstancia } from "@dominio/lib/auth/assinatura-webhook";
 import { logService } from "@dominio/services/log.service";
 import { PermissaoNegadaError } from "@dominio/services/membro.service";
 import type { TenantContext } from "@dominio/lib/auth/tenant-context";
@@ -112,6 +113,20 @@ async function comLimpezaNaUazapi<T>(token: string, acao: () => Promise<T>): Pro
   }
 }
 
+// Registra na UAZAPI o webhook assinado da instância (progresso de campanha em tempo real).
+// Best-effort e idempotente: sem URL configurada não faz nada, e falha vira só um aviso —
+// o polling cobre a ausência do webhook, então nunca derruba criar/conectar/sincronizar.
+// O aviso leva o id da instância, jamais o token.
+async function registrarWebhook(instancia: { id: string; uazapiToken: string }): Promise<void> {
+  const url = urlWebhookDaInstancia(instancia.id);
+  if (!url) return;
+  try {
+    await uazapiClient.configurarWebhook(instancia.uazapiToken, url);
+  } catch {
+    console.warn(`Falha ao registrar o webhook da instância ${instancia.id} na UAZAPI.`);
+  }
+}
+
 // Compara o estado local com o que a UAZAPI acabou de devolver — mesma regra de
 // mudança usada tanto por verificarStatus (uma instância) quanto por sincronizarTodas
 // (um lote): status/numeroConectado/fotoPerfilUrl diferentes do que já está salvo.
@@ -202,6 +217,8 @@ export const instanciaWhatsappService = {
         return nova;
       });
 
+      await registrarWebhook(instancia);
+
       return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
     });
   },
@@ -247,6 +264,8 @@ export const instanciaWhatsappService = {
 
       return atualizada;
     });
+
+    await registrarWebhook(atual);
 
     return { instancia: semToken(instancia), qrcode: conexao.qrcode, paircode: conexao.paircode };
   },
@@ -440,6 +459,11 @@ export const instanciaWhatsappService = {
         // pula ele mesmo e o loop segue pras outras. Uma instância excluída que reaparece
         // assim também não é restaurada: sem status confiável, não há o que gravar.
         continue;
+      }
+
+      // Idempotente: reafirma o webhook de toda instância ativa que a UAZAPI ainda conhece.
+      if (local.softDeletedAt === null) {
+        await registrarWebhook(local);
       }
 
       const { mudou, numeroConectado, fotoPerfilUrl } = compararConexao(local, {
