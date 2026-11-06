@@ -13,7 +13,9 @@ export const LIMITE_CORPO_JSON = "10mb";
 // middleware), então este caminho lê o corpo como texto, de qualquer content-type, e o
 // controller faz o parse tolerante. Rota pública: o limite é baixo (256 KB) para não
 // aceitar corpos grandes de quem não é a UAZAPI; acima dele a resposta é 413.
-// Caminho absoluto: app.use não aplica o prefixo global.
+// Caminho absoluto: app.use não aplica o prefixo global. Como todo app.use do Express, o
+// parser casa por prefixo de segmento: cobre também a rota assinada
+// /api/webhooks/uazapi/:instanciaId/:assinatura (e nada como /api/webhooks/uazapiX).
 export const CAMINHO_WEBHOOK_UAZAPI = "/api/webhooks/uazapi";
 export const LIMITE_CORPO_WEBHOOK = "256kb";
 

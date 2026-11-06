@@ -16,6 +16,7 @@ import { DocumentosModule } from "./documentos/documentos.module";
 import { InstanciasModule } from "./instancias/instancias.module";
 import { CampanhasModule } from "./campanhas/campanhas.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
+import { TempoRealModule } from "./tempo-real/tempo-real.module";
 import { SessaoModule } from "./sessao/sessao.module";
 
 @Module({
@@ -36,6 +37,7 @@ import { SessaoModule } from "./sessao/sessao.module";
     InstanciasModule,
     CampanhasModule,
     WebhooksModule,
+    TempoRealModule,
     SessaoModule,
   ],
   controllers: [SaudeController],
