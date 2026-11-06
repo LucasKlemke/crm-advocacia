@@ -62,9 +62,13 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 # Uma trust policy por role: cada uma aceita um único `sub` deste repositório.
 locals {
+  # O GitHub emite o `sub` no formato clássico (repo:owner/repo:...) ou, em repositórios com
+  # "immutable subject" (padrão nos repositórios novos), com os IDs: repo:owner@id/repo@id:...
+  # A trust policy aceita os dois; ambos identificam o mesmo repositório.
+  prefixos_sub = compact(["repo:${var.repositorio_github}", var.prefixo_sub_imutavel])
   sub_github = {
-    deploy = "repo:${var.repositorio_github}:ref:refs/heads/main"
-    plan   = "repo:${var.repositorio_github}:pull_request"
+    deploy = [for p in local.prefixos_sub : "${p}:ref:refs/heads/main"]
+    plan   = [for p in local.prefixos_sub : "${p}:pull_request"]
   }
 }
 
@@ -90,7 +94,7 @@ data "aws_iam_policy_document" "confianca_github" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [each.value]
+      values   = each.value
     }
   }
 }

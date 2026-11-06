@@ -15,3 +15,9 @@ variable "prefixo" {
   type        = string
   default     = "crm-pac"
 }
+
+variable "prefixo_sub_imutavel" {
+  description = "Prefixo do claim sub com IDs imutáveis (gh api repos/<owner>/<repo>/actions/oidc/customization/sub → sub_claim_prefix). Vazio = só o formato clássico."
+  type        = string
+  default     = "repo:LucasKlemke@127155761/crm-advocacia@1338763709"
+}

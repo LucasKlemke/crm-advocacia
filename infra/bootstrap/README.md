@@ -42,9 +42,9 @@ aqui.
 
 Cada role só pode ser assumida por tokens com `aud = sts.amazonaws.com` e um único `sub` (`StringEquals`):
 
-- `crm-pac-github-deploy`: `repo:<owner>/<repo>:ref:refs/heads/main` — push na `main` ou "Run workflow"
+- `crm-pac-github-deploy`: `repo:<owner>/<repo>:ref:refs/heads/main` (e o equivalente com IDs imutáveis, `prefixo_sub_imutavel`) — push na `main` ou "Run workflow"
   na `main` (deploy, `terraform apply`);
-- `crm-pac-github-plan`: `repo:<owner>/<repo>:pull_request` — PRs (só `terraform plan`).
+- `crm-pac-github-plan`: `repo:<owner>/<repo>:pull_request` (idem) — PRs (só `terraform plan`).
 
 Um PR (que pode alterar o próprio workflow) só consegue a role de leitura; credencial de escrita exige
 código já mergeado na `main`. Nenhuma outra branch, tag, environment ou repositório assume as roles.
