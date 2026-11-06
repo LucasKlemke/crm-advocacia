@@ -125,7 +125,7 @@ Tabela transversal que responde, para qualquer operação de escrita do sistema:
 |---|---|---|
 | id | uuid | PK |
 | escritorio_id | uuid | FK → `escritorio`, `onDelete: Cascade` |
-| usuario_id | uuid? | FK → `usuario`, `onDelete: Restrict` — **quem fez**; nulo quando `origem = 'sistema'` |
+| usuario_id | uuid? | FK → `usuario`, `onDelete: Restrict` — **quem fez**; nulo só quando `origem = 'sistema'` (CHECK `log_autor_coerente` no banco: `origem = 'sistema' OR usuario_id IS NOT NULL`) |
 | origem | enum `origem_log` | `usuario` (padrão) ou `sistema` — escrita feita pelo próprio sistema (sem autor), via `logService.registrarSistema` |
 | acao | enum | `criar` \| `atualizar` \| `excluir` \| `restaurar` |
 | entidade | enum `EntidadeLog` | `cliente` \| `comentario` \| `caso` \| `status` \| `tipo_processo` \| `membro` \| `documento` \| `instancia_whatsapp` \| `campanha` \| `evento` (espelha `EntidadeLog` em `apps/api/prisma/schema.prisma`; cresce por migration a cada entidade nova) |

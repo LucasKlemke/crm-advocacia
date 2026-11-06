@@ -76,6 +76,20 @@ describe("logRepository", () => {
     expect(lido.usuario).toBeNull();
   });
 
+  it("recusa no banco log de origem usuário sem autor (CHECK log_autor_coerente)", async () => {
+    await expect(
+      logRepository.create({
+        origem: "usuario",
+        acao: "atualizar",
+        entidade: "cliente",
+        entidadeId: "cliente-sem-autor",
+        resumo: "Log sem autor",
+        escritorio: { connect: { id: escritorioId } },
+      })
+    ).rejects.toThrow(/log_autor_coerente/);
+    expect(await prisma.log.count({ where: { entidadeId: "cliente-sem-autor" } })).toBe(0);
+  });
+
   it("persiste o diff em dados", async () => {
     const log = await registrar(escritorioId, "cliente-1", "Cliente atualizado", {
       telefone: { antes: "48999990000", depois: "48988887777" },

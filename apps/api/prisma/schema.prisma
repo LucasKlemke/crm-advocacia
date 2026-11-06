@@ -2,7 +2,7 @@
 // junto do Service/Repository que os motiva (ver docs/database/migrations-prisma.md).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // native: máquina local/CI. rhel-openssl-3.0.x: runtime das Vercel Functions
   // (Amazon Linux 2023), garantido mesmo se o build rodar em outra imagem.
   // linux-arm64/debian: imagem Docker da API (ECS Fargate ARM64, node:24-bookworm-slim).
@@ -279,6 +279,7 @@ model Documento {
 model Log {
   id           String      @id @default(uuid())
   escritorioId String      @map("escritorio_id")
+  // Nulo só com origem sistema: CHECK log_autor_coerente (migration 20261106010508).
   usuarioId    String?     @map("usuario_id")
   origem       OrigemLog   @default(usuario)
   acao         AcaoLog
