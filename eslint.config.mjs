@@ -11,6 +11,7 @@ import tseslint from "typescript-eslint";
 // Sem eslint-config-next: o front é Vite (apps/web) e a API é Nest (apps/api).
 export default defineConfig([
   globalIgnores([
+    ".claude/**", // worktrees de agentes (cópias do repo) não são código deste checkout
     "**/dist/**",
     "**/coverage/**",
     "**/node_modules/**",
