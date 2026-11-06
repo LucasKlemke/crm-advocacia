@@ -63,7 +63,7 @@ Imports: na API, `@dominio/*` → `apps/api/src/dominio/*`; no web, `@/*` → `a
 | `npm run dev` | Postgres (Docker, via `predev`) + API em :3001 (`tsx watch`) + web em :5173 (proxy `/api`) |
 | `npm test` / `npm run test:coverage` | Jest de todos os pacotes / com cobertura + piso institucional |
 | `npm run lint` / `npm run typecheck` | ESLint do monorepo / `tsc --noEmit` em cada pacote |
-| `npm run build` / `npm start` | `apps/api/dist/main.js` (tsup) + `apps/web/dist` / API pelo script `start` do `@crm/api` (`--import ./dist/instrumentacao.js`) + `vite preview` do web |
+| `npm run build` / `npm start` | `apps/api/dist/main.mjs` (tsup) + `apps/web/dist` / API pelo script `start` do `@crm/api` (`--import ./dist/instrumentacao.mjs`) + `vite preview` do web |
 | `npm run e2e` | Build + Playwright contra o build de produção (API :3001, web :4173) |
 | `npm run prisma:migrate` | `prisma migrate dev` em `apps/api` |
 | `npm run dev:tunnel` / `npm run ngrok:start` | Túnel ngrok para a API em :3001 (webhook da UAZAPI; use a URL como `API_PUBLIC_URL`) |

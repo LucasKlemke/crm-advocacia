@@ -7,11 +7,11 @@ import {
 } from "./e2e/ambiente-e2e";
 
 // Fluxos críticos: docs/testes/estrategia-tdd.md. Roda contra o BUILD DE PRODUÇÃO
-// (api em dist/main.js + web em vite preview), nunca contra o dev server: é o
+// (api em dist/main.mjs + web em vite preview), nunca contra o dev server: é o
 // que prova que o bundle do tsup funciona sem tsx e sem decorator metadata.
 // `npm run e2e` builda antes; no CI o build é um passo separado.
 // A API sobe por `npm run start -w @crm/api`, que carrega a instrumentação do
-// New Relic (--import) antes do Nest; nunca com `node dist/main.js` direto.
+// New Relic (--import) antes do Nest; nunca com `node dist/main.mjs` direto.
 // A UAZAPI é a falsa de e2e/fake-uazapi.mjs (sincronização de campanhas em tempo real);
 // E2E_API_PORT troca a porta da API (padrão 3001) quando ela já está ocupada na máquina.
 export default defineConfig({
@@ -35,7 +35,7 @@ export default defineConfig({
     },
     {
       command:
-        "node -e \"require('fs').accessSync('apps/api/dist/instrumentacao.js')\" && npm run start -w @crm/api",
+        "node -e \"require('fs').accessSync('apps/api/dist/instrumentacao.mjs')\" && npm run start -w @crm/api",
       url: `http://localhost:${PORTA_API_E2E}/api/saude`,
       // Nunca reaproveita: um `npm run dev` ou um dist velho faria o e2e passar contra o código errado.
       reuseExistingServer: false,

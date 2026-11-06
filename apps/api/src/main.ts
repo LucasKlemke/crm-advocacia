@@ -7,7 +7,7 @@ import { OPCOES_APP, configurarApp } from "./criar-app";
 import { lerConfigTempoReal } from "./tempo-real/config-tempo-real";
 import { anexarServidorWs } from "./tempo-real/servidor-ws";
 
-// src/main.ts (tsx) e dist/main.js (build) ficam ambos um nível abaixo de apps/api.
+// src/main.ts (tsx) e dist/main.mjs (build) ficam ambos um nível abaixo de apps/api.
 // Lê apps/api/.env.local e apps/api/.env (nada na Vercel). Sem sobrescrever o ambiente.
 carregarEnvLocal(resolve(import.meta.dirname, ".."));
 

@@ -19,7 +19,7 @@ O sistema nasceu como um app Next.js único (App Router + Route Handlers + NextA
 5. Consolidação: domínio em `apps/api/src/dominio`, `@crm/compartilhado`, Prisma em `apps/api`, build com tsup, Vercel Services, CI/SonarCloud, documentação ✅
 
 ## Estado final
-- `apps/api`: NestJS 12 (ESM). Dev com `tsx watch`; produção com o bundle do tsup (`dist/main.js` + `dist/instrumentacao.js`), iniciado por `npm run start -w @crm/api` (`node --import ./dist/instrumentacao.js dist/main.js`).
+- `apps/api`: NestJS 12 (ESM). Dev com `tsx watch`; produção com o bundle do tsup (`dist/main.mjs` + `dist/instrumentacao.mjs`), iniciado por `npm run start -w @crm/api` (`node --import ./dist/instrumentacao.mjs dist/main.mjs`).
 - `apps/web`: React 19 + Vite + React Router v7. Em dev, proxy `/api` → :3001 (`API_NEST_URL` sobrescreve o alvo).
 - `packages/compartilhado`: DTOs, schemas Zod, enums sem Prisma (paridade garantida por teste na API) e utilitários puros.
 - Deploy: um Vercel Project por ambiente (acadêmico e real), cada um com os services `web` e `api` na mesma origem ([../deploy/deploy.md](../deploy/deploy.md)).

@@ -1,4 +1,4 @@
-// Carregado ANTES de tudo, via `node --import ./dist/instrumentacao.js` (start) ou
+// Carregado ANTES de tudo, via `node --import ./dist/instrumentacao.mjs` (start) ou
 // `tsx --import ./src/instrumentacao.ts` (dev). Não pode ser importado pelo main.ts:
 // no bundle ESM os imports externos (Nest, Prisma, Express) são avaliados antes do
 // corpo do módulo, e o agente do New Relic precisa vir antes deles para instrumentá-los.

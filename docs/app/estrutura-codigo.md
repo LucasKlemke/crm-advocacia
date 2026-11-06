@@ -9,7 +9,7 @@ apps/
 ├── api/                          # @crm/api — NestJS 12 (ESM)
 │   ├── prisma/                   # schema.prisma + migrations/ (histórico auditável)
 │   ├── prisma.config.ts
-│   ├── tsup.config.ts            # build de produção → dist/main.js + dist/instrumentacao.js
+│   ├── tsup.config.ts            # build de produção → dist/main.mjs + dist/instrumentacao.mjs
 │   ├── jest.config.cjs / jest.setup.ts
 │   ├── scripts/migrar-no-deploy.mjs
 │   ├── test/                     # utilitários de teste (criarAppDeTeste, sessão simulada)

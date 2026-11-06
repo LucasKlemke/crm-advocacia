@@ -19,4 +19,5 @@ export default defineConfig({
   // O compartilhado é só TypeScript-fonte (exports → .ts), então precisa ser embutido.
   noExternal: [/^@crm\//],
   tsconfig: "tsconfig.json",
+  outExtension: () => ({ js: ".mjs" }),
 });

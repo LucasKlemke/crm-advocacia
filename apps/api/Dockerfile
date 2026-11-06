@@ -46,4 +46,4 @@ RUN chown -R node:node /app
 USER node
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["node", "--enable-source-maps", "--import", "./dist/instrumentacao.js", "dist/main.js"]
+CMD ["node", "--enable-source-maps", "--import", "./dist/instrumentacao.mjs", "dist/main.mjs"]
