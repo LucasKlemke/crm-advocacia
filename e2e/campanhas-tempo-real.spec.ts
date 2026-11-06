@@ -92,7 +92,7 @@ test.describe("Campanhas em tempo real", () => {
     await expect(page.getByText("Ao vivo")).toBeVisible();
 
     const enviadas = page.getByText("Enviadas", { exact: true }).locator("..");
-    await expect(enviadas).toContainText("0");
+    await expect(enviadas).toHaveText(/^Enviadas\s*0$/);
 
     // A UAZAPI avança o envio e avisa pelo webhook assinado da instância.
     const pastaAvancada = await request.post(`${URL_UAZAPI_FALSA}/__fake/contadores`, {
