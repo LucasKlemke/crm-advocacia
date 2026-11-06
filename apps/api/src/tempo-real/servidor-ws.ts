@@ -32,6 +32,9 @@ const CODIGO_DESLIGANDO = 1001;
 const PRAZO_FECHAMENTO_MS = 1000;
 export const INTERVALO_PING_MS = 25000;
 export const MAX_CONEXOES_POR_USUARIO = 5;
+// A cada 4 ciclos de ping (~100 s) o vínculo do socket é conferido de novo no banco: um
+// membro removido do escritório não continua recebendo eventos até fechar a aba (RN19).
+export const CICLOS_REVALIDACAO = 4;
 
 export interface OpcoesServidorWs {
   // Origens da SPA aceitas além da própria origem da API (WEB_ORIGINS).
@@ -48,7 +51,9 @@ export interface ServidorWs {
 interface Conexao {
   socket: WebSocket;
   usuarioId: string;
+  escritorioId: string;
   vivo: boolean;
+  revalidando: boolean;
   cancelar: () => void;
 }
 
@@ -129,7 +134,9 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
     const conexao: Conexao = {
       socket,
       usuarioId: ctx.usuarioId,
+      escritorioId: ctx.escritorioId,
       vivo: true,
+      revalidando: false,
       cancelar: eventosCampanha.assinar(ctx.escritorioId, (evento) => enviar(socket, paraCliente(evento))),
     };
     socket.on("pong", () => {
@@ -190,7 +197,10 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
     // O handshake completa sempre: 4401/4403 são códigos de fechamento do WebSocket, que o
     // browser só enxerga depois do upgrade (uma resposta HTTP de erro vira só "1006").
     wss.handleUpgrade(req, socket, cabeca, (ws) => {
-      ws.on("error", () => undefined);
+      // Só o código: a mensagem e o contexto podem carregar a URL com o ticket.
+      ws.on("error", (erro: Error & { code?: string }) => {
+        console.warn("[tempo-real] erro no WebSocket", { codigo: erro.code });
+      });
       autenticar(ws, req).catch((erro) => {
         console.error("[tempo-real] falha ao autenticar o WebSocket", erro);
         ws.close(CODIGO_ERRO_INTERNO, "Erro interno");
@@ -202,7 +212,30 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
 
   // Batimento: a cada intervalo, quem não respondeu ao ping anterior é derrubado (conexão
   // meio-aberta atrás de proxy/NAT) e os demais recebem novo ping.
+  // Membership sumiu → 4401 (o cliente pede ticket novo e falha na emissão). Erro
+  // transitório (banco fora) mantém o socket: loga e tenta no próximo ciclo.
+  async function revalidar(conexao: Conexao): Promise<void> {
+    if (conexao.revalidando) return;
+    conexao.revalidando = true;
+    const ids = { usuarioId: conexao.usuarioId, escritorioId: conexao.escritorioId };
+    try {
+      await resolverTenant(ids);
+    } catch (erro) {
+      if (erroDeAutenticacao(erro)) {
+        conexao.cancelar();
+        conexao.socket.close(CODIGO_NAO_AUTENTICADO, "Não autenticado");
+      } else {
+        console.error("[tempo-real] falha ao revalidar o vínculo do WebSocket", ids, erro);
+      }
+    } finally {
+      conexao.revalidando = false;
+    }
+  }
+
+  let ciclo = 0;
   const batimento = setInterval(() => {
+    ciclo += 1;
+    const revalidarAgora = ciclo % CICLOS_REVALIDACAO === 0;
     for (const lista of conexoesPorUsuario.values()) {
       for (const conexao of lista) {
         if (!conexao.vivo) {
@@ -211,6 +244,7 @@ export function anexarServidorWs(servidor: Server, opcoes: OpcoesServidorWs): Se
         }
         conexao.vivo = false;
         conexao.socket.ping();
+        if (revalidarAgora) void revalidar(conexao);
       }
     }
   }, opcoes.intervaloPingMs ?? INTERVALO_PING_MS);

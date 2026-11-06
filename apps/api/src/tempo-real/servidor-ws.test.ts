@@ -11,6 +11,7 @@ import {
   CODIGO_ORIGEM_PROIBIDA,
   INTERVALO_PING_MS,
   MAX_CONEXOES_POR_USUARIO,
+  CICLOS_REVALIDACAO,
   anexarServidorWs,
   type OpcoesServidorWs,
 } from "./servidor-ws";
@@ -107,6 +108,7 @@ describe("servidor WebSocket /api/ws", () => {
     expect(CODIGO_ORIGEM_PROIBIDA).toBe(4403);
     expect(INTERVALO_PING_MS).toBe(25000);
     expect(MAX_CONEXOES_POR_USUARIO).toBe(5);
+    expect(CICLOS_REVALIDACAO).toBe(4);
   });
 
   describe("autenticação", () => {
@@ -299,6 +301,78 @@ describe("servidor WebSocket /api/ws", () => {
       depois.ws.on("open", aberto);
       await depois.fechado;
       expect(aberto).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("revalidação periódica do vínculo (RN19)", () => {
+    it("membership removida → socket fechado com 4401 no ciclo de revalidação", async () => {
+      const membros: Record<string, string[]> = { "user-a": ["esc-A"] };
+      const resolverTenant = jest.fn(async (sessao: SessaoMinima): Promise<TenantContext> => {
+        if (!(membros[sessao.usuarioId!] ?? []).includes(sessao.escritorioId!)) throw new AcessoNegadoError();
+        return { usuarioId: sessao.usuarioId!, escritorioId: sessao.escritorioId!, role: "owner" };
+      });
+      await subir({ resolverTenant, intervaloPingMs: 20 });
+      const cliente = await conectarComTicket("user-a", "esc-A");
+      resolverTenant.mockClear();
+
+      membros["user-a"] = [];
+
+      await expect(cliente.fechado).resolves.toEqual({ codigo: 4401 });
+      expect(resolverTenant).toHaveBeenCalledWith({ usuarioId: "user-a", escritorioId: "esc-A" });
+    });
+
+    it("revalida só a cada 4 ciclos de ping, com o usuário e o escritório do socket", async () => {
+      const resolverTenant = resolverPorMembros({ "user-a": ["esc-B"] });
+      const inicio = Date.now();
+      await subir({ resolverTenant, intervaloPingMs: 40 });
+      const cliente = await conectarComTicket("user-a", "esc-B");
+      resolverTenant.mockClear();
+      const ate = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, inicio + ms - Date.now())));
+
+      // Ciclos em 40, 80, 120 ms não revalidam (timers só atrasam, nunca adiantam); o 4º (160 ms) sim.
+      await ate(140);
+      expect(resolverTenant).not.toHaveBeenCalled();
+      await ate(240);
+      expect(resolverTenant).toHaveBeenCalledWith({ usuarioId: "user-a", escritorioId: "esc-B" });
+      expect(cliente.ws.readyState).toBe(WebSocket.OPEN);
+    });
+
+    it("erro transitório do banco mantém o socket, loga e tenta de novo no próximo ciclo", async () => {
+      const erroSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+      const resolverTenant = resolverPorMembros({ "user-a": ["esc-A"] });
+      await subir({ resolverTenant, intervaloPingMs: 20 });
+      const cliente = await conectarComTicket("user-a", "esc-A");
+      resolverTenant.mockClear();
+      resolverTenant.mockRejectedValueOnce(new Error("banco fora"));
+
+      // Primeira revalidação (~80 ms) falha; a segunda (~160 ms) passa.
+      await new Promise((r) => setTimeout(r, 200));
+
+      expect(resolverTenant.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(erroSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[tempo-real]"),
+        expect.objectContaining({ usuarioId: "user-a", escritorioId: "esc-A" }),
+        expect.any(Error)
+      );
+      expect(cliente.ws.readyState).toBe(WebSocket.OPEN);
+    });
+  });
+
+  describe("erros do socket", () => {
+    it("loga só o código do erro (sem URL nem ticket) via console.warn", async () => {
+      const avisoSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+      await subir();
+      const { ticket } = await assinarTicketWs({ sub: "user-a", escritorioId: "esc-A" });
+      const cliente = conectar(`/api/ws?ticket=${ticket}`);
+      await cliente.pronto;
+
+      // Frame com opcode inválido (0x3) — o servidor emite "error" e derruba a conexão.
+      (cliente.ws as unknown as { _socket: { write(b: Buffer): void } })._socket.write(Buffer.from([0x83, 0x80, 0, 0, 0, 0]));
+      await cliente.fechado;
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(avisoSpy).toHaveBeenCalledWith(expect.stringContaining("[tempo-real]"), { codigo: "WS_ERR_INVALID_OPCODE" });
+      expect(JSON.stringify(avisoSpy.mock.calls)).not.toContain(ticket);
     });
   });
 });
