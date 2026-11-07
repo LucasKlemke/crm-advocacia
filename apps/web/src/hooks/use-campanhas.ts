@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import { INTERVALO_ACOMPANHAMENTO_MS } from "@/lib/acompanhar-mensagens";
 import type { ConfigVariavel } from "@crm/compartilhado/utils/campanha-mensagem";
 import type {
   AcaoCampanha,
@@ -50,8 +51,18 @@ export function useCampanha(id: string, pagina: number) {
 // Status de cada mensagem, direto da UAZAPI. Query separada da do detalhe de propósito: a
 // tabela do banco aparece na hora e o status chega depois, sem prender a tela na chamada
 // externa. `habilitado` é o que garante a ordem — só consulta depois que o banco respondeu.
-export function useMensagensCampanha(id: string, pagina: number, habilitado = true) {
+// `acompanhar` decide, a cada resposta, se a tabela relê sozinha em 5 s (rede de segurança
+// para quando a UAZAPI grava o status depois do último webhook). Sem ele, só relê quando
+// algum aviso de tempo real invalida a query.
+export function useMensagensCampanha(
+  id: string,
+  pagina: number,
+  habilitado = true,
+  acompanhar?: (dados: RespostaMensagensCampanha | undefined) => boolean
+) {
   return useQuery({
+    refetchInterval: (query) =>
+      acompanhar?.(query.state.data) ? INTERVALO_ACOMPANHAMENTO_MS : false,
     queryKey: chaveMensagensCampanha(id, pagina),
     queryFn: () =>
       apiFetch<RespostaMensagensCampanha>(`/api/campanhas/${id}/mensagens?pagina=${pagina}`),
