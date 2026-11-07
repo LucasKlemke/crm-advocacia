@@ -69,6 +69,35 @@ describe("queries de campanha", () => {
     );
   });
 
+  it("useMensagensCampanha relê a cada 5 s enquanto `acompanhar` disser que sim, e para quando não", async () => {
+    jest.useFakeTimers();
+    try {
+      const { Wrapper } = criarWrapper();
+      let acompanhar = true;
+      const chamadas = () =>
+        (global.fetch as jest.Mock).mock.calls.filter(([url]) =>
+          String(url).includes("/mensagens")
+        ).length;
+
+      renderHook(
+        () => useMensagensCampanha("campanha-1", 1, true, () => acompanhar),
+        { wrapper: Wrapper }
+      );
+      await waitFor(() => expect(chamadas()).toBe(1));
+
+      await jest.advanceTimersByTimeAsync(5000);
+      await waitFor(() => expect(chamadas()).toBe(2));
+
+      acompanhar = false;
+      await jest.advanceTimersByTimeAsync(5000);
+      const depois = chamadas();
+      await jest.advanceTimersByTimeAsync(20_000);
+      expect(chamadas()).toBe(depois);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("useMensagensCampanha busca o status da página pedida", async () => {
     const { Wrapper } = criarWrapper();
     const { result } = renderHook(() => useMensagensCampanha("campanha-1", 3), {

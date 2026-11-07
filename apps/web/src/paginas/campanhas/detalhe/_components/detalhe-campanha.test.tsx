@@ -140,14 +140,23 @@ describe("DetalheCampanha — status de cada mensagem", () => {
   it("consulta a UAZAPI só depois que o banco respondeu, na página aberta", () => {
     renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
 
-    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", 1, true);
+    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", 1, true, expect.any(Function));
+  });
+
+  it("acompanha as mensagens (relê sozinha) enquanto a campanha está enviando", () => {
+    renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
+
+    const acompanhar = useMensagensMock.mock.calls.at(-1)?.[3] as (dados: unknown) => boolean;
+    expect(acompanhar(undefined)).toBe(true);
   });
 
   it("não consulta enquanto o detalhe não carregou", () => {
     useCampanhaMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderComQuery(<DetalheCampanha campanhaId="campanha-1" somenteLeitura={false} />);
 
-    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", 1, false);
+    expect(useMensagensMock).toHaveBeenCalledWith("campanha-1", 1, false, expect.any(Function));
+    const acompanhar = useMensagensMock.mock.calls.at(-1)?.[3] as (dados: unknown) => boolean;
+    expect(acompanhar(undefined)).toBe(false);
   });
 
   // Dizer que a lista veio cortada evita que o "—" de quem ficou de fora seja lido como
