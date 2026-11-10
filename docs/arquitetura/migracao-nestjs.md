@@ -55,5 +55,5 @@ O sistema nasceu como um app Next.js único (App Router + Route Handlers + NextA
 ## Como rodar
 1. `npm install`
 2. `cp apps/api/.env.example apps/api/.env` e ajustar (ver [../database/docker-setup.md](../database/docker-setup.md))
-3. `npm run dev` (Postgres via Docker, API em :3001 e web em :5173)
+3. `npm run dev:full` (Postgres via Docker, API em :3001 e web em :5173)
 4. Testes: `npm test` (todos os pacotes) ou `npm run api:test` / `npm run web:test`; `npm run e2e` para o Playwright contra o build de produção

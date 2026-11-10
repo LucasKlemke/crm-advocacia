@@ -37,7 +37,7 @@ export default defineConfig({
       command:
         "node -e \"require('fs').accessSync('apps/api/dist/instrumentacao.mjs')\" && npm run start -w @crm/api",
       url: `http://localhost:${PORTA_API_E2E}/api/saude`,
-      // Nunca reaproveita: um `npm run dev` ou um dist velho faria o e2e passar contra o código errado.
+      // Nunca reaproveita: um `npm run dev:full` ou um dist velho faria o e2e passar contra o código errado.
       reuseExistingServer: false,
       // webServer.env se mescla ao process.env (e vence). NODE_ENV=test garante cookie sem Secure em http.
       // Polling desligado: o progresso só pode chegar pelo webhook, que é o que o e2e prova.
