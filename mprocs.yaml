@@ -1,0 +1,14 @@
+# TUI do `npm run dev:full`: lista de serviços à esquerda, log do selecionado à direita.
+# Teclas: ↑/↓ (ou j/k) troca de serviço · Ctrl+a alterna lista/terminal · r reinicia
+# · x para · s inicia · q sai (encerra tudo). O Postgres já sobe via `predev:full`.
+procs:
+  api:
+    shell: "npm run dev -w @crm/api"
+  web:
+    shell: "npm run dev -w @crm/web"
+  postgres:
+    shell: "docker compose logs -f --tail 50"
+  ngrok:
+    # Desligado por padrão; selecione e aperte `s` para expor a API (webhook da UAZAPI).
+    shell: "ngrok http 3001 --log=stdout"
+    autostart: false

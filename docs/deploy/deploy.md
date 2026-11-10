@@ -19,7 +19,7 @@ O passo a passo completo do deploy acadêmico (bootstrap, GitHub, primeiro deplo
 
 | Ambiente | App | Banco | Storage | Uso |
 |---|---|---|---|---|
-| Local (desenvolvimento) | `npm run dev` (API :3001 + web :5173) | PostgreSQL via Docker Compose ou RDS direto ([docker-setup.md](../database/docker-setup.md)) | Conforme `apps/api/.env.local` | Dia a dia de desenvolvimento e TDD |
+| Local (desenvolvimento) | `npm run dev:full` (API :3001 + web :5173) | PostgreSQL via Docker Compose ou RDS direto ([docker-setup.md](../database/docker-setup.md)) | Conforme `apps/api/.env` | Dia a dia de desenvolvimento e TDD |
 | Produção — acadêmico | Vercel, Project `crm-advocacia-pac` (só a SPA, `apps/web/vercel.json`) + AWS ECS Fargate (API, via `deploy-aws.yml`) | Amazon RDS (PostgreSQL 16, Terraform) | Amazon S3 (task role, sem chave) | Ambiente apresentado à disciplina — sem dependência de Supabase |
 | Produção — real | Vercel, Project `crm-advocacia-supabase` (web + api) | Supabase (PostgreSQL, via Supavisor pooler) | Supabase Storage (API S3-compatível) | Uso pelo escritório/cliente final |
 
@@ -127,7 +127,7 @@ Notas:
 - **`AUTH_SECRET`** é a chave HS256 do cookie `crm_sessao`; cada deploy tem a sua, e trocá-la invalida todas as sessões. O código ainda lê `NEXTAUTH_SECRET` como fallback, então `AUTH_SECRET` precisa estar definido antes de remover a variável antiga.
 - O web não tem segredos: o Vite só embute variáveis `VITE_*`, e a única usada é `VITE_WS_URL` (origem do WebSocket; vazia = mesma origem). Referência em `apps/web/.env.example`.
 - **Preview**: variáveis de banco só devem existir em Preview se apontarem para um banco de preview próprio. Sem `DATABASE_URL` de Preview o preview sobe, mas as rotas que tocam o banco falham.
-- Nenhuma credencial é commitada. Local: `apps/api/.env` / `apps/api/.env.local` (fora do git, com `apps/api/.env.example` como referência e comentários por variável — ver [../database/docker-setup.md](../database/docker-setup.md)).
+- Nenhuma credencial é commitada. Local: `apps/api/.env` (fora do git, com `apps/api/.env.example` como referência e comentários por variável — ver [../database/docker-setup.md](../database/docker-setup.md)).
 
 Exemplo (depois de `vercel link`):
 

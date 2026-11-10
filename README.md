@@ -19,9 +19,9 @@ Pré-requisitos: Node.js 24+, Docker (para o Postgres local) e npm.
 ```bash
 npm install
 cp apps/api/.env.example apps/api/.env   # DATABASE_URL já aponta para o docker-compose; gere AUTH_SECRET com `openssl rand -base64 32`
-docker compose up -d                     # Postgres local (docs/database/docker-setup.md); `npm run dev` também sobe via predev
+docker compose up -d                     # Postgres local (docs/database/docker-setup.md); `dev:api`/`dev:full` também sobem via pre-script
 npm run prisma:migrate                   # aplica migrations e gera o client
-npm run dev                              # API em :3001 + web em :5173
+npm run dev:full                         # API em :3001 + web em :5173
 ```
 
 O app fica disponível em [http://localhost:5173](http://localhost:5173). O Vite encaminha `/api/*` para a API (`API_NEST_URL`, padrão `http://localhost:3001`).
@@ -30,13 +30,14 @@ O app fica disponível em [http://localhost:5173](http://localhost:5173). O Vite
 
 | Comando | Descrição |
 |---|---|
-| `npm run dev` | Postgres (Docker) + API (`tsx watch`, :3001) + web (Vite, :5173) em desenvolvimento |
+| `npm run dev:full` | Postgres (Docker) + API (`tsx watch`, :3001) + web (Vite, :5173) num terminal navegável ([mprocs](mprocs.yaml)): ↑/↓ troca o serviço cujo log aparece, `r` reinicia, `q` sai; o `ngrok` fica na lista, desligado (`s` inicia) |
+| `npm run dev:api` / `npm run dev:web` | Só a API (sobe o Postgres antes) / só o web (precisa da API em :3001 para os dados) |
 | `npm run build` / `npm start` | Build de produção (api: tsup → `apps/api/dist`; web: `apps/web/dist`) / servir os dois builds (API via `npm run start -w @crm/api`, que carrega a instrumentação do New Relic; web via `vite preview`) |
 | `npm run lint` / `npm run typecheck` | ESLint do monorepo / checagem de tipos de cada pacote |
 | `npm test` / `npm run test:coverage` | Jest em todos os pacotes / com cobertura e piso institucional (75% backend, 25% frontend) |
 | `npm run e2e` | Build + Playwright contra o build de produção (API :3001, web :4173) — ver [docs/testes/estrategia-tdd.md](docs/testes/estrategia-tdd.md) |
 | `npm run prisma:generate` / `npm run prisma:migrate` | Prisma client / migrations em `apps/api/prisma` — ver [docs/database/migrations-prisma.md](docs/database/migrations-prisma.md) |
-| `npm run dev:tunnel` | `dev` + túnel ngrok para a API em :3001 (webhook da UAZAPI); `ngrok:start` / `ngrok:stop` controlam o túnel em segundo plano |
+| `npm run dev:tunnel` | Postgres + API + web + túnel ngrok para a API em :3001 (webhook da UAZAPI); `ngrok:start` / `ngrok:stop` controlam o túnel em segundo plano |
 
 ## Estrutura
 

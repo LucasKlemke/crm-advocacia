@@ -60,7 +60,8 @@ Imports: na API, `@dominio/*` → `apps/api/src/dominio/*`; no web, `@/*` → `a
 
 | Comando (raiz) | O que faz |
 |---|---|
-| `npm run dev` | Postgres (Docker, via `predev`) + API em :3001 (`tsx watch`) + web em :5173 (proxy `/api`) |
+| `npm run dev:full` | Postgres (Docker, via `predev:full`) + API em :3001 (`tsx watch`) + web em :5173 (proxy `/api`) |
+| `npm run dev:api` / `npm run dev:web` | Só a API (Postgres via `predev:api`) / só o web |
 | `npm test` / `npm run test:coverage` | Jest de todos os pacotes / com cobertura + piso institucional |
 | `npm run lint` / `npm run typecheck` | ESLint do monorepo / `tsc --noEmit` em cada pacote |
 | `npm run build` / `npm start` | `apps/api/dist/main.mjs` (tsup) + `apps/web/dist` / API pelo script `start` do `@crm/api` (`--import ./dist/instrumentacao.mjs`) + `vite preview` do web |
