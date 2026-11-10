@@ -7,14 +7,17 @@
     "packages/*"
   ],
   "scripts": {
-    "web:dev": "npm run dev -w @crm/web",
     "web:build": "npm run build -w @crm/web",
     "web:preview": "npm run preview -w @crm/web",
     "web:test": "npm test -w @crm/web",
     "web:typecheck": "npm run typecheck -w @crm/web",
-    "predev": "docker compose up -d",
-    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w @crm/api\" \"npm run dev -w @crm/web\"",
-    "dev:tunnel": "concurrently -k -n dev,ngrok -c blue,green \"npm run dev\" \"ngrok http 3001 --log=stdout\"",
+    "dev:web": "npm run dev -w @crm/web",
+    "predev:api": "docker compose up -d",
+    "dev:api": "npm run dev -w @crm/api",
+    "predev:full": "docker compose up -d",
+    "dev:full": "mprocs",
+    "predev:tunnel": "docker compose up -d",
+    "dev:tunnel": "concurrently -k -n api,web,ngrok -c blue,green,magenta \"npm run dev -w @crm/api\" \"npm run dev -w @crm/web\" \"ngrok http 3001 --log=stdout\"",
     "ngrok:start": "bash scripts/ngrok-start.sh",
     "ngrok:stop": "bash scripts/ngrok-stop.sh",
     "build": "npm run build -w @crm/api && npm run build -w @crm/web",
@@ -28,7 +31,6 @@
     "db:down": "docker compose down",
     "prisma:generate": "npm run prisma:generate -w @crm/api",
     "prisma:migrate": "npm run prisma:migrate -w @crm/api",
-    "api:dev": "npm run dev -w @crm/api",
     "api:test": "npm test -w @crm/api",
     "api:typecheck": "npm run typecheck -w @crm/api"
   },
@@ -44,6 +46,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^17.14.0",
+    "mprocs": "0.9.6",
     "typescript": "^5",
     "typescript-eslint": "^8.72.1"
   },

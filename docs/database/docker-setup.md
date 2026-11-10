@@ -35,7 +35,7 @@ O Prisma lê a connection string de `DATABASE_URL`. Para o compose acima:
 DATABASE_URL="postgresql://crm_user:crm_password@localhost:5432/crm_advocacia?schema=public"
 ```
 
-O arquivo vive em `apps/api/.env` (ou `apps/api/.env.local`, que tem prioridade), lido pelo `main.ts` da API e pelo `prisma.config.ts`. Manter `apps/api/.env.example` versionado com esse valor placeholder e o `.env` real no `.gitignore` — nunca commitar credenciais reais, mesmo as de desenvolvimento local.
+O arquivo vive em `apps/api/.env` (arquivo único; o loader ainda aceita um `.env.local` com prioridade, mas não use os dois), lido pelo `main.ts` da API e pelo `prisma.config.ts`. Manter `apps/api/.env.example` versionado com esse valor placeholder (cada variável agrupada por assunto e com o link de onde pegar o valor) e o `.env` real no `.gitignore` — nunca commitar credenciais reais, mesmo as de desenvolvimento local.
 
 ## Comandos do dia a dia
 
